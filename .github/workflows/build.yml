@@ -62,11 +62,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: 'npm'
+          bun-version: latest
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -92,7 +91,7 @@ jobs:
             libayatana-appindicator3-dev
 
       - name: Install frontend dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Download yt-dlp binary (Unix)
         if: matrix.os_name != 'windows'
@@ -133,7 +132,7 @@ jobs:
             - Multiple quality options (Best, 4K, 2K, 1080p, 720p, 480p, 360p, Audio Only)
             - Multiple formats (MP4, MKV, WebM, MP3, M4A, Opus)
             - 6 color themes with Dark/Light mode
-            - Modern responsive UI
+            - Modern responsive UI with gradients
             - yt-dlp bundled - no external dependencies needed
             
             ## 📋 Requirements
