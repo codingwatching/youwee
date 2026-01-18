@@ -3,11 +3,10 @@ import {
   XCircle, 
   Loader2, 
   Clock,
-  Trash2,
+  X,
   ListVideo,
+  RotateCcw,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { DownloadItem } from '@/lib/types';
 
@@ -24,59 +23,6 @@ export function QueueItem({
   disabled, 
   onRemove 
 }: QueueItemProps) {
-  const getStatusIcon = () => {
-    switch (item.status) {
-      case 'completed':
-        return <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500 flex-shrink-0" />;
-      case 'error':
-        return <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-destructive flex-shrink-0" />;
-      case 'downloading':
-      case 'fetching':
-        return <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary animate-spin flex-shrink-0" />;
-      default:
-        return <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0" />;
-    }
-  };
-
-  const getStatusBadge = () => {
-    const badgeClass = "text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5";
-    
-    switch (item.status) {
-      case 'completed':
-        return (
-          <Badge className={cn(badgeClass, "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-0")}>
-            <span className="hidden xs:inline">Completed</span>
-            <span className="xs:hidden">Done</span>
-          </Badge>
-        );
-      case 'error':
-        return <Badge variant="destructive" className={badgeClass}>Error</Badge>;
-      case 'downloading':
-        if (item.playlistIndex && item.playlistTotal) {
-          return (
-            <Badge className={cn(badgeClass, "bg-primary/10 text-primary hover:bg-primary/20 border-0")}>
-              {item.playlistIndex}/{item.playlistTotal}
-            </Badge>
-          );
-        }
-        return (
-          <Badge className={cn(badgeClass, "bg-primary/10 text-primary hover:bg-primary/20 border-0")}>
-            <Loader2 className="w-3 h-3 animate-spin sm:hidden" />
-            <span className="hidden sm:inline">Downloading</span>
-          </Badge>
-        );
-      case 'fetching':
-        return (
-          <Badge className={cn(badgeClass, "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border-0")}>
-            <span className="hidden sm:inline">Fetching</span>
-            <span className="sm:hidden">...</span>
-          </Badge>
-        );
-      default:
-        return <Badge variant="secondary" className={badgeClass}>Pending</Badge>;
-    }
-  };
-
   // Extract video ID for thumbnail
   const getVideoId = (url: string) => {
     const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?]+)/);
@@ -88,105 +34,164 @@ export function QueueItem({
     ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
     : null;
 
+  const getStatusInfo = () => {
+    switch (item.status) {
+      case 'completed':
+        return { 
+          icon: <CheckCircle2 className="w-4 h-4" />, 
+          color: 'text-emerald-500',
+          bgColor: 'bg-emerald-500/10',
+          borderColor: 'border-emerald-500/20',
+          label: 'Done'
+        };
+      case 'error':
+        return { 
+          icon: <XCircle className="w-4 h-4" />, 
+          color: 'text-red-500',
+          bgColor: 'bg-red-500/10',
+          borderColor: 'border-red-500/20',
+          label: 'Error'
+        };
+      case 'downloading':
+      case 'fetching':
+        return { 
+          icon: <Loader2 className="w-4 h-4 animate-spin" />, 
+          color: 'text-primary',
+          bgColor: 'bg-primary/10',
+          borderColor: 'border-primary/20',
+          label: item.status === 'fetching' ? 'Fetching...' : 'Downloading'
+        };
+      default:
+        return { 
+          icon: <Clock className="w-4 h-4" />, 
+          color: 'text-muted-foreground',
+          bgColor: 'bg-muted/50',
+          borderColor: 'border-border/50',
+          label: 'Pending'
+        };
+    }
+  };
+
+  const status = getStatusInfo();
+  const isActive = item.status === 'downloading' || item.status === 'fetching';
+
   return (
     <div
       className={cn(
-        "queue-item group relative flex gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg sm:rounded-xl border transition-all duration-200",
-        item.status === 'downloading' && "bg-primary/5 border-primary/20",
-        item.status === 'completed' && "bg-emerald-500/5 border-emerald-500/20",
-        item.status === 'error' && "bg-destructive/5 border-destructive/20",
-        item.status === 'pending' && "bg-card/50 hover:bg-card"
+        "group relative flex gap-3 p-2 rounded-xl border transition-all duration-200",
+        status.bgColor,
+        status.borderColor,
+        isActive && "ring-1 ring-primary/30"
       )}
     >
-      {/* Thumbnail */}
-      {thumbnailUrl && (
-        <div className="flex-shrink-0 w-14 h-9 xs:w-16 xs:h-10 sm:w-20 sm:h-12 md:w-24 md:h-14 rounded-md sm:rounded-lg overflow-hidden bg-muted">
+      {/* Thumbnail with Progress Overlay */}
+      <div className="relative flex-shrink-0 w-24 h-16 sm:w-32 sm:h-20 rounded-lg overflow-hidden bg-muted">
+        {thumbnailUrl ? (
           <img 
             src={thumbnailUrl} 
             alt=""
             className="w-full h-full object-cover"
             loading="lazy"
           />
-        </div>
-      )}
-      
-      {/* Content */}
-      <div className="flex-1 min-w-0 space-y-1 sm:space-y-1.5">
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          {getStatusIcon()}
-          <div className="flex-1 min-w-0 max-w-[120px] xs:max-w-[180px] sm:max-w-none">
-            <p className="text-xs sm:text-sm font-medium truncate leading-tight" title={item.title}>
-              {item.title}
-            </p>
-          </div>
-          {/* Mobile: Show badge inline with title */}
-          <div className="flex items-center gap-1 sm:hidden">
-            {getStatusBadge()}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 opacity-70"
-              onClick={() => onRemove(item.id)}
-              disabled={disabled}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Playlist indicator */}
-        {item.isPlaylist && showPlaylistBadge && (
-          <div className="flex items-center gap-1">
-            <ListVideo className="w-3 h-3 text-primary" />
-            <span className="text-[10px] sm:text-xs text-muted-foreground">Playlist</span>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <ListVideo className="w-6 h-6 text-muted-foreground/50" />
           </div>
         )}
         
-        {/* Progress */}
-        {item.status === 'downloading' && (
-          <div className="space-y-0.5 sm:space-y-1">
-            <div className="h-1 sm:h-1.5 rounded-full overflow-hidden bg-muted">
+        {/* Progress Overlay */}
+        {isActive && (
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-2">
+            {/* Progress Bar */}
+            <div className="h-1 rounded-full overflow-hidden bg-white/30 mb-1">
               <div 
                 className="h-full progress-animated rounded-full transition-all duration-300"
                 style={{ width: `${item.progress}%` }}
               />
             </div>
-            <div className="flex items-center justify-between text-[10px] sm:text-xs text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <span>{item.progress.toFixed(0)}%</span>
-                {item.playlistIndex && item.playlistTotal && (
-                  <span className="text-primary hidden xs:inline">
-                    ({item.playlistIndex}/{item.playlistTotal})
-                  </span>
-                )}
-              </span>
-              <span className="hidden xs:inline">
-                {item.speed}
-                {item.eta && <span className="hidden sm:inline"> • ETA: {item.eta}</span>}
-              </span>
+            <div className="flex items-center justify-between text-[10px] text-white/90 font-medium">
+              <span>{item.progress.toFixed(0)}%</span>
+              {item.speed && <span>{item.speed}</span>}
             </div>
           </div>
         )}
-        
-        {/* Error message */}
-        {item.status === 'error' && item.error && (
-          <p className="text-[10px] sm:text-xs text-destructive truncate">{item.error}</p>
+
+        {/* Completed Overlay */}
+        {item.status === 'completed' && (
+          <div className="absolute inset-0 bg-emerald-500/20 flex items-center justify-center">
+            <CheckCircle2 className="w-8 h-8 text-emerald-500 drop-shadow-lg" />
+          </div>
+        )}
+
+        {/* Error Overlay */}
+        {item.status === 'error' && (
+          <div className="absolute inset-0 bg-red-500/20 flex items-center justify-center">
+            <RotateCcw className="w-6 h-6 text-red-500" />
+          </div>
+        )}
+
+        {/* Playlist Badge on Thumbnail */}
+        {item.isPlaylist && showPlaylistBadge && (
+          <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/70 text-white text-[10px] flex items-center gap-1">
+            <ListVideo className="w-3 h-3" />
+            <span>Playlist</span>
+          </div>
+        )}
+
+        {/* Playlist Progress on Thumbnail */}
+        {item.playlistIndex && item.playlistTotal && (
+          <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded bg-black/70 text-white text-[10px] font-medium">
+            {item.playlistIndex}/{item.playlistTotal}
+          </div>
         )}
       </div>
-
-      {/* Desktop Actions - hidden on mobile */}
-      <div className="hidden sm:flex items-center gap-2">
-        {getStatusBadge()}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={() => onRemove(item.id)}
-          disabled={disabled}
+      
+      {/* Content */}
+      <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
+        {/* Title */}
+        <p 
+          className="text-sm font-medium leading-tight line-clamp-2" 
+          title={item.title}
         >
-          <Trash2 className="w-4 h-4" />
-        </Button>
+          {item.title}
+        </p>
+        
+        {/* Status & Meta */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={cn("text-xs flex items-center gap-1", status.color)}>
+            {status.icon}
+            <span className="hidden xs:inline">{status.label}</span>
+          </span>
+          
+          {isActive && item.eta && (
+            <span className="text-xs text-muted-foreground hidden sm:inline">
+              ETA: {item.eta}
+            </span>
+          )}
+          
+          {item.status === 'error' && item.error && (
+            <span className="text-xs text-red-500 truncate max-w-[150px] sm:max-w-none" title={item.error}>
+              {item.error}
+            </span>
+          )}
+        </div>
       </div>
+
+      {/* Remove Button */}
+      <button
+        onClick={() => onRemove(item.id)}
+        disabled={disabled}
+        title="Remove from queue"
+        className={cn(
+          "absolute top-2 right-2 p-1.5 rounded-full transition-all",
+          "bg-background/80 hover:bg-background text-muted-foreground hover:text-foreground",
+          "opacity-0 group-hover:opacity-100",
+          "sm:opacity-0 sm:group-hover:opacity-100",
+          "disabled:opacity-50 disabled:cursor-not-allowed"
+        )}
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
     </div>
   );
 }

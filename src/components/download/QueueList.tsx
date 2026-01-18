@@ -1,4 +1,4 @@
-import { Download, Trash2 } from 'lucide-react';
+import { Trash2, CheckCircle2, Youtube } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -27,56 +27,65 @@ export function QueueList({
   onClearCompleted,
 }: QueueListProps) {
   const completedCount = items.filter(i => i.status === 'completed').length;
+  const pendingCount = items.filter(i => i.status === 'pending').length;
   const totalCount = items.length;
 
   return (
-    <div className="flex-1 flex flex-col rounded-lg sm:rounded-xl border bg-card/50 backdrop-blur-sm overflow-hidden min-h-[200px]">
+    <div className="flex-1 flex flex-col min-h-0">
       {/* Header */}
-      <div className="flex items-center justify-between p-2 sm:p-3 md:p-4 border-b gap-2">
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <Download className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-          <span className="text-xs sm:text-sm font-medium truncate">Queue</span>
-          {currentPlaylistInfo && (
-            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] sm:text-xs hidden xs:flex">
-              {currentPlaylistInfo.index}/{currentPlaylistInfo.total}
-            </Badge>
-          )}
-        </div>
-        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-          {totalCount > 0 && (
-            <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 sm:px-2">
-              {completedCount}/{totalCount}
-            </Badge>
-          )}
+      {totalCount > 0 && (
+        <div className="flex items-center justify-between py-2 px-1 gap-2">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-medium">Queue</h2>
+            <div className="flex items-center gap-1.5">
+              {pendingCount > 0 && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                  {pendingCount} pending
+                </Badge>
+              )}
+              {completedCount > 0 && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-emerald-500 border-emerald-500/30">
+                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                  {completedCount}
+                </Badge>
+              )}
+              {currentPlaylistInfo && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-primary border-primary/30">
+                  {currentPlaylistInfo.index}/{currentPlaylistInfo.total}
+                </Badge>
+              )}
+            </div>
+          </div>
+          
           {completedCount > 0 && (
             <Button
               variant="ghost"
               size="sm"
               onClick={onClearCompleted}
               disabled={isDownloading}
-              className="h-6 sm:h-7 text-[10px] sm:text-xs px-2"
+              className="h-7 text-xs px-2 text-muted-foreground hover:text-foreground"
             >
-              <Trash2 className="w-3 h-3 sm:hidden" />
-              <span className="hidden sm:inline">Clear done</span>
+              <Trash2 className="w-3 h-3 mr-1.5" />
+              Clear done
             </Button>
           )}
         </div>
-      </div>
+      )}
 
-      {/* Queue Items */}
+      {/* Queue Items or Empty State */}
       {items.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center py-8 sm:py-12 text-muted-foreground px-4">
-          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-muted/50 flex items-center justify-center mb-3 sm:mb-4">
-            <Download className="w-6 h-6 sm:w-8 sm:h-8 opacity-30" />
+        <div className="flex-1 flex flex-col items-center justify-center py-12 px-4">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-4">
+            <Youtube className="w-10 h-10 text-primary/50" />
           </div>
-          <p className="text-xs sm:text-sm font-medium text-center">No videos in queue</p>
-          <p className="text-[10px] sm:text-xs mt-1 text-muted-foreground/70 text-center">
-            Add YouTube URLs above to get started
+          <h3 className="text-base font-medium mb-1">No videos yet</h3>
+          <p className="text-sm text-muted-foreground text-center max-w-[240px]">
+            Paste a YouTube URL above to start downloading videos
           </p>
         </div>
       ) : (
-        <ScrollArea className="flex-1">
-          <div className="p-2 sm:p-3 space-y-1.5 sm:space-y-2">
+        <ScrollArea className="flex-1 -mx-3 px-3">
+          <div className="space-y-2 pb-2">
             {items.map((item) => (
               <QueueItem
                 key={item.id}
