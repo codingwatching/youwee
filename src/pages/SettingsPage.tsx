@@ -179,7 +179,7 @@ export function SettingsPage() {
               </div>
               <div className="flex items-center gap-2">
                 <a 
-                  href="https://github.com/vanloctech/youtube-downloader" 
+                  href="https://github.com/vanloctech/youwee" 
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-foreground text-background hover:opacity-90 transition-opacity"

@@ -36,7 +36,7 @@
 
 ### Download Pre-built Binaries
 
-Download the latest release for your platform from the [Releases](https://github.com/vanloctech/youtube-downloader/releases) page:
+Download the latest release for your platform from the [Releases](https://github.com/vanloctech/youwee/releases) page:
 
 | Platform | Architecture | File |
 |----------|--------------|------|
@@ -57,8 +57,8 @@ Download the latest release for your platform from the [Releases](https://github
 
 ```bash
 # Clone the repository
-git clone https://github.com/vanloctech/youtube-downloader.git
-cd youtube-downloader
+git clone https://github.com/vanloctech/youwee.git
+cd youwee
 
 # Install dependencies
 bun install
@@ -136,7 +136,7 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/):
 ### Project Structure
 
 ```
-youtube-downloader/
+youwee/
 ├── src/                    # React frontend
 │   ├── components/         # UI components
 │   ├── contexts/           # React contexts
@@ -171,7 +171,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📬 Contact
 
 - **GitHub**: [@vanloctech](https://github.com/vanloctech)
-- **Issues**: [GitHub Issues](https://github.com/vanloctech/youtube-downloader/issues)
+- **Issues**: [GitHub Issues](https://github.com/vanloctech/youwee/issues)
 
 ---
 
