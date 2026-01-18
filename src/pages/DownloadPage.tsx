@@ -72,9 +72,8 @@ export function DownloadPage() {
         <div className="px-3 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center gap-2 sm:gap-3">
             {!isDownloading ? (
-              <Button 
-                className="flex-1 btn-glow text-sm sm:text-base" 
-                size="default"
+              <button 
+                className="flex-1 h-10 px-4 rounded-md font-medium text-sm sm:text-base btn-gradient flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed" 
                 onClick={startDownload}
                 disabled={items.length === 0}
               >
@@ -82,7 +81,7 @@ export function DownloadPage() {
                 <span className="hidden xs:inline">Start Download</span>
                 <span className="xs:hidden">Start</span>
                 {pendingCount > 0 && <span className="ml-1">({pendingCount})</span>}
-              </Button>
+              </button>
             ) : (
               <Button 
                 className="flex-1 text-sm sm:text-base" 

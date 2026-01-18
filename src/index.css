@@ -382,7 +382,23 @@
 }
 
 .sidebar-item.active {
-  @apply bg-primary/10 text-primary font-medium;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--gradient-from) / 0.15),
+    hsl(var(--gradient-via) / 0.1),
+    hsl(var(--gradient-to) / 0.15)
+  );
+  color: hsl(var(--gradient-via));
+  @apply font-medium;
+}
+
+.sidebar-item.active:hover {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--gradient-from) / 0.2),
+    hsl(var(--gradient-via) / 0.15),
+    hsl(var(--gradient-to) / 0.2)
+  );
 }
 
 .sidebar-item-text {
