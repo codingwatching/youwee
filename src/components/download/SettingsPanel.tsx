@@ -54,8 +54,8 @@ const audioFormatOptions: { value: Format; label: string; icon: React.ReactNode 
 ];
 
 const videoCodecOptions: { value: VideoCodec; label: string; description?: string }[] = [
-  { value: 'h264', label: 'H.264', description: 'Tương thích tốt với mọi player' },
-  { value: 'auto', label: 'Auto', description: 'Chất lượng tốt nhất (VP9/AV1)' },
+  { value: 'h264', label: 'H.264', description: 'Best compatibility' },
+  { value: 'auto', label: 'Auto', description: 'Best quality (VP9/AV1)' },
 ];
 
 const audioBitrateOptions: { value: AudioBitrate; label: string }[] = [
@@ -228,12 +228,10 @@ export function SettingsPanel({
                     <SelectContent>
                       {videoCodecOptions.map((opt) => (
                         <SelectItem key={opt.value} value={opt.value}>
-                          <div className="flex flex-col">
-                            <span className="text-xs sm:text-sm">{opt.label}</span>
-                            {opt.description && (
-                              <span className="text-[10px] text-muted-foreground hidden sm:block">{opt.description}</span>
-                            )}
-                          </div>
+                          <span className="text-xs sm:text-sm">{opt.label}</span>
+                          {opt.description && (
+                            <span className="text-[10px] text-muted-foreground ml-2 hidden sm:inline">({opt.description})</span>
+                          )}
                         </SelectItem>
                       ))}
                     </SelectContent>
