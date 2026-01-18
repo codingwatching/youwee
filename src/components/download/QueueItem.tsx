@@ -98,9 +98,9 @@ export function QueueItem({
         item.status === 'pending' && "bg-card/50 hover:bg-card"
       )}
     >
-      {/* Thumbnail - hidden on very small screens */}
+      {/* Thumbnail */}
       {thumbnailUrl && (
-        <div className="hidden xs:block flex-shrink-0 w-16 h-10 sm:w-20 sm:h-12 md:w-24 md:h-14 rounded-md sm:rounded-lg overflow-hidden bg-muted">
+        <div className="flex-shrink-0 w-14 h-9 xs:w-16 xs:h-10 sm:w-20 sm:h-12 md:w-24 md:h-14 rounded-md sm:rounded-lg overflow-hidden bg-muted">
           <img 
             src={thumbnailUrl} 
             alt=""
