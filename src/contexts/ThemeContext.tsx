@@ -52,6 +52,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     const themeConfig = getTheme(theme);
     const colors = themeConfig.colors[mode];
+    const gradient = themeConfig.gradient[mode];
 
     // Toggle dark class
     root.classList.toggle('dark', mode === 'dark');
@@ -61,6 +62,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.style.setProperty('--primary-foreground', colors.primaryForeground);
     root.style.setProperty('--accent', colors.accent);
     root.style.setProperty('--accent-foreground', colors.accentForeground);
+    root.style.setProperty('--ring', colors.primary);
+
+    // Apply gradient colors
+    root.style.setProperty('--gradient-from', gradient.from);
+    root.style.setProperty('--gradient-via', gradient.via || gradient.from);
+    root.style.setProperty('--gradient-to', gradient.to);
 
     // Set theme attribute for additional styling
     root.setAttribute('data-theme', theme);

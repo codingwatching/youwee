@@ -5,13 +5,14 @@ import { cn } from '@/lib/utils';
 import { Check, Sun, Moon } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 
-const themeColors: Record<ThemeName, string> = {
-  zinc: 'bg-zinc-500',
-  ocean: 'bg-blue-500',
-  emerald: 'bg-emerald-500',
-  rose: 'bg-rose-500',
-  amber: 'bg-amber-500',
-  violet: 'bg-violet-500',
+// Gradient backgrounds for theme preview
+const themeGradients: Record<ThemeName, string> = {
+  midnight: 'bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500',
+  aurora: 'bg-gradient-to-br from-emerald-400 via-cyan-500 to-blue-500',
+  sunset: 'bg-gradient-to-br from-orange-500 via-amber-500 to-yellow-500',
+  ocean: 'bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-500',
+  forest: 'bg-gradient-to-br from-green-500 via-emerald-500 to-teal-500',
+  candy: 'bg-gradient-to-br from-pink-500 via-rose-500 to-red-500',
 };
 
 export function SettingsPage() {
@@ -48,8 +49,8 @@ export function SettingsPage() {
                     : 'border-transparent bg-accent/30 hover:bg-accent/50'
                 )}
               >
-                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                  <Sun className="w-5 h-5 text-amber-600" />
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-200 to-orange-300 flex items-center justify-center shadow-lg">
+                  <Sun className="w-5 h-5 text-amber-700" />
                 </div>
                 <div className="text-left">
                   <p className="text-sm font-medium">Light</p>
@@ -69,7 +70,7 @@ export function SettingsPage() {
                     : 'border-transparent bg-accent/30 hover:bg-accent/50'
                 )}
               >
-                <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center shadow-lg">
                   <Moon className="w-5 h-5 text-slate-300" />
                 </div>
                 <div className="text-left">
@@ -86,13 +87,13 @@ export function SettingsPage() {
           {/* Theme Selection */}
           <div className="rounded-xl border bg-card/50 backdrop-blur-sm p-4 space-y-4">
             <Label className="text-xs text-muted-foreground">Theme Color</Label>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               {themes.map((t) => (
                 <button
                   key={t.name}
                   onClick={() => setTheme(t.name)}
                   className={cn(
-                    'flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all',
+                    'flex flex-col items-center gap-2.5 p-4 rounded-xl border-2 transition-all group',
                     theme === t.name
                       ? 'border-primary bg-primary/5'
                       : 'border-transparent hover:bg-accent/50'
@@ -100,15 +101,17 @@ export function SettingsPage() {
                 >
                   <div
                     className={cn(
-                      'w-8 h-8 rounded-full flex items-center justify-center shadow-lg',
-                      themeColors[t.name]
+                      'w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-transform group-hover:scale-110',
+                      themeGradients[t.name]
                     )}
                   >
-                    {theme === t.name && (
-                      <Check className="w-4 h-4 text-white" />
+                    {theme === t.name ? (
+                      <Check className="w-5 h-5 text-white drop-shadow" />
+                    ) : (
+                      <span className="text-lg">{t.emoji}</span>
                     )}
                   </div>
-                  <span className="text-xs font-medium">{t.label}</span>
+                  <span className="text-sm font-medium">{t.label}</span>
                 </button>
               ))}
             </div>
@@ -126,17 +129,17 @@ export function SettingsPage() {
 
           <div className="rounded-xl border bg-card/50 backdrop-blur-sm p-4 space-y-3">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center shadow-lg">
                 <svg 
                   viewBox="0 0 24 24" 
-                  className="w-7 h-7 text-primary"
+                  className="w-7 h-7 text-primary-foreground"
                   fill="currentColor"
                 >
                   <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
                 </svg>
               </div>
               <div>
-                <h3 className="font-semibold">Youwee</h3>
+                <h3 className="font-semibold gradient-text">Youwee</h3>
                 <p className="text-xs text-muted-foreground">Version 0.1.0</p>
               </div>
             </div>
