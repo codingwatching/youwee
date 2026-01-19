@@ -129,11 +129,20 @@ jobs:
           curl -L -o "src-tauri/bin/${{ matrix.yt_dlp_name }}" "${{ matrix.yt_dlp_url }}"
           chmod +x "src-tauri/bin/${{ matrix.yt_dlp_name }}"
 
-      - name: Build Tauri app
+      - name: Build Tauri app (macOS - skip DMG)
+        if: matrix.platform == 'macos-latest'
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ""
+        with:
+          tauriScript: bun run tauri
+          args: --target ${{ matrix.target }} --bundles app
+
+      - name: Build Tauri app (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tauriScript: bun run tauri
           args: --target ${{ matrix.target }}
@@ -143,7 +152,7 @@ jobs:
         with:
           name: build-${{ matrix.platform }}
           path: |
-            src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app
             src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb
             src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage
           if-no-files-found: ignore
