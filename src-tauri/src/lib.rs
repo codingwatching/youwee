@@ -729,29 +729,40 @@ async fn check_ytdlp_update() -> Result<String, String> {
     Ok(release.tag_name)
 }
 
-/// Get the appropriate download URL for current platform
-fn get_ytdlp_download_url() -> (&'static str, &'static str) {
+/// Get the appropriate download URL and binary name for current platform
+fn get_ytdlp_download_info() -> (&'static str, &'static str, &'static str) {
+    // Returns (download_url, filename, checksum_filename)
     #[cfg(target_os = "macos")]
     {
         #[cfg(target_arch = "aarch64")]
-        { ("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos", "yt-dlp") }
+        { ("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos", "yt-dlp", "yt-dlp_macos") }
         #[cfg(target_arch = "x86_64")]
-        { ("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos_legacy", "yt-dlp") }
+        { ("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos_legacy", "yt-dlp", "yt-dlp_macos_legacy") }
         #[cfg(not(any(target_arch = "aarch64", target_arch = "x86_64")))]
-        { ("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos", "yt-dlp") }
+        { ("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos", "yt-dlp", "yt-dlp_macos") }
     }
     #[cfg(target_os = "linux")]
-    { ("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux", "yt-dlp") }
+    { ("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux", "yt-dlp", "yt-dlp_linux") }
     #[cfg(target_os = "windows")]
-    { ("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe", "yt-dlp.exe") }
+    { ("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe", "yt-dlp.exe", "yt-dlp.exe") }
     #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
-    { ("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp", "yt-dlp") }
+    { ("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp", "yt-dlp", "yt-dlp") }
 }
 
-/// Update yt-dlp by downloading latest binary from GitHub
+/// Verify SHA256 checksum of downloaded binary
+fn verify_sha256(data: &[u8], expected_hash: &str) -> bool {
+    use sha2::{Sha256, Digest};
+    let mut hasher = Sha256::new();
+    hasher.update(data);
+    let result = hasher.finalize();
+    let computed_hash = hex::encode(result);
+    computed_hash.eq_ignore_ascii_case(expected_hash)
+}
+
+/// Update yt-dlp by downloading latest binary from GitHub with checksum verification
 #[tauri::command]
 async fn update_ytdlp(app: AppHandle) -> Result<String, String> {
-    let (download_url, filename) = get_ytdlp_download_url();
+    let (download_url, filename, checksum_filename) = get_ytdlp_download_info();
     
     // Get app data directory for storing updated binary
     let app_data_dir = app.path().app_data_dir()
@@ -766,12 +777,44 @@ async fn update_ytdlp(app: AppHandle) -> Result<String, String> {
     
     let binary_path = bin_dir.join(filename);
     
-    // Download the binary
+    // Create HTTP client
     let client = reqwest::Client::builder()
-        .user_agent("Youwee/0.1.0")
+        .user_agent("Youwee/0.2.0")
         .build()
         .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
     
+    // Step 1: Download SHA256SUMS file for verification
+    let checksums_url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS";
+    let checksums_response = client
+        .get(checksums_url)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to download checksums: {}", e))?;
+    
+    if !checksums_response.status().is_success() {
+        return Err(format!("Failed to download checksums: HTTP {}", checksums_response.status()));
+    }
+    
+    let checksums_text = checksums_response
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read checksums: {}", e))?;
+    
+    // Parse checksums file to find the expected hash for our binary
+    // Format: "<hash>  <filename>" (two spaces between hash and filename)
+    let expected_hash = checksums_text
+        .lines()
+        .find_map(|line| {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() >= 2 && parts[1] == checksum_filename {
+                Some(parts[0].to_string())
+            } else {
+                None
+            }
+        })
+        .ok_or_else(|| format!("Checksum not found for {}", checksum_filename))?;
+    
+    // Step 2: Download the binary
     let response = client
         .get(download_url)
         .send()
@@ -787,7 +830,12 @@ async fn update_ytdlp(app: AppHandle) -> Result<String, String> {
         .await
         .map_err(|e| format!("Failed to read response: {}", e))?;
     
-    // Write to temporary file first, then rename
+    // Step 3: Verify SHA256 checksum BEFORE writing to disk
+    if !verify_sha256(&bytes, &expected_hash) {
+        return Err("Security error: SHA256 checksum verification failed. The downloaded file may be corrupted or tampered with.".to_string());
+    }
+    
+    // Step 4: Write verified binary to temporary file, then rename
     let temp_path = binary_path.with_extension("tmp");
     tokio::fs::write(&temp_path, &bytes)
         .await
@@ -807,7 +855,7 @@ async fn update_ytdlp(app: AppHandle) -> Result<String, String> {
             .map_err(|e| format!("Failed to set permissions: {}", e))?;
     }
     
-    // Rename temp file to final path
+    // Rename temp file to final path (atomic on most filesystems)
     tokio::fs::rename(&temp_path, &binary_path)
         .await
         .map_err(|e| format!("Failed to rename binary: {}", e))?;
