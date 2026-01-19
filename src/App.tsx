@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { DependenciesProvider } from '@/contexts/DependenciesContext';
+import { DownloadProvider } from '@/contexts/DownloadContext';
 import { MainLayout } from '@/components/layout';
 import type { Page } from '@/components/layout';
 import { DownloadPage, SettingsPage } from '@/pages';
@@ -20,7 +21,9 @@ function App() {
   return (
     <ThemeProvider>
       <DependenciesProvider>
-        <AppContent />
+        <DownloadProvider>
+          <AppContent />
+        </DownloadProvider>
       </DependenciesProvider>
     </ThemeProvider>
   );

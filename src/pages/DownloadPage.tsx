@@ -2,7 +2,7 @@ import { Play, Square, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UrlInput, SettingsPanel, QueueList } from '@/components/download';
 import { ThemePicker } from '@/components/settings/ThemePicker';
-import { useDownload } from '@/hooks/useDownload';
+import { useDownload } from '@/contexts/DownloadContext';
 import { cn } from '@/lib/utils';
 
 export function DownloadPage() {

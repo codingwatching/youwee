@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-dialog';
@@ -45,7 +45,37 @@ function saveSettings(settings: DownloadSettings) {
   }
 }
 
-export function useDownload() {
+interface PlaylistInfo {
+  index: number;
+  total: number;
+  title: string;
+}
+
+interface DownloadContextType {
+  items: DownloadItem[];
+  isDownloading: boolean;
+  settings: DownloadSettings;
+  currentPlaylistInfo: PlaylistInfo | null;
+  addFromText: (text: string) => number;
+  importFromFile: () => Promise<number>;
+  importFromClipboard: () => Promise<number>;
+  selectOutputFolder: () => Promise<void>;
+  removeItem: (id: string) => void;
+  clearAll: () => void;
+  clearCompleted: () => void;
+  startDownload: () => Promise<void>;
+  stopDownload: () => Promise<void>;
+  updateSettings: (updates: Partial<DownloadSettings>) => void;
+  updateQuality: (quality: Quality) => void;
+  updateFormat: (format: Format) => void;
+  updateVideoCodec: (codec: VideoCodec) => void;
+  updateAudioBitrate: (bitrate: AudioBitrate) => void;
+  togglePlaylist: () => void;
+}
+
+const DownloadContext = createContext<DownloadContextType | null>(null);
+
+export function DownloadProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<DownloadItem[]>([]);
   const [isDownloading, setIsDownloading] = useState(false);
   
@@ -61,13 +91,16 @@ export function useDownload() {
       audioBitrate: saved.audioBitrate || 'auto',
     };
   });
-  const [currentPlaylistInfo, setCurrentPlaylistInfo] = useState<{
-    index: number;
-    total: number;
-    title: string;
-  } | null>(null);
+  
+  const [currentPlaylistInfo, setCurrentPlaylistInfo] = useState<PlaylistInfo | null>(null);
   
   const isDownloadingRef = useRef(false);
+  const itemsRef = useRef<DownloadItem[]>([]);
+  
+  // Keep itemsRef in sync with items state
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
 
   // Get default download path on mount (only if not saved)
   useEffect(() => {
@@ -89,7 +122,7 @@ export function useDownload() {
     getDefaultPath();
   }, []);
 
-  // Listen for progress updates from Rust backend
+  // Listen for progress updates from Rust backend - runs once at app start
   useEffect(() => {
     const unlisten = listen<DownloadProgress>('download-progress', (event) => {
       const progress = event.payload;
@@ -102,7 +135,7 @@ export function useDownload() {
         });
       }
       
-      setItems(items => items.map(item => 
+      setItems(currentItems => currentItems.map(item => 
         item.id === progress.id 
           ? { 
               ...item, 
@@ -139,8 +172,9 @@ export function useDownload() {
   const addUrls = useCallback((urls: string[]) => {
     if (urls.length === 0) return 0;
 
+    const currentItems = itemsRef.current;
     const newItems: DownloadItem[] = urls
-      .filter(url => !items.some(item => item.url === url))
+      .filter(url => !currentItems.some(item => item.url === url))
       .map(url => ({
         id: crypto.randomUUID(),
         url,
@@ -157,7 +191,7 @@ export function useDownload() {
     }
     
     return newItems.length;
-  }, [items]);
+  }, []);
 
   const addFromText = useCallback((text: string): number => {
     const urls = parseUrls(text);
@@ -227,7 +261,8 @@ export function useDownload() {
   }, []);
 
   const startDownload = useCallback(async () => {
-    if (items.length === 0) return;
+    const currentItems = itemsRef.current;
+    if (currentItems.length === 0) return;
     
     setIsDownloading(true);
     isDownloadingRef.current = true;
@@ -246,7 +281,7 @@ export function useDownload() {
     })));
 
     try {
-      for (const item of items) {
+      for (const item of currentItems) {
         if (!isDownloadingRef.current) break;
         
         setItems(items => items.map(i => 
@@ -279,7 +314,7 @@ export function useDownload() {
       isDownloadingRef.current = false;
       setCurrentPlaylistInfo(null);
     }
-  }, [items, settings]);
+  }, [settings]);
 
   const stopDownload = useCallback(async () => {
     try {
@@ -340,7 +375,7 @@ export function useDownload() {
     });
   }, []);
 
-  return {
+  const value: DownloadContextType = {
     items,
     isDownloading,
     settings,
@@ -361,4 +396,18 @@ export function useDownload() {
     updateAudioBitrate,
     togglePlaylist,
   };
+
+  return (
+    <DownloadContext.Provider value={value}>
+      {children}
+    </DownloadContext.Provider>
+  );
+}
+
+export function useDownload() {
+  const context = useContext(DownloadContext);
+  if (!context) {
+    throw new Error('useDownload must be used within a DownloadProvider');
+  }
+  return context;
 }
