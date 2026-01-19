@@ -740,7 +740,8 @@ struct GitHubRelease {
 #[tauri::command]
 async fn check_ytdlp_update() -> Result<String, String> {
     let client = reqwest::Client::builder()
-        .user_agent("Youwee/0.1.0")
+        .user_agent("Youwee/0.2.0")
+        .timeout(std::time::Duration::from_secs(10))
         .build()
         .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
     
@@ -748,10 +749,44 @@ async fn check_ytdlp_update() -> Result<String, String> {
         .get("https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest")
         .send()
         .await
-        .map_err(|e| format!("Failed to check for updates: {}", e))?;
+        .map_err(|e| {
+            if e.is_timeout() {
+                "Request timed out. Please try again later.".to_string()
+            } else if e.is_connect() {
+                "Unable to connect. Please check your internet connection.".to_string()
+            } else {
+                format!("Failed to check for updates: {}", e)
+            }
+        })?;
     
-    if !response.status().is_success() {
-        return Err("Failed to fetch release info".to_string());
+    let status = response.status();
+    
+    // Handle rate limiting and other HTTP errors
+    if status == reqwest::StatusCode::FORBIDDEN || status == reqwest::StatusCode::TOO_MANY_REQUESTS {
+        // Check for rate limit headers
+        let retry_after = response
+            .headers()
+            .get("x-ratelimit-reset")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|s| s.parse::<i64>().ok());
+        
+        if let Some(reset_time) = retry_after {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs() as i64)
+                .unwrap_or(0);
+            let wait_minutes = ((reset_time - now) / 60).max(1);
+            return Err(format!("GitHub API rate limit exceeded. Try again in {} minutes.", wait_minutes));
+        }
+        return Err("GitHub API rate limit exceeded. Please try again later.".to_string());
+    }
+    
+    if status == reqwest::StatusCode::NOT_FOUND {
+        return Err("Release not found. The repository may have changed.".to_string());
+    }
+    
+    if !status.is_success() {
+        return Err(format!("GitHub API error: {} {}", status.as_u16(), status.canonical_reason().unwrap_or("Unknown")));
     }
     
     let release: GitHubRelease = response
@@ -810,9 +845,10 @@ async fn update_ytdlp(app: AppHandle) -> Result<String, String> {
     
     let binary_path = bin_dir.join(filename);
     
-    // Create HTTP client
+    // Create HTTP client with timeout
     let client = reqwest::Client::builder()
         .user_agent("Youwee/0.2.0")
+        .timeout(std::time::Duration::from_secs(300)) // 5 min timeout for large downloads
         .build()
         .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
     
@@ -822,10 +858,22 @@ async fn update_ytdlp(app: AppHandle) -> Result<String, String> {
         .get(checksums_url)
         .send()
         .await
-        .map_err(|e| format!("Failed to download checksums: {}", e))?;
+        .map_err(|e| {
+            if e.is_timeout() {
+                "Download timed out. Please try again.".to_string()
+            } else if e.is_connect() {
+                "Unable to connect. Please check your internet connection.".to_string()
+            } else {
+                format!("Failed to download checksums: {}", e)
+            }
+        })?;
     
-    if !checksums_response.status().is_success() {
-        return Err(format!("Failed to download checksums: HTTP {}", checksums_response.status()));
+    let status = checksums_response.status();
+    if status == reqwest::StatusCode::FORBIDDEN || status == reqwest::StatusCode::TOO_MANY_REQUESTS {
+        return Err("GitHub rate limit exceeded. Please try again in a few minutes.".to_string());
+    }
+    if !status.is_success() {
+        return Err(format!("Failed to download checksums: HTTP {}", status));
     }
     
     let checksums_text = checksums_response
@@ -852,10 +900,22 @@ async fn update_ytdlp(app: AppHandle) -> Result<String, String> {
         .get(download_url)
         .send()
         .await
-        .map_err(|e| format!("Failed to download yt-dlp: {}", e))?;
+        .map_err(|e| {
+            if e.is_timeout() {
+                "Download timed out. Please try again.".to_string()
+            } else if e.is_connect() {
+                "Unable to connect. Please check your internet connection.".to_string()
+            } else {
+                format!("Failed to download yt-dlp: {}", e)
+            }
+        })?;
     
-    if !response.status().is_success() {
-        return Err(format!("Download failed with status: {}", response.status()));
+    let status = response.status();
+    if status == reqwest::StatusCode::FORBIDDEN || status == reqwest::StatusCode::TOO_MANY_REQUESTS {
+        return Err("GitHub rate limit exceeded. Please try again in a few minutes.".to_string());
+    }
+    if !status.is_success() {
+        return Err(format!("Download failed with status: {}", status));
     }
     
     let bytes = response
