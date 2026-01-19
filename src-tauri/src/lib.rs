@@ -211,6 +211,36 @@ async fn get_video_info(app: AppHandle, url: String) -> Result<VideoInfoResponse
     Ok(VideoInfoResponse { info, formats })
 }
 
+/// Sanitize and validate output path to prevent path traversal attacks
+fn sanitize_output_path(path: &str) -> Result<String, String> {
+    use std::path::Path;
+    
+    // Check for obvious path traversal attempts
+    if path.contains("..") {
+        return Err("Invalid output path: path traversal detected".to_string());
+    }
+    
+    let path = Path::new(path);
+    
+    // Ensure the path is absolute
+    if !path.is_absolute() {
+        return Err("Invalid output path: must be an absolute path".to_string());
+    }
+    
+    // Canonicalize to resolve any symlinks and normalize the path
+    let canonical = path.canonicalize()
+        .map_err(|e| format!("Invalid output path: {}", e))?;
+    
+    // Verify it's a directory
+    if !canonical.is_dir() {
+        return Err("Invalid output path: not a directory".to_string());
+    }
+    
+    canonical.to_str()
+        .ok_or_else(|| "Invalid output path: contains invalid UTF-8".to_string())
+        .map(|s| s.to_string())
+}
+
 fn build_format_string(quality: &str, format: &str, video_codec: &str) -> String {
     // Audio-only formats
     if quality == "audio" || format == "mp3" || format == "m4a" || format == "opus" {
@@ -355,8 +385,11 @@ async fn download_video(
 ) -> Result<(), String> {
     CANCEL_FLAG.store(false, Ordering::SeqCst);
     
+    // Sanitize and validate output path to prevent path traversal
+    let sanitized_path = sanitize_output_path(&output_path)?;
+    
     let format_string = build_format_string(&quality, &format, &video_codec);
-    let output_template = format!("{}/%(title)s.%(ext)s", output_path);
+    let output_template = format!("{}/%(title)s.%(ext)s", sanitized_path);
     
     let mut args = vec![
         "--newline".to_string(),
