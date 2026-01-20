@@ -125,7 +125,7 @@ export function SettingsPanel({
             <SelectValue />
           </div>
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="min-w-[220px]">
           {qualityOptions.map((opt) => (
             <SelectItem key={opt.value} value={opt.value} className="text-xs">
               {opt.label}
