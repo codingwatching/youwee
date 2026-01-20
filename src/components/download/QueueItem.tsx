@@ -24,20 +24,6 @@ function formatFileSize(bytes: number): string {
   return `${bytes} B`;
 }
 
-// Helper to format resolution to friendly name
-function formatResolution(resolution: string): string {
-  const height = resolution.split('x')[1];
-  if (!height) return resolution;
-  const h = parseInt(height);
-  if (h >= 2160) return '4K';
-  if (h >= 1440) return '2K';
-  if (h >= 1080) return '1080p';
-  if (h >= 720) return '720p';
-  if (h >= 480) return '480p';
-  if (h >= 360) return '360p';
-  return resolution;
-}
-
 interface QueueItemProps {
   item: DownloadItem;
   showPlaylistBadge?: boolean;
@@ -205,10 +191,10 @@ export function QueueItem({
               {item.completedResolution && (
                 <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground">
                   <MonitorPlay className="w-3 h-3" />
-                  {formatResolution(item.completedResolution)}
+                  {item.completedResolution}
                 </span>
               )}
-              {item.completedFilesize && (
+              {item.completedFilesize && item.completedFilesize > 0 && (
                 <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground">
                   <HardDrive className="w-3 h-3" />
                   {formatFileSize(item.completedFilesize)}

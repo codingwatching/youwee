@@ -654,7 +654,20 @@ async fn download_video(
             let mut current_index: Option<u32> = None;
             let mut total_count: Option<u32> = None;
             let mut last_filesize: Option<u64> = None;
-            let mut detected_resolution: Option<String> = None;
+            
+            // Use quality setting as resolution display
+            let quality_display = match quality.as_str() {
+                "8k" => Some("8K".to_string()),
+                "4k" => Some("4K".to_string()),
+                "2k" => Some("2K".to_string()),
+                "1080" => Some("1080p".to_string()),
+                "720" => Some("720p".to_string()),
+                "480" => Some("480p".to_string()),
+                "360" => Some("360p".to_string()),
+                "audio" => Some("Audio".to_string()),
+                "best" => Some("Best".to_string()),
+                _ => None,
+            };
             
             while let Some(event) = rx.recv().await {
                 // Check cancel flag first
@@ -690,8 +703,10 @@ async fn download_video(
                         }
                         
                         // Parse filesize from progress line: "[download] 100% of 50.5MiB" or "50.5MiB"
-                        if line.contains("% of") || line.contains("MiB") || line.contains("GiB") || line.contains("KiB") {
-                            let size_re = regex::Regex::new(r"(\d+(?:\.\d+)?)\s*(GiB|MiB|KiB)").ok();
+                        // Also matches speed like "5.00MiB/s" so we look for "of X.XMiB"
+                        if line.contains(" of ") && (line.contains("MiB") || line.contains("GiB") || line.contains("KiB")) {
+                            // Pattern: "of 123.45MiB" or "of 1.23GiB"
+                            let size_re = regex::Regex::new(r"of\s+(\d+(?:\.\d+)?)\s*(GiB|MiB|KiB)").ok();
                             if let Some(re) = size_re {
                                 if let Some(caps) = re.captures(&line) {
                                     if let (Some(num), Some(unit)) = (caps.get(1), caps.get(2)) {
@@ -703,18 +718,6 @@ async fn download_video(
                                                 _ => size as u64,
                                             });
                                         }
-                                    }
-                                }
-                            }
-                        }
-                        
-                        // Parse resolution from format selection: "1920x1080" or "1080p"
-                        if line.contains("x") && (line.contains("Downloading") || line.contains("format")) {
-                            let res_re = regex::Regex::new(r"(\d{3,4})x(\d{3,4})").ok();
-                            if let Some(re) = res_re {
-                                if let Some(caps) = re.captures(&line) {
-                                    if let (Some(w), Some(h)) = (caps.get(1), caps.get(2)) {
-                                        detected_resolution = Some(format!("{}x{}", w.as_str(), h.as_str()));
                                     }
                                 }
                             }
@@ -760,7 +763,7 @@ async fn download_video(
                                 playlist_index: current_index,
                                 playlist_count: total_count,
                                 filesize: last_filesize,
-                                resolution: detected_resolution.clone(),
+                                resolution: quality_display.clone(),
                                 format_ext: Some(format.clone()),
                             };
                             app.emit("download-progress", progress).ok();
@@ -783,7 +786,7 @@ async fn download_video(
                 .spawn()
                 .map_err(|e| format!("Failed to start yt-dlp: {}. Please install yt-dlp: brew install yt-dlp", e))?;
             
-            handle_tokio_download(app, id, process).await
+            handle_tokio_download(app, id, process, quality.clone(), format.clone()).await
         }
     }
 }
@@ -792,6 +795,8 @@ async fn handle_tokio_download(
     app: AppHandle,
     id: String,
     mut process: tokio::process::Child,
+    quality: String,
+    format: String,
 ) -> Result<(), String> {
     let stdout = process.stdout.take().ok_or("Failed to get stdout")?;
     let mut reader = BufReader::new(stdout).lines();
@@ -800,7 +805,20 @@ async fn handle_tokio_download(
     let mut current_index: Option<u32> = None;
     let mut total_count: Option<u32> = None;
     let mut last_filesize: Option<u64> = None;
-    let mut detected_resolution: Option<String> = None;
+    
+    // Use quality setting as resolution display
+    let quality_display = match quality.as_str() {
+        "8k" => Some("8K".to_string()),
+        "4k" => Some("4K".to_string()),
+        "2k" => Some("2K".to_string()),
+        "1080" => Some("1080p".to_string()),
+        "720" => Some("720p".to_string()),
+        "480" => Some("480p".to_string()),
+        "360" => Some("360p".to_string()),
+        "audio" => Some("Audio".to_string()),
+        "best" => Some("Best".to_string()),
+        _ => None,
+    };
     
     while let Ok(Some(line)) = reader.next_line().await {
         if CANCEL_FLAG.load(Ordering::SeqCst) {
@@ -831,8 +849,8 @@ async fn handle_tokio_download(
         }
         
         // Parse filesize from progress line
-        if line.contains("% of") || line.contains("MiB") || line.contains("GiB") || line.contains("KiB") {
-            let size_re = regex::Regex::new(r"(\d+(?:\.\d+)?)\s*(GiB|MiB|KiB)").ok();
+        if line.contains(" of ") && (line.contains("MiB") || line.contains("GiB") || line.contains("KiB")) {
+            let size_re = regex::Regex::new(r"of\s+(\d+(?:\.\d+)?)\s*(GiB|MiB|KiB)").ok();
             if let Some(re) = size_re {
                 if let Some(caps) = re.captures(&line) {
                     if let (Some(num), Some(unit)) = (caps.get(1), caps.get(2)) {
@@ -844,18 +862,6 @@ async fn handle_tokio_download(
                                 _ => size as u64,
                             });
                         }
-                    }
-                }
-            }
-        }
-        
-        // Parse resolution from format selection
-        if line.contains("x") && (line.contains("Downloading") || line.contains("format")) {
-            let res_re = regex::Regex::new(r"(\d{3,4})x(\d{3,4})").ok();
-            if let Some(re) = res_re {
-                if let Some(caps) = re.captures(&line) {
-                    if let (Some(w), Some(h)) = (caps.get(1), caps.get(2)) {
-                        detected_resolution = Some(format!("{}x{}", w.as_str(), h.as_str()));
                     }
                 }
             }
@@ -899,8 +905,8 @@ async fn handle_tokio_download(
             playlist_index: current_index,
             playlist_count: total_count,
             filesize: last_filesize,
-            resolution: detected_resolution,
-            format_ext: None,
+            resolution: quality_display,
+            format_ext: Some(format),
         };
         app.emit("download-progress", progress).ok();
         Ok(())
