@@ -11,24 +11,25 @@ interface MainLayoutProps {
 export function MainLayout({ children, currentPage, onPageChange }: MainLayoutProps) {
   return (
     <div className="h-screen flex overflow-hidden bg-background relative">
-      {/* Gradient background overlay */}
+      {/* Animated gradient background */}
       <div 
         className="fixed inset-0 pointer-events-none z-0"
         style={{
           background: `
-            radial-gradient(ellipse 80% 50% at 20% -20%, hsl(var(--gradient-from) / 0.12), transparent 50%),
-            radial-gradient(ellipse 60% 40% at 80% 0%, hsl(var(--gradient-via) / 0.10), transparent 50%),
-            radial-gradient(ellipse 50% 30% at 50% 100%, hsl(var(--gradient-to) / 0.08), transparent 50%)
+            radial-gradient(ellipse 100% 80% at 10% -30%, hsl(var(--gradient-from) / 0.15), transparent 50%),
+            radial-gradient(ellipse 80% 60% at 90% 10%, hsl(var(--gradient-via) / 0.12), transparent 50%),
+            radial-gradient(ellipse 60% 40% at 50% 110%, hsl(var(--gradient-to) / 0.10), transparent 50%)
           `
         }}
       />
       
-      {/* Sidebar */}
-      <Sidebar currentPage={currentPage} onPageChange={onPageChange} />
-      
-      {/* Main content - floating card style */}
-      <div className="flex-1 flex flex-col overflow-hidden relative z-10 py-3 pr-3">
-        <main className="flex-1 flex flex-col overflow-hidden rounded-2xl bg-card/40 backdrop-blur-xl border border-white/10 dark:border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
+      {/* Main container - unified floating panel */}
+      <div className="relative z-10 flex-1 flex p-3 gap-3">
+        {/* Sidebar */}
+        <Sidebar currentPage={currentPage} onPageChange={onPageChange} />
+        
+        {/* Content area */}
+        <main className="flex-1 flex flex-col overflow-hidden rounded-2xl bg-card/30 backdrop-blur-xl border border-white/[0.08] dark:border-white/[0.05] shadow-[0_8px_40px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_40px_rgba(0,0,0,0.25)]">
           {children}
         </main>
       </div>
