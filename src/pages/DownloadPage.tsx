@@ -27,6 +27,10 @@ export function DownloadPage() {
     updateConcurrentDownloads,
     updatePlaylistLimit,
     togglePlaylist,
+    updateSubtitleMode,
+    updateSubtitleLangs,
+    updateSubtitleEmbed,
+    updateSubtitleFormat,
   } = useDownload();
 
   const pendingCount = items.filter(i => i.status !== 'completed').length;
@@ -74,6 +78,10 @@ export function DownloadPage() {
             onPlaylistLimitChange={updatePlaylistLimit}
             onPlaylistToggle={togglePlaylist}
             onSelectFolder={selectOutputFolder}
+            onSubtitleModeChange={updateSubtitleMode}
+            onSubtitleLangsChange={updateSubtitleLangs}
+            onSubtitleEmbedChange={updateSubtitleEmbed}
+            onSubtitleFormatChange={updateSubtitleFormat}
           />
         </div>
 

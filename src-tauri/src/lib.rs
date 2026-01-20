@@ -393,6 +393,11 @@ async fn download_video(
     video_codec: String,
     audio_bitrate: String,
     playlist_limit: Option<u32>,
+    // Subtitle settings
+    subtitle_mode: String,
+    subtitle_langs: String,
+    subtitle_embed: bool,
+    subtitle_format: String,
 ) -> Result<(), String> {
     CANCEL_FLAG.store(false, Ordering::SeqCst);
     
@@ -418,6 +423,33 @@ async fn download_video(
         if let Some(parent) = ffmpeg_path.parent() {
             args.push("--ffmpeg-location".to_string());
             args.push(parent.to_string_lossy().to_string());
+        }
+    }
+    
+    // Handle subtitle settings
+    if subtitle_mode != "off" {
+        // Write subtitles
+        args.push("--write-subs".to_string());
+        
+        // For auto mode, also get auto-generated subtitles
+        if subtitle_mode == "auto" {
+            args.push("--write-auto-subs".to_string());
+            // Use all available languages for auto mode
+            args.push("--sub-langs".to_string());
+            args.push("all".to_string());
+        } else {
+            // Manual mode - use specified languages
+            args.push("--sub-langs".to_string());
+            args.push(subtitle_langs.clone());
+        }
+        
+        // Set subtitle format
+        args.push("--sub-format".to_string());
+        args.push(subtitle_format.clone());
+        
+        // Embed subtitles into video if requested (requires FFmpeg)
+        if subtitle_embed {
+            args.push("--embed-subs".to_string());
         }
     }
     
@@ -770,6 +802,116 @@ pub struct FfmpegStatus {
     pub version: Option<String>,
     pub binary_path: Option<String>,
     pub is_system: bool,
+}
+
+/// Subtitle information
+#[derive(Clone, Serialize, Debug)]
+pub struct SubtitleInfo {
+    pub lang: String,
+    pub name: String,
+    pub is_auto_generated: bool,
+}
+
+/// Get available subtitles for a video
+#[tauri::command]
+async fn get_available_subtitles(app: AppHandle, url: String) -> Result<Vec<SubtitleInfo>, String> {
+    let args = [
+        "--list-subs",
+        "--skip-download",
+        "--no-warnings",
+        &url,
+    ];
+    
+    let output = run_ytdlp_json(&app, &args).await;
+    
+    // Parse the output to extract subtitle info
+    // yt-dlp outputs subtitle info in a specific format
+    let mut subtitles: Vec<SubtitleInfo> = Vec::new();
+    
+    // Common language codes and names
+    let lang_names: std::collections::HashMap<&str, &str> = [
+        ("en", "English"),
+        ("vi", "Vietnamese"),
+        ("ja", "Japanese"),
+        ("ko", "Korean"),
+        ("zh", "Chinese"),
+        ("zh-Hans", "Chinese (Simplified)"),
+        ("zh-Hant", "Chinese (Traditional)"),
+        ("th", "Thai"),
+        ("id", "Indonesian"),
+        ("ms", "Malay"),
+        ("fr", "French"),
+        ("de", "German"),
+        ("es", "Spanish"),
+        ("pt", "Portuguese"),
+        ("ru", "Russian"),
+        ("ar", "Arabic"),
+        ("hi", "Hindi"),
+        ("it", "Italian"),
+        ("nl", "Dutch"),
+        ("pl", "Polish"),
+        ("tr", "Turkish"),
+        ("uk", "Ukrainian"),
+    ].iter().cloned().collect();
+    
+    if let Ok(text) = output {
+        let mut is_auto_section = false;
+        
+        for line in text.lines() {
+            let line = line.trim();
+            
+            // Detect auto-generated section
+            if line.contains("automatic captions") || line.contains("auto-generated") {
+                is_auto_section = true;
+                continue;
+            }
+            
+            // Detect manual subtitles section
+            if line.contains("subtitles") && !line.contains("auto") {
+                is_auto_section = false;
+                continue;
+            }
+            
+            // Parse language codes (format: "en", "vi", etc.)
+            // Skip header lines and empty lines
+            if line.is_empty() || line.starts_with("Language") || line.starts_with("[") || line.contains("Available") {
+                continue;
+            }
+            
+            // Extract language code from line (first word usually)
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if let Some(lang_code) = parts.first() {
+                let lang = lang_code.to_string();
+                // Skip if already added
+                if subtitles.iter().any(|s| s.lang == lang && s.is_auto_generated == is_auto_section) {
+                    continue;
+                }
+                
+                let name = lang_names.get(lang.as_str())
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| lang.clone());
+                
+                subtitles.push(SubtitleInfo {
+                    lang,
+                    name,
+                    is_auto_generated: is_auto_section,
+                });
+            }
+        }
+    }
+    
+    // If no subtitles found, return common languages as options
+    if subtitles.is_empty() {
+        subtitles = vec![
+            SubtitleInfo { lang: "en".to_string(), name: "English".to_string(), is_auto_generated: false },
+            SubtitleInfo { lang: "vi".to_string(), name: "Vietnamese".to_string(), is_auto_generated: false },
+            SubtitleInfo { lang: "ja".to_string(), name: "Japanese".to_string(), is_auto_generated: false },
+            SubtitleInfo { lang: "ko".to_string(), name: "Korean".to_string(), is_auto_generated: false },
+            SubtitleInfo { lang: "zh".to_string(), name: "Chinese".to_string(), is_auto_generated: false },
+        ];
+    }
+    
+    Ok(subtitles)
 }
 
 /// Check for yt-dlp updates from GitHub
@@ -1395,7 +1537,8 @@ pub fn run() {
             update_ytdlp,
             check_ffmpeg,
             download_ffmpeg,
-            get_ffmpeg_path_for_ytdlp
+            get_ffmpeg_path_for_ytdlp,
+            get_available_subtitles
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

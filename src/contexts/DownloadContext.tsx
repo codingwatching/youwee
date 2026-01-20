@@ -12,6 +12,8 @@ import type {
   Format,
   VideoCodec,
   AudioBitrate,
+  SubtitleMode,
+  SubtitleFormat,
 } from '@/lib/types';
 
 const STORAGE_KEY = 'youwee-settings';
@@ -42,6 +44,10 @@ function saveSettings(settings: DownloadSettings) {
       concurrentDownloads: settings.concurrentDownloads,
       playlistLimit: settings.playlistLimit,
       autoCheckUpdate: settings.autoCheckUpdate,
+      subtitleMode: settings.subtitleMode,
+      subtitleLangs: settings.subtitleLangs,
+      subtitleEmbed: settings.subtitleEmbed,
+      subtitleFormat: settings.subtitleFormat,
     }));
   } catch (e) {
     console.error('Failed to save settings:', e);
@@ -77,6 +83,11 @@ interface DownloadContextType {
   updatePlaylistLimit: (limit: number) => void;
   updateAutoCheckUpdate: (enabled: boolean) => void;
   togglePlaylist: () => void;
+  // Subtitle settings
+  updateSubtitleMode: (mode: SubtitleMode) => void;
+  updateSubtitleLangs: (langs: string[]) => void;
+  updateSubtitleEmbed: (embed: boolean) => void;
+  updateSubtitleFormat: (format: SubtitleFormat) => void;
 }
 
 const DownloadContext = createContext<DownloadContextType | null>(null);
@@ -98,6 +109,11 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
       concurrentDownloads: saved.concurrentDownloads || 1,
       playlistLimit: saved.playlistLimit || 0, // 0 = unlimited
       autoCheckUpdate: saved.autoCheckUpdate !== false, // Default to true
+      // Subtitle settings
+      subtitleMode: saved.subtitleMode || 'off',
+      subtitleLangs: saved.subtitleLangs || ['en', 'vi'],
+      subtitleEmbed: saved.subtitleEmbed || false,
+      subtitleFormat: saved.subtitleFormat || 'srt',
     };
   });
   
@@ -320,6 +336,11 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
           videoCodec: settings.videoCodec,
           audioBitrate: settings.audioBitrate,
           playlistLimit: settings.playlistLimit,
+          // Subtitle settings
+          subtitleMode: settings.subtitleMode,
+          subtitleLangs: settings.subtitleLangs.join(','),
+          subtitleEmbed: settings.subtitleEmbed,
+          subtitleFormat: settings.subtitleFormat,
         });
         
         setItems(items => items.map(i => 
@@ -446,6 +467,38 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const updateSubtitleMode = useCallback((subtitleMode: SubtitleMode) => {
+    setSettings(s => {
+      const newSettings = { ...s, subtitleMode };
+      saveSettings(newSettings);
+      return newSettings;
+    });
+  }, []);
+
+  const updateSubtitleLangs = useCallback((subtitleLangs: string[]) => {
+    setSettings(s => {
+      const newSettings = { ...s, subtitleLangs };
+      saveSettings(newSettings);
+      return newSettings;
+    });
+  }, []);
+
+  const updateSubtitleEmbed = useCallback((subtitleEmbed: boolean) => {
+    setSettings(s => {
+      const newSettings = { ...s, subtitleEmbed };
+      saveSettings(newSettings);
+      return newSettings;
+    });
+  }, []);
+
+  const updateSubtitleFormat = useCallback((subtitleFormat: SubtitleFormat) => {
+    setSettings(s => {
+      const newSettings = { ...s, subtitleFormat };
+      saveSettings(newSettings);
+      return newSettings;
+    });
+  }, []);
+
   const value: DownloadContextType = {
     items,
     isDownloading,
@@ -469,6 +522,10 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     updatePlaylistLimit,
     updateAutoCheckUpdate,
     togglePlaylist,
+    updateSubtitleMode,
+    updateSubtitleLangs,
+    updateSubtitleEmbed,
+    updateSubtitleFormat,
   };
 
   return (

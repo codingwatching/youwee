@@ -5,6 +5,8 @@ import {
   Music,
   Settings2,
   HardDrive,
+  Subtitles,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -22,7 +24,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import type { Quality, Format, DownloadSettings, VideoCodec, AudioBitrate } from '@/lib/types';
+import type { Quality, Format, DownloadSettings, VideoCodec, AudioBitrate, SubtitleMode, SubtitleFormat } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 function formatFileSize(bytes: number): string {
@@ -60,6 +62,31 @@ const audioFormatOptions: { value: Format; label: string }[] = [
   { value: 'opus', label: 'Opus' },
 ];
 
+const subtitleModeOptions: { value: SubtitleMode; label: string; description: string }[] = [
+  { value: 'off', label: 'Off', description: 'No subtitles' },
+  { value: 'auto', label: 'Auto', description: 'Auto-generated subtitles' },
+  { value: 'manual', label: 'Manual', description: 'Select languages' },
+];
+
+const subtitleFormatOptions: { value: SubtitleFormat; label: string }[] = [
+  { value: 'srt', label: 'SRT' },
+  { value: 'vtt', label: 'VTT' },
+  { value: 'ass', label: 'ASS' },
+];
+
+const commonLanguages = [
+  { code: 'en', name: 'English' },
+  { code: 'vi', name: 'Vietnamese' },
+  { code: 'ja', name: 'Japanese' },
+  { code: 'ko', name: 'Korean' },
+  { code: 'zh', name: 'Chinese' },
+  { code: 'es', name: 'Spanish' },
+  { code: 'fr', name: 'French' },
+  { code: 'de', name: 'German' },
+  { code: 'pt', name: 'Portuguese' },
+  { code: 'ru', name: 'Russian' },
+];
+
 interface SettingsPanelProps {
   settings: DownloadSettings;
   disabled?: boolean;
@@ -72,6 +99,11 @@ interface SettingsPanelProps {
   onPlaylistLimitChange: (limit: number) => void;
   onPlaylistToggle: () => void;
   onSelectFolder: () => void;
+  // Subtitle callbacks
+  onSubtitleModeChange: (mode: SubtitleMode) => void;
+  onSubtitleLangsChange: (langs: string[]) => void;
+  onSubtitleEmbedChange: (embed: boolean) => void;
+  onSubtitleFormatChange: (format: SubtitleFormat) => void;
 }
 
 export function SettingsPanel({
@@ -86,6 +118,10 @@ export function SettingsPanel({
   onPlaylistLimitChange,
   onPlaylistToggle,
   onSelectFolder,
+  onSubtitleModeChange,
+  onSubtitleLangsChange,
+  onSubtitleEmbedChange,
+  onSubtitleFormatChange,
 }: SettingsPanelProps) {
   const isAudioOnly = settings.quality === 'audio' || ['mp3', 'm4a', 'opus'].includes(settings.format);
   const formatOptions = isAudioOnly ? audioFormatOptions : videoFormatOptions;
@@ -170,6 +206,141 @@ export function SettingsPanel({
         <ListVideo className="w-3.5 h-3.5" />
         <span className="hidden xs:inline">Playlist</span>
       </button>
+
+      {/* Subtitle Settings Popover */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            disabled={disabled || isAudioOnly}
+            title={isAudioOnly ? "Subtitles not available for audio" : `Subtitles: ${settings.subtitleMode}`}
+            className={cn(
+              "h-9 px-2.5 rounded-md border text-xs flex items-center gap-1.5 transition-colors",
+              isAudioOnly && "opacity-50 cursor-not-allowed",
+              settings.subtitleMode !== 'off'
+                ? "bg-primary/10 border-primary/30 text-primary"
+                : "bg-card/50 border-border/50 text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Subtitles className="w-3.5 h-3.5" />
+            <span className="hidden xs:inline">CC</span>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent 
+          className="w-72 p-0" 
+          align="start"
+          side="bottom"
+          sideOffset={8}
+        >
+          {/* Header */}
+          <div className="flex items-center gap-2 px-4 py-3 border-b bg-muted/30">
+            <Subtitles className="w-4 h-4 text-primary" />
+            <h4 className="text-sm font-medium">Subtitle Settings</h4>
+          </div>
+          
+          <div className="p-4 space-y-4">
+            {/* Mode Selection */}
+            <div className="space-y-2">
+              <Label className="text-[11px] text-muted-foreground">Download Mode</Label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {subtitleModeOptions.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => onSubtitleModeChange(opt.value)}
+                    className={cn(
+                      "h-8 px-2 rounded-md text-xs font-medium transition-colors",
+                      settings.subtitleMode === opt.value
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground"
+                    )}
+                    title={opt.description}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Language Selection - Only show when mode is not 'off' */}
+            {settings.subtitleMode !== 'off' && (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-[11px] text-muted-foreground">
+                    Languages {settings.subtitleMode === 'auto' && '(Auto-generated)'}
+                  </Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {commonLanguages.map((lang) => {
+                      const isSelected = settings.subtitleLangs.includes(lang.code);
+                      return (
+                        <button
+                          key={lang.code}
+                          onClick={() => {
+                            if (isSelected) {
+                              onSubtitleLangsChange(settings.subtitleLangs.filter(l => l !== lang.code));
+                            } else {
+                              onSubtitleLangsChange([...settings.subtitleLangs, lang.code]);
+                            }
+                          }}
+                          className={cn(
+                            "h-7 px-2 rounded text-[11px] font-medium transition-colors flex items-center gap-1",
+                            isSelected
+                              ? "bg-primary/15 text-primary border border-primary/30"
+                              : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent"
+                          )}
+                          title={lang.name}
+                        >
+                          {isSelected && <Check className="w-3 h-3" />}
+                          {lang.code.toUpperCase()}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    {settings.subtitleLangs.length === 0 
+                      ? "Select at least one language" 
+                      : `Selected: ${settings.subtitleLangs.join(', ').toUpperCase()}`}
+                  </p>
+                </div>
+
+                {/* Format & Embed */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] text-muted-foreground">Format</Label>
+                    <Select
+                      value={settings.subtitleFormat}
+                      onValueChange={onSubtitleFormatChange}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subtitleFormatOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] text-muted-foreground">Embed</Label>
+                    <div 
+                      className="h-8 flex items-center justify-between px-3 rounded-md border bg-background cursor-pointer"
+                      onClick={() => onSubtitleEmbedChange(!settings.subtitleEmbed)}
+                    >
+                      <span className="text-xs text-muted-foreground">In video</span>
+                      <Switch
+                        checked={settings.subtitleEmbed}
+                        onCheckedChange={onSubtitleEmbedChange}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
 
       {/* Advanced Settings Popover */}
       <Popover>
