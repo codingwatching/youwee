@@ -54,6 +54,9 @@ pub struct VideoInfo {
     pub description: Option<String>,
     pub is_playlist: bool,
     pub playlist_count: Option<u32>,
+    // Source detection
+    pub extractor: Option<String>,
+    pub extractor_key: Option<String>,
 }
 
 /// Format option from yt-dlp
@@ -183,6 +186,9 @@ async fn get_video_info(app: AppHandle, url: String) -> Result<VideoInfoResponse
         }),
         is_playlist,
         playlist_count,
+        // Source detection
+        extractor: json.get("extractor").and_then(|v| v.as_str()).map(|s| s.to_string()),
+        extractor_key: json.get("extractor_key").and_then(|v| v.as_str()).map(|s| s.to_string()),
     };
     
     // Extract formats

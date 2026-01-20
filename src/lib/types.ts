@@ -5,6 +5,11 @@ export type AudioBitrate = 'auto' | '128';
 export type SubtitleMode = 'off' | 'auto' | 'manual';
 export type SubtitleFormat = 'srt' | 'vtt' | 'ass';
 
+// Source platforms supported by yt-dlp
+export type SourcePlatform = 
+  | 'youtube' | 'tiktok' | 'instagram' | 'twitter' | 'facebook' 
+  | 'vimeo' | 'twitch' | 'bilibili' | 'soundcloud' | 'dailymotion' | 'other';
+
 export interface DownloadItem {
   id: string;
   url: string;
@@ -25,6 +30,8 @@ export interface DownloadItem {
   completedFilesize?: number; // Actual file size after download
   completedResolution?: string; // e.g. "1920x1080"
   completedFormat?: string; // e.g. "mp4"
+  // Source detection
+  extractor?: string; // e.g. "youtube", "tiktok", "instagram"
 }
 
 export interface DownloadSettings {
@@ -69,6 +76,9 @@ export interface VideoInfo {
   view_count: number;
   is_playlist: boolean;
   playlist_count?: number;
+  // Source detection
+  extractor?: string;
+  extractor_key?: string;
 }
 
 export interface FormatOption {

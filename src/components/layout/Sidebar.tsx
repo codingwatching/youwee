@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import { 
-  Download, 
+  Youtube,
+  Globe,
   Settings, 
   ChevronLeft, 
   ChevronRight,
@@ -11,7 +12,7 @@ import {
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-export type Page = 'download' | 'settings';
+export type Page = 'youtube' | 'universal' | 'settings';
 
 interface SidebarProps {
   currentPage: Page;
@@ -26,9 +27,14 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   {
-    id: 'download',
-    label: 'Download',
-    icon: <Download className="w-5 h-5" />,
+    id: 'youtube',
+    label: 'YouTube',
+    icon: <Youtube className="w-5 h-5" />,
+  },
+  {
+    id: 'universal',
+    label: 'Universal',
+    icon: <Globe className="w-5 h-5" />,
   },
   {
     id: 'settings',

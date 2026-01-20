@@ -1,0 +1,23 @@
+import { cn } from '@/lib/utils';
+import { detectSource } from '@/lib/sources';
+
+interface SourceBadgeProps {
+  extractor?: string;
+  className?: string;
+}
+
+export function SourceBadge({ extractor, className }: SourceBadgeProps) {
+  const source = detectSource(extractor);
+  
+  return (
+    <span className={cn(
+      "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium",
+      "bg-muted/50",
+      source.color,
+      className
+    )}>
+      <span className="text-xs leading-none">{source.icon}</span>
+      <span>{source.label}</span>
+    </span>
+  );
+}

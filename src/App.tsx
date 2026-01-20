@@ -2,15 +2,16 @@ import { useState, useEffect } from 'react';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { DependenciesProvider, useDependencies } from '@/contexts/DependenciesContext';
 import { DownloadProvider, useDownload } from '@/contexts/DownloadContext';
+import { UniversalProvider } from '@/contexts/UniversalContext';
 import { UpdaterProvider, useUpdater } from '@/contexts/UpdaterContext';
 import { MainLayout } from '@/components/layout';
 import type { Page } from '@/components/layout';
-import { DownloadPage, SettingsPage } from '@/pages';
+import { DownloadPage, UniversalPage, SettingsPage } from '@/pages';
 import { UpdateDialog } from '@/components/UpdateDialog';
 import { FFmpegDialog } from '@/components/FFmpegDialog';
 
 function AppContent() {
-  const [currentPage, setCurrentPage] = useState<Page>('download');
+  const [currentPage, setCurrentPage] = useState<Page>('youtube');
   const [showFfmpegDialog, setShowFfmpegDialog] = useState(false);
   const [ffmpegChecked, setFfmpegChecked] = useState(false);
   const updater = useUpdater();
@@ -40,7 +41,8 @@ function AppContent() {
   return (
     <>
       <MainLayout currentPage={currentPage} onPageChange={setCurrentPage}>
-        {currentPage === 'download' && <DownloadPage />}
+        {currentPage === 'youtube' && <DownloadPage />}
+        {currentPage === 'universal' && <UniversalPage />}
         {currentPage === 'settings' && <SettingsPage />}
       </MainLayout>
       
@@ -78,9 +80,11 @@ function App() {
     <ThemeProvider>
       <DependenciesProvider>
         <DownloadProvider>
-          <UpdaterWrapper>
-            <AppContent />
-          </UpdaterWrapper>
+          <UniversalProvider>
+            <UpdaterWrapper>
+              <AppContent />
+            </UpdaterWrapper>
+          </UniversalProvider>
         </DownloadProvider>
       </DependenciesProvider>
     </ThemeProvider>
