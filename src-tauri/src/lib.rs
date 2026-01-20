@@ -131,18 +131,17 @@ async fn run_ytdlp_json(app: &AppHandle, args: &[&str]) -> Result<String, String
 
 #[tauri::command]
 async fn get_video_info(app: AppHandle, url: String) -> Result<VideoInfoResponse, String> {
-    // Optimized args for faster fetch:
+    // Args for video info fetch:
     // - Skip download
     // - Skip playlist expansion  
     // - Use socket timeout
-    // - Skip slow extractors
+    // Note: Do NOT skip DASH streams - 2K/4K formats are only available via DASH
     let args = [
         "--dump-json",
         "--no-download",
         "--no-playlist",
         "--no-warnings",
-        "--socket-timeout", "10",
-        "--extractor-args", "youtube:skip=dash,hls",
+        "--socket-timeout", "15",
         &url,
     ];
     
