@@ -14,6 +14,7 @@ import type {
   AudioBitrate,
   SubtitleMode,
   SubtitleFormat,
+  PlaylistVideoEntry,
 } from '@/lib/types';
 
 const STORAGE_KEY = 'youwee-settings';
@@ -63,9 +64,10 @@ interface PlaylistInfo {
 interface DownloadContextType {
   items: DownloadItem[];
   isDownloading: boolean;
+  isExpandingPlaylist: boolean;
   settings: DownloadSettings;
   currentPlaylistInfo: PlaylistInfo | null;
-  addFromText: (text: string) => number;
+  addFromText: (text: string) => Promise<number>;
   importFromFile: () => Promise<number>;
   importFromClipboard: () => Promise<number>;
   selectOutputFolder: () => Promise<void>;
@@ -95,6 +97,7 @@ const DownloadContext = createContext<DownloadContextType | null>(null);
 export function DownloadProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<DownloadItem[]>([]);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isExpandingPlaylist, setIsExpandingPlaylist] = useState(false);
   
   // Load saved settings on init
   const [settings, setSettings] = useState<DownloadSettings>(() => {
@@ -194,13 +197,19 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
       });
   }, []);
 
-  const addUrls = useCallback((urls: string[]) => {
+  // Helper to check if URL is a playlist
+  const isPlaylistUrl = useCallback((url: string): boolean => {
+    return url.includes('list=');
+  }, []);
+
+  // Add individual URLs (not playlist expansion)
+  const addUrlsDirectly = useCallback((urls: string[], playlistId?: string) => {
     if (urls.length === 0) return 0;
 
     const currentItems = itemsRef.current;
     const newItems: DownloadItem[] = urls
       .filter(url => !currentItems.some(item => item.url === url))
-      .map(url => ({
+      .map((url, index) => ({
         id: crypto.randomUUID(),
         url,
         title: url,
@@ -208,7 +217,10 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
         progress: 0,
         speed: '',
         eta: '',
-        isPlaylist: url.includes('list='),
+        isPlaylist: false,
+        // Store playlist context for display
+        playlistIndex: playlistId ? index + 1 : undefined,
+        playlistTotal: playlistId ? urls.length : undefined,
       }));
     
     if (newItems.length > 0) {
@@ -218,10 +230,93 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     return newItems.length;
   }, []);
 
-  const addFromText = useCallback((text: string): number => {
+  // Expand playlist URL to individual videos
+  const expandPlaylistUrl = useCallback(async (url: string): Promise<string[]> => {
+    try {
+      const limit = settings.playlistLimit > 0 ? settings.playlistLimit : undefined;
+      const entries = await invoke<PlaylistVideoEntry[]>('get_playlist_entries', { 
+        url, 
+        limit 
+      });
+      
+      // Add items with titles and thumbnails from playlist data
+      const currentItems = itemsRef.current;
+      const newItems: DownloadItem[] = entries
+        .filter(entry => !currentItems.some(item => item.url === entry.url))
+        .map((entry, index) => ({
+          id: crypto.randomUUID(),
+          url: entry.url,
+          title: entry.title,
+          status: 'pending' as const,
+          progress: 0,
+          speed: '',
+          eta: '',
+          isPlaylist: false,
+          thumbnail: entry.thumbnail,
+          duration: entry.duration ? formatDuration(entry.duration) : undefined,
+          channel: entry.channel,
+          playlistIndex: index + 1,
+          playlistTotal: entries.length,
+        }));
+      
+      if (newItems.length > 0) {
+        setItems(prev => [...prev, ...newItems]);
+      }
+      
+      return entries.map(e => e.url);
+    } catch (error) {
+      console.error('Failed to expand playlist:', error);
+      throw error;
+    }
+  }, [settings.playlistLimit]);
+
+  // Format duration from seconds to "mm:ss" or "hh:mm:ss"
+  const formatDuration = (seconds: number): string => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    if (h > 0) {
+      return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const addFromText = useCallback(async (text: string): Promise<number> => {
     const urls = parseUrls(text);
-    return addUrls(urls);
-  }, [parseUrls, addUrls]);
+    if (urls.length === 0) return 0;
+
+    let totalAdded = 0;
+
+    // Separate playlist URLs and regular video URLs
+    const playlistUrls = urls.filter(url => isPlaylistUrl(url) && settings.downloadPlaylist);
+    const regularUrls = urls.filter(url => !isPlaylistUrl(url) || !settings.downloadPlaylist);
+
+    // Add regular videos directly
+    if (regularUrls.length > 0) {
+      totalAdded += addUrlsDirectly(regularUrls);
+    }
+
+    // Expand playlists if playlist mode is ON
+    if (playlistUrls.length > 0) {
+      setIsExpandingPlaylist(true);
+      try {
+        for (const playlistUrl of playlistUrls) {
+          try {
+            const expandedUrls = await expandPlaylistUrl(playlistUrl);
+            totalAdded += expandedUrls.length;
+          } catch (error) {
+            // If expansion fails, add as single item
+            console.error('Failed to expand playlist, adding as single item:', error);
+            totalAdded += addUrlsDirectly([playlistUrl]);
+          }
+        }
+      } finally {
+        setIsExpandingPlaylist(false);
+      }
+    }
+
+    return totalAdded;
+  }, [parseUrls, isPlaylistUrl, settings.downloadPlaylist, addUrlsDirectly, expandPlaylistUrl]);
 
   const importFromFile = useCallback(async (): Promise<number> => {
     try {
@@ -298,7 +393,7 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     isDownloadingRef.current = true;
     setCurrentPlaylistInfo(null);
     
-    // Reset only pending/error items, keep completed items as-is
+    // Reset only pending/error items, keep completed items and playlist info as-is
     setItems(items => items.map(item => {
       if (item.status === 'pending' || item.status === 'error') {
         return {
@@ -308,8 +403,7 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
           speed: '',
           eta: '',
           error: undefined,
-          playlistIndex: undefined,
-          playlistTotal: undefined,
+          // Keep playlistIndex and playlistTotal for display
         };
       }
       return item;
@@ -326,16 +420,17 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
       ));
 
       try {
+        // Each item is now a single video, so disable playlist mode
         await invoke('download_video', {
           id: item.id,
           url: item.url,
           outputPath: settings.outputPath,
           quality: settings.quality,
           format: settings.format,
-          downloadPlaylist: settings.downloadPlaylist,
+          downloadPlaylist: false, // Always false - playlist already expanded
           videoCodec: settings.videoCodec,
           audioBitrate: settings.audioBitrate,
-          playlistLimit: settings.playlistLimit,
+          playlistLimit: null, // Not needed
           // Subtitle settings
           subtitleMode: settings.subtitleMode,
           subtitleLangs: settings.subtitleLangs.join(','),
@@ -502,6 +597,7 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
   const value: DownloadContextType = {
     items,
     isDownloading,
+    isExpandingPlaylist,
     settings,
     currentPlaylistInfo,
     addFromText,

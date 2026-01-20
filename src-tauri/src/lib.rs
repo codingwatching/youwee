@@ -210,6 +210,141 @@ async fn get_video_info(app: AppHandle, url: String) -> Result<VideoInfoResponse
     Ok(VideoInfoResponse { info, formats })
 }
 
+/// Playlist entry with basic video info
+#[derive(Clone, Serialize, Debug)]
+pub struct PlaylistVideoEntry {
+    pub id: String,
+    pub title: String,
+    pub url: String,
+    pub thumbnail: Option<String>,
+    pub duration: Option<f64>,
+    pub channel: Option<String>,
+}
+
+/// Get all video entries from a playlist
+#[tauri::command]
+async fn get_playlist_entries(app: AppHandle, url: String, limit: Option<u32>) -> Result<Vec<PlaylistVideoEntry>, String> {
+    // Use flat-playlist to get all entries without downloading
+    let mut args = vec![
+        "--flat-playlist",
+        "--dump-json",
+        "--no-warnings",
+        "--socket-timeout", "30",
+    ];
+    
+    // Apply limit if specified
+    let limit_str: String;
+    if let Some(l) = limit {
+        if l > 0 {
+            limit_str = l.to_string();
+            args.push("--playlist-end");
+            args.push(&limit_str);
+        }
+    }
+    
+    args.push(&url);
+    
+    let sidecar_result = app.shell().sidecar("yt-dlp");
+    
+    let output = match sidecar_result {
+        Ok(sidecar) => {
+            let (mut rx, _child) = sidecar
+                .args(&args)
+                .spawn()
+                .map_err(|e| format!("Failed to start yt-dlp: {}", e))?;
+            
+            let mut output = String::new();
+            
+            while let Some(event) = rx.recv().await {
+                match event {
+                    CommandEvent::Stdout(bytes) => {
+                        output.push_str(&String::from_utf8_lossy(&bytes));
+                    }
+                    CommandEvent::Stderr(_) => {}
+                    CommandEvent::Error(err) => {
+                        return Err(format!("Process error: {}", err));
+                    }
+                    CommandEvent::Terminated(status) => {
+                        if status.code != Some(0) && output.is_empty() {
+                            return Err("Failed to fetch playlist info".to_string());
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            
+            output
+        }
+        Err(_) => {
+            // Fallback to system yt-dlp
+            let result = Command::new("yt-dlp")
+                .args(&args)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .output()
+                .await
+                .map_err(|e| format!("Failed to run yt-dlp: {}", e))?;
+            
+            String::from_utf8_lossy(&result.stdout).to_string()
+        }
+    };
+    
+    // Parse JSON lines (each line is a video entry)
+    let mut entries: Vec<PlaylistVideoEntry> = Vec::new();
+    
+    for line in output.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
+            let id = json.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            
+            // Skip if no valid ID
+            if id.is_empty() {
+                continue;
+            }
+            
+            let title = json.get("title").and_then(|v| v.as_str()).unwrap_or("Unknown").to_string();
+            
+            // Build URL from ID
+            let video_url = format!("https://www.youtube.com/watch?v={}", id);
+            
+            let thumbnail = json.get("thumbnail")
+                .or_else(|| json.get("thumbnails").and_then(|t| t.as_array()).and_then(|arr| arr.first()))
+                .and_then(|v| {
+                    if v.is_string() {
+                        v.as_str().map(|s| s.to_string())
+                    } else {
+                        v.get("url").and_then(|u| u.as_str()).map(|s| s.to_string())
+                    }
+                });
+            
+            let duration = json.get("duration").and_then(|v| v.as_f64());
+            let channel = json.get("channel")
+                .or_else(|| json.get("uploader"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            
+            entries.push(PlaylistVideoEntry {
+                id,
+                title,
+                url: video_url,
+                thumbnail,
+                duration,
+                channel,
+            });
+        }
+    }
+    
+    if entries.is_empty() {
+        return Err("No videos found in playlist".to_string());
+    }
+    
+    Ok(entries)
+}
+
 /// Sanitize and validate output path to prevent path traversal attacks
 fn sanitize_output_path(path: &str) -> Result<String, String> {
     use std::path::Path;
@@ -1532,6 +1667,7 @@ pub fn run() {
             download_video, 
             stop_download, 
             get_video_info,
+            get_playlist_entries,
             get_ytdlp_version,
             check_ytdlp_update,
             update_ytdlp,

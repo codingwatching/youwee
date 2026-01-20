@@ -9,6 +9,7 @@ export function DownloadPage() {
   const {
     items,
     isDownloading,
+    isExpandingPlaylist,
     settings,
     currentPlaylistInfo,
     addFromText,
@@ -60,6 +61,7 @@ export function DownloadPage() {
           {/* URL Input */}
           <UrlInput
             disabled={isDownloading}
+            isExpandingPlaylist={isExpandingPlaylist}
             onAddUrls={addFromText}
             onImportFile={importFromFile}
             onImportClipboard={importFromClipboard}

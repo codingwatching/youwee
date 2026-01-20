@@ -16,7 +16,8 @@ import { cn } from '@/lib/utils';
 
 interface UrlInputProps {
   disabled?: boolean;
-  onAddUrls: (text: string) => number;
+  isExpandingPlaylist?: boolean;
+  onAddUrls: (text: string) => Promise<number>;
   onImportFile: () => Promise<number>;
   onImportClipboard: () => Promise<number>;
 }
@@ -51,12 +52,14 @@ function countUrls(text: string): number {
 
 export function UrlInput({ 
   disabled, 
+  isExpandingPlaylist,
   onAddUrls, 
   onImportFile,
   onImportClipboard,
 }: UrlInputProps) {
   const [value, setValue] = useState('');
   const [isImporting, setIsImporting] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -106,13 +109,18 @@ export function UrlInput({
     };
   }, [value]);
 
-  const handleAdd = useCallback(() => {
-    const count = onAddUrls(value);
-    if (count > 0) {
-      setValue('');
-      setShowPreview(false);
-      setPreviewUrl(null);
-      setIsExpanded(false);
+  const handleAdd = useCallback(async () => {
+    setIsAdding(true);
+    try {
+      const count = await onAddUrls(value);
+      if (count > 0) {
+        setValue('');
+        setShowPreview(false);
+        setPreviewUrl(null);
+        setIsExpanded(false);
+      }
+    } finally {
+      setIsAdding(false);
     }
   }, [value, onAddUrls]);
 
@@ -279,11 +287,15 @@ export function UrlInput({
             <button
               className="h-11 px-4 rounded-md font-medium text-sm btn-gradient flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleAdd}
-              disabled={disabled || !value.trim()}
+              disabled={disabled || !value.trim() || isAdding || isExpandingPlaylist}
               title="Add URL to queue"
             >
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Add</span>
+              {isAdding || isExpandingPlaylist ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
+              <span className="hidden sm:inline">{isExpandingPlaylist ? 'Loading...' : 'Add'}</span>
             </button>
           </div>
         ) : (
@@ -331,11 +343,15 @@ export function UrlInput({
           <button
             className="h-9 px-4 rounded-md font-medium text-sm btn-gradient flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handleAdd}
-            disabled={disabled || !value.trim()}
+            disabled={disabled || !value.trim() || isAdding || isExpandingPlaylist}
             title="Add all URLs to queue"
           >
-            <Plus className="w-4 h-4" />
-            Add to Queue {urlCount > 0 && `(${urlCount})`}
+            {isAdding || isExpandingPlaylist ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Plus className="w-4 h-4" />
+            )}
+            {isExpandingPlaylist ? 'Loading playlist...' : `Add to Queue ${urlCount > 0 ? `(${urlCount})` : ''}`}
           </button>
         )}
         
