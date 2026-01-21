@@ -1,8 +1,22 @@
-import { Inbox, CheckCircle2 } from 'lucide-react';
+import { Inbox, CheckCircle2, ExternalLink } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { UniversalQueueItem } from './UniversalQueueItem';
 import type { DownloadItem } from '@/lib/types';
+
+// Popular supported sites
+const POPULAR_SITES = [
+  { name: 'TikTok', icon: '🎵' },
+  { name: 'Instagram', icon: '📷' },
+  { name: 'Twitter/X', icon: '𝕏' },
+  { name: 'Facebook', icon: '📘' },
+  { name: 'Vimeo', icon: '🎬' },
+  { name: 'Twitch', icon: '📺' },
+  { name: 'Bilibili', icon: '📺' },
+  { name: 'SoundCloud', icon: '🎧' },
+  { name: 'Dailymotion', icon: '▶️' },
+  { name: 'Reddit', icon: '🔴' },
+];
 
 interface UniversalQueueListProps {
   items: DownloadItem[];
@@ -22,14 +36,41 @@ export function UniversalQueueList({
 
   if (items.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
+      <div className="flex-1 flex flex-col items-center justify-center py-8 text-center">
         <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
           <Inbox className="w-8 h-8 text-muted-foreground/50" />
         </div>
-        <h3 className="text-sm font-medium text-muted-foreground mb-1">No videos in queue</h3>
-        <p className="text-xs text-muted-foreground/70 max-w-[200px]">
-          Paste any video URL from TikTok, Instagram, Twitter, and 1000+ other sites
+        <h3 className="text-sm font-medium text-foreground mb-1">No videos in queue</h3>
+        <p className="text-xs text-muted-foreground mb-4 max-w-[280px]">
+          Supports <span className="font-semibold text-primary">1,800+</span> websites via yt-dlp
         </p>
+        
+        {/* Popular sites grid */}
+        <div className="flex flex-wrap justify-center gap-2 mb-4 max-w-[320px]">
+          {POPULAR_SITES.map((site) => (
+            <span 
+              key={site.name}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 text-[11px] text-muted-foreground"
+            >
+              <span>{site.icon}</span>
+              <span>{site.name}</span>
+            </span>
+          ))}
+          <span className="inline-flex items-center px-2 py-1 rounded-full bg-muted/50 text-[11px] text-muted-foreground">
+            +1,790 more
+          </span>
+        </div>
+        
+        {/* Link to full list */}
+        <a 
+          href="https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+        >
+          <span>View full list of supported sites</span>
+          <ExternalLink className="w-3 h-3" />
+        </a>
       </div>
     );
   }
