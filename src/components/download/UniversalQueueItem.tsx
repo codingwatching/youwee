@@ -10,7 +10,7 @@ import {
   MonitorPlay,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { DownloadItem } from '@/lib/types';
+import type { DownloadItem, ItemUniversalSettings } from '@/lib/types';
 import { SourceBadge } from './SourceBadge';
 
 // Helper to format file size
@@ -23,6 +23,22 @@ function formatFileSize(bytes: number): string {
     return `${(bytes / 1024).toFixed(0)} KB`;
   }
   return `${bytes} B`;
+}
+
+// Helper to format quality display
+function formatQuality(quality: string): string {
+  const qualityMap: Record<string, string> = {
+    'best': 'Best',
+    '8k': '8K',
+    '4k': '4K',
+    '2k': '2K',
+    '1080': '1080p',
+    '720': '720p',
+    '480': '480p',
+    '360': '360p',
+    'audio': 'Audio',
+  };
+  return qualityMap[quality] || quality;
 }
 
 interface UniversalQueueItemProps {
@@ -40,6 +56,9 @@ export function UniversalQueueItem({
   const isCompleted = item.status === 'completed';
   const isError = item.status === 'error';
   const isPending = item.status === 'pending';
+  
+  // Get saved settings for pending items
+  const itemSettings = item.settings as ItemUniversalSettings | undefined;
 
   return (
     <div
@@ -160,6 +179,19 @@ export function UniversalQueueItem({
               {isError && 'Failed'}
             </span>
           </span>
+          
+          {/* Settings badges for pending/downloading items */}
+          {(isPending || isActive) && itemSettings && (
+            <>
+              <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium">
+                <MonitorPlay className="w-3 h-3" />
+                {formatQuality(itemSettings.quality)}
+              </span>
+              <span className="text-[11px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 font-medium uppercase">
+                {itemSettings.format}
+              </span>
+            </>
+          )}
           
           {/* Completed Info: Resolution, Size, Format */}
           {isCompleted && (

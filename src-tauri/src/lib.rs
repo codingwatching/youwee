@@ -819,6 +819,7 @@ async fn download_video(
     
     let mut args = vec![
         "--newline".to_string(),
+        "--progress".to_string(),  // Force progress output even when not in TTY
         "--no-warnings".to_string(),
         "-f".to_string(),
         format_string,
@@ -1045,8 +1046,65 @@ async fn download_video(
                         }
                     }
                     CommandEvent::Stderr(bytes) => {
+                        let stderr_line = String::from_utf8_lossy(&bytes).trim().to_string();
+                        
+                        // yt-dlp sends progress to stderr, so we need to parse it here too
+                        if let Some((percent, speed, eta, pi, pc)) = parse_progress(&stderr_line) {
+                            if pi.is_some() { current_index = pi; }
+                            if pc.is_some() { total_count = pc; }
+                            
+                            let progress = DownloadProgress {
+                                id: id.clone(),
+                                percent,
+                                speed,
+                                eta,
+                                status: "downloading".to_string(),
+                                title: current_title.clone(),
+                                playlist_index: current_index,
+                                playlist_count: total_count,
+                                filesize: None,
+                                resolution: None,
+                                format_ext: None,
+                            };
+                            app.emit("download-progress", progress).ok();
+                        }
+                        
+                        // Also extract title and filesize from stderr
+                        if stderr_line.contains("[download] Destination:") || stderr_line.contains("[ExtractAudio]") {
+                            if let Some(start) = stderr_line.rfind('/') {
+                                let filename = &stderr_line[start + 1..];
+                                if let Some(end) = filename.rfind('.') {
+                                    current_title = Some(filename[..end].to_string());
+                                }
+                            }
+                        }
+                        
+                        // Parse filesize from stderr
+                        if stderr_line.contains(" of ") && (stderr_line.contains("MiB") || stderr_line.contains("GiB") || stderr_line.contains("KiB")) {
+                            let size_re = regex::Regex::new(r"of\s+(\d+(?:\.\d+)?)\s*(GiB|MiB|KiB)").ok();
+                            if let Some(re) = size_re {
+                                if let Some(caps) = re.captures(&stderr_line) {
+                                    if let (Some(num), Some(unit)) = (caps.get(1), caps.get(2)) {
+                                        if let Ok(size) = num.as_str().parse::<f64>() {
+                                            let size_bytes = match unit.as_str() {
+                                                "GiB" => (size * 1024.0 * 1024.0 * 1024.0) as u64,
+                                                "MiB" => (size * 1024.0 * 1024.0) as u64,
+                                                "KiB" => (size * 1024.0) as u64,
+                                                _ => size as u64,
+                                            };
+                                            if current_stream_size != Some(size_bytes) {
+                                                if let Some(prev_size) = current_stream_size {
+                                                    total_filesize += prev_size;
+                                                }
+                                                current_stream_size = Some(size_bytes);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
                         if should_log_stderr {
-                            let stderr_line = String::from_utf8_lossy(&bytes).trim().to_string();
                             if !stderr_line.is_empty() {
                                 add_log_internal("stderr", &stderr_line, None, Some(&url)).ok();
                             }
