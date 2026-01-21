@@ -15,7 +15,7 @@ static CANCEL_FLAG: AtomicBool = AtomicBool::new(false);
 // Global database connection wrapped in Mutex for thread safety
 static DB_CONNECTION: std::sync::OnceLock<Mutex<Connection>> = std::sync::OnceLock::new();
 
-const MAX_LOG_ENTRIES: i64 = 1000;
+const MAX_LOG_ENTRIES: i64 = 500;
 
 /// Log entry structure
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -139,7 +139,7 @@ fn get_logs(
 ) -> Result<Vec<LogEntry>, String> {
     let conn = get_db()?;
     
-    let limit = limit.unwrap_or(100).min(1000);
+    let limit = limit.unwrap_or(100).min(500);
     
     // Build query dynamically
     let filter_active = filter.as_ref().map(|f| f != "all" && !f.is_empty()).unwrap_or(false);
