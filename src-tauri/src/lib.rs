@@ -1144,10 +1144,21 @@ async fn download_video(
                                 }
                             });
                             
+                            // Extract title from final filepath if not already set
+                            // Path format: /path/to/Video Title.mp4
+                            let display_title = current_title.clone().or_else(|| {
+                                final_filepath.as_ref().and_then(|path| {
+                                    let path = std::path::Path::new(path);
+                                    path.file_stem()
+                                        .and_then(|s| s.to_str())
+                                        .map(|s| s.to_string())
+                                })
+                            });
+                            
                             // Log success
                             let success_msg = format!(
                                 "Downloaded: {}",
-                                current_title.clone().unwrap_or_else(|| "Unknown".to_string())
+                                display_title.clone().unwrap_or_else(|| "Unknown".to_string())
                             );
                             let details = format!(
                                 "Size: {} · Quality: {} · Format: {}",
@@ -1163,7 +1174,7 @@ async fn download_video(
                                 speed: String::new(),
                                 eta: String::new(),
                                 status: "finished".to_string(),
-                                title: current_title.clone(),
+                                title: display_title,
                                 playlist_index: current_index,
                                 playlist_count: total_count,
                                 filesize: reported_filesize,
