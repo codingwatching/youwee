@@ -330,13 +330,55 @@ jobs:
           echo "Generated SHA256SUMS.txt:"
           cat SHA256SUMS.txt
 
+      - name: Extract changelog for current version
+        id: changelog
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "Extracting changelog for version: $VERSION"
+          
+          # Extract the section for this version from CHANGELOG.md
+          # Match from "## [version]" until the next "## [" or end of file
+          CHANGELOG_CONTENT=$(awk -v ver="$VERSION" '
+            BEGIN { found=0; content="" }
+            /^## \[/ {
+              if (found) exit
+              if (index($0, "[" ver "]") > 0) found=1
+              next
+            }
+            found { content = content $0 "\n" }
+            END { print content }
+          ' CHANGELOG.md)
+          
+          # If no changelog found, use a default message
+          if [ -z "$CHANGELOG_CONTENT" ]; then
+            CHANGELOG_CONTENT="See commit history for changes in this release."
+          fi
+          
+          # Save to file for use in release body
+          echo "$CHANGELOG_CONTENT" > CHANGELOG_EXTRACT.md
+          echo "Extracted changelog:"
+          cat CHANGELOG_EXTRACT.md
+
       - name: Create release body
         run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          
+          # Start with header
           cat > RELEASE_BODY.md << 'HEADER'
           # 🎬 Youwee ${{ github.ref_name }}
           
           A modern, beautiful YouTube downloader built with Tauri.
           
+          HEADER
+          
+          # Add What's New section from changelog
+          echo "## ✨ What's New" >> RELEASE_BODY.md
+          echo "" >> RELEASE_BODY.md
+          cat CHANGELOG_EXTRACT.md >> RELEASE_BODY.md
+          echo "" >> RELEASE_BODY.md
+          
+          # Add download section
+          cat >> RELEASE_BODY.md << 'DOWNLOADS'
           ## 📥 Download
           
           | Platform | File | Description |
@@ -348,25 +390,14 @@ jobs:
           | 🐧 **Linux** | `Youwee-Linux.deb` | Debian/Ubuntu |
           | 🐧 **Linux** | `Youwee-Linux.AppImage` | Portable (all distros) |
           
-          ## ✨ Features
-          - 📹 Download YouTube videos in batch
-          - 📋 Support for playlists
-          - 🎯 Multiple quality options (Best, 8K, 4K, 2K, 1080p, 720p, 480p, Audio Only)
-          - 🎬 Multiple formats (MP4, MKV, WebM, MP3, M4A, Opus)
-          - 📝 Subtitle download with language selection
-          - 🎨 6 beautiful color themes with Dark/Light mode
-          - ⚡ Concurrent downloads (up to 5 parallel)
-          - 🔄 Auto-update with secure signature verification
-          - 🔒 Secure - SHA256 verified yt-dlp updates
-          - 📦 yt-dlp bundled - no external dependencies needed
-          
           ## 📋 Requirements
           - **Windows**: Windows 10 or later
           - **macOS**: 10.15 (Catalina) or later  
           - **Linux**: Ubuntu 22.04 or equivalent
           
           ## 🔧 Optional
-          - FFmpeg (recommended for best compatibility, auto-download available)
+          - **FFmpeg** - for best video/audio quality (auto-download available in Settings)
+          - **Bun Runtime** - if you can only download 360p from YouTube (auto-download available in Settings)
           
           ## 🔐 Verify Downloads
           
@@ -374,7 +405,7 @@ jobs:
           ```bash
           sha256sum -c SHA256SUMS.txt
           ```
-          HEADER
+          DOWNLOADS
           
           echo "Generated RELEASE_BODY.md:"
           cat RELEASE_BODY.md
