@@ -217,16 +217,53 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
 
+      - name: Extract changelog for current version
+        id: changelog
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "Extracting changelog for version: $VERSION"
+          
+          # Extract the section for this version from CHANGELOG.md
+          # Match from "## [version]" until the next "## [" or end of file
+          CHANGELOG_CONTENT=$(awk -v ver="$VERSION" '
+            BEGIN { found=0; content="" }
+            /^## \[/ {
+              if (found) exit
+              if (index($0, "[" ver "]") > 0) found=1
+              next
+            }
+            found { content = content $0 "\n" }
+            END { print content }
+          ' CHANGELOG.md)
+          
+          # If no changelog found, use a default message
+          if [ -z "$CHANGELOG_CONTENT" ]; then
+            CHANGELOG_CONTENT="See commit history for changes in this release."
+          fi
+          
+          # Save to file for use in release body
+          echo "$CHANGELOG_CONTENT" > CHANGELOG_EXTRACT.md
+          
+          # Create a JSON-safe version (escape special chars and convert newlines)
+          CHANGELOG_JSON=$(echo "$CHANGELOG_CONTENT" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed 's/$/\\n/' | tr -d '\n' | sed 's/\\n$//')
+          echo "$CHANGELOG_JSON" > CHANGELOG_JSON.txt
+          
+          echo "Extracted changelog:"
+          cat CHANGELOG_EXTRACT.md
+
       - name: Generate latest.json for updater
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           
+          # Read the JSON-safe changelog
+          NOTES=$(cat CHANGELOG_JSON.txt 2>/dev/null || echo "Youwee $GITHUB_REF_NAME - Check release notes for details")
+          
           # Find signature files and create platform entries
           cat > latest.json << EOF
           {
             "version": "$VERSION",
-            "notes": "Youwee $GITHUB_REF_NAME - Check release notes for details",
+            "notes": "$NOTES",
             "pub_date": "$PUB_DATE",
             "platforms": {
           EOF
@@ -329,35 +366,6 @@ jobs:
           cd ..
           echo "Generated SHA256SUMS.txt:"
           cat SHA256SUMS.txt
-
-      - name: Extract changelog for current version
-        id: changelog
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          echo "Extracting changelog for version: $VERSION"
-          
-          # Extract the section for this version from CHANGELOG.md
-          # Match from "## [version]" until the next "## [" or end of file
-          CHANGELOG_CONTENT=$(awk -v ver="$VERSION" '
-            BEGIN { found=0; content="" }
-            /^## \[/ {
-              if (found) exit
-              if (index($0, "[" ver "]") > 0) found=1
-              next
-            }
-            found { content = content $0 "\n" }
-            END { print content }
-          ' CHANGELOG.md)
-          
-          # If no changelog found, use a default message
-          if [ -z "$CHANGELOG_CONTENT" ]; then
-            CHANGELOG_CONTENT="See commit history for changes in this release."
-          fi
-          
-          # Save to file for use in release body
-          echo "$CHANGELOG_CONTENT" > CHANGELOG_EXTRACT.md
-          echo "Extracted changelog:"
-          cat CHANGELOG_EXTRACT.md
 
       - name: Create release body
         run: |
