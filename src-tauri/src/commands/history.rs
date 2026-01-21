@@ -56,8 +56,6 @@ pub async fn open_file_location(filepath: String) -> Result<(), String> {
         return Err("File not found".to_string());
     }
     
-    let _dir = path.parent().unwrap_or(path);
-    
     #[cfg(target_os = "macos")]
     {
         tokio::process::Command::new("open")
@@ -78,6 +76,7 @@ pub async fn open_file_location(filepath: String) -> Result<(), String> {
     
     #[cfg(target_os = "linux")]
     {
+        let dir = path.parent().unwrap_or(path);
         tokio::process::Command::new("xdg-open")
             .arg(dir)
             .spawn()
