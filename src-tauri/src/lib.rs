@@ -886,6 +886,8 @@ async fn download_video(
     subtitle_format: String,
     // Logging settings
     log_stderr: Option<bool>,
+    // YouTube specific settings
+    youtube_player_client: Option<String>,
 ) -> Result<(), String> {
     CANCEL_FLAG.store(false, Ordering::SeqCst);
     
@@ -912,6 +914,14 @@ async fn download_video(
         "--no-keep-video".to_string(),
         "--no-keep-fragments".to_string(),
     ];
+    
+    // Add YouTube player client if specified and URL is YouTube
+    if let Some(ref client) = youtube_player_client {
+        if client != "default" && (url.contains("youtube.com") || url.contains("youtu.be")) {
+            args.push("--extractor-args".to_string());
+            args.push(format!("youtube:player_client={}", client));
+        }
+    }
     
     // Add FFmpeg location if available (for merging video+audio)
     if let Some(ffmpeg_path) = get_ffmpeg_path(&app).await {

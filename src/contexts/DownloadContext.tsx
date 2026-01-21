@@ -14,6 +14,7 @@ import type {
   AudioBitrate,
   SubtitleMode,
   SubtitleFormat,
+  YouTubePlayerClient,
   PlaylistVideoEntry,
   ItemDownloadSettings,
 } from '@/lib/types';
@@ -50,6 +51,7 @@ function saveSettings(settings: DownloadSettings) {
       subtitleLangs: settings.subtitleLangs,
       subtitleEmbed: settings.subtitleEmbed,
       subtitleFormat: settings.subtitleFormat,
+      youtubePlayerClient: settings.youtubePlayerClient,
     }));
   } catch (e) {
     console.error('Failed to save settings:', e);
@@ -91,6 +93,8 @@ interface DownloadContextType {
   updateSubtitleLangs: (langs: string[]) => void;
   updateSubtitleEmbed: (embed: boolean) => void;
   updateSubtitleFormat: (format: SubtitleFormat) => void;
+  // YouTube specific settings
+  updateYouTubePlayerClient: (client: YouTubePlayerClient) => void;
 }
 
 const DownloadContext = createContext<DownloadContextType | null>(null);
@@ -118,6 +122,8 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
       subtitleLangs: saved.subtitleLangs || ['en', 'vi'],
       subtitleEmbed: saved.subtitleEmbed || false,
       subtitleFormat: saved.subtitleFormat || 'srt',
+      // YouTube specific settings
+      youtubePlayerClient: saved.youtubePlayerClient || 'default',
     };
   });
   
@@ -480,6 +486,8 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
           subtitleFormat: itemSettings?.subtitleFormat ?? settings.subtitleFormat,
           // Logging settings
           logStderr,
+          // YouTube specific settings
+          youtubePlayerClient: settings.youtubePlayerClient,
         });
         
         setItems(items => items.map(i => 
@@ -638,6 +646,14 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const updateYouTubePlayerClient = useCallback((youtubePlayerClient: YouTubePlayerClient) => {
+    setSettings(s => {
+      const newSettings = { ...s, youtubePlayerClient };
+      saveSettings(newSettings);
+      return newSettings;
+    });
+  }, []);
+
   const value: DownloadContextType = {
     items,
     isDownloading,
@@ -666,6 +682,7 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     updateSubtitleLangs,
     updateSubtitleEmbed,
     updateSubtitleFormat,
+    updateYouTubePlayerClient,
   };
 
   return (

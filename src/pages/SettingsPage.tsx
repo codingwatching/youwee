@@ -5,6 +5,7 @@ import { useUpdater } from '@/contexts/UpdaterContext';
 import { useHistory } from '@/contexts/HistoryContext';
 import { themes } from '@/lib/themes';
 import type { ThemeName } from '@/lib/themes';
+import type { YouTubePlayerClient } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { 
   Check, 
@@ -23,6 +24,7 @@ import {
   Package,
   Info,
   Database,
+  Youtube,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -47,7 +49,7 @@ const themeGradients: Record<ThemeName, string> = {
 
 export function SettingsPage() {
   const { theme, setTheme, mode, setMode } = useTheme();
-  const { settings, updateAutoCheckUpdate } = useDownload();
+  const { settings, updateAutoCheckUpdate, updateYouTubePlayerClient } = useDownload();
   const { maxEntries, setMaxEntries, totalCount } = useHistory();
   const updater = useUpdater();
   
@@ -395,6 +397,49 @@ export function SettingsPage() {
                   ffmpeg.org
                   <ExternalLink className="w-3 h-3" />
                 </a>
+              </div>
+            </div>
+          </section>
+
+          {/* Divider */}
+          <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+
+          {/* YouTube Section */}
+          <section className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/20">
+                <Youtube className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold">YouTube</h2>
+                <p className="text-xs text-muted-foreground">Advanced YouTube download settings</p>
+              </div>
+            </div>
+
+            <div className="space-y-3 pl-12">
+              {/* Player Client */}
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-sm font-medium">Player Client</p>
+                  <p className="text-xs text-muted-foreground">
+                    Only change if having format/quality issues
+                  </p>
+                </div>
+                <Select
+                  value={settings.youtubePlayerClient}
+                  onValueChange={(v) => updateYouTubePlayerClient(v as YouTubePlayerClient)}
+                >
+                  <SelectTrigger className="w-[140px] h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">Default</SelectItem>
+                    <SelectItem value="tv_embedded">TV Embedded</SelectItem>
+                    <SelectItem value="ios">iOS</SelectItem>
+                    <SelectItem value="android">Android</SelectItem>
+                    <SelectItem value="mweb">Mobile Web</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </section>
