@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2025-01-21
+
 ### Added
 - Bun runtime support for YouTube downloads (fixes 360p-only issue on some systems)
+
+### Fixed
+- macOS updater now downloads correct architecture-specific update files
 
 ## [0.3.0] - 2025-01-20
 
