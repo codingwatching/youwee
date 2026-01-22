@@ -13,7 +13,7 @@ import {
   Sun, 
   Moon, 
   Github, 
-  ExternalLink, 
+  ExternalLink,
   Terminal,
   RefreshCw,
   Download,
@@ -21,7 +21,6 @@ import {
   Loader2,
   Film,
   Palette,
-  Bell,
   Package,
   Info,
   Database,
@@ -179,88 +178,6 @@ export function SettingsPage() {
                     </button>
                   ))}
                 </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Divider */}
-          <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-
-          {/* App Updates Section */}
-          <section className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 shadow-lg shadow-blue-500/20">
-                <Bell className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h2 className="text-base font-semibold">App Updates</h2>
-                <p className="text-xs text-muted-foreground">Keep Youwee up to date</p>
-              </div>
-            </div>
-
-            <div className="space-y-3 pl-12">
-              {/* Current Version Card */}
-              <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl overflow-hidden shadow-lg ring-2 ring-primary/20">
-                    <img src="/logo-64.png" alt="Youwee" className="w-full h-full object-cover" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">Youwee</span>
-                      <Badge variant="secondary" className="font-mono text-xs">v{appVersion}</Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {isAppChecking ? (
-                        <span className="flex items-center gap-1">
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                          Checking...
-                        </span>
-                      ) : isAppUpdateAvailable && updater.updateInfo ? (
-                        <span className="text-primary font-medium">
-                          v{updater.updateInfo.version} available
-                        </span>
-                      ) : isAppUpToDate ? (
-                        <span className="flex items-center gap-1 text-emerald-500">
-                          <CheckCircle2 className="w-3 h-3" />
-                          Up to date
-                        </span>
-                      ) : isAppError ? (
-                        <span className="text-destructive">{updater.error || 'Check failed'}</span>
-                      ) : (
-                        'Modern YouTube downloader'
-                      )}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {isAppUpdateAvailable && (
-                    <Button size="sm" onClick={updater.downloadAndInstall}>
-                      <Download className="w-4 h-4 mr-1.5" />
-                      Update
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={updater.checkForUpdate}
-                    disabled={isAppChecking}
-                  >
-                    <RefreshCw className={cn("w-4 h-4", isAppChecking && "animate-spin")} />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Auto Update Toggle */}
-              <div className="flex items-center justify-between py-3">
-                <div>
-                  <p className="text-sm font-medium">Auto-check on startup</p>
-                  <p className="text-xs text-muted-foreground">Check for updates when app opens</p>
-                </div>
-                <Switch
-                  checked={settings.autoCheckUpdate}
-                  onCheckedChange={updateAutoCheckUpdate}
-                />
               </div>
             </div>
           </section>
@@ -550,44 +467,81 @@ export function SettingsPage() {
               </div>
             </div>
 
-            <div className="pl-12">
-              <div className="p-5 rounded-xl bg-gradient-to-br from-primary/5 via-transparent to-primary/5 border border-primary/10">
-                <div className="flex items-start gap-4">
-                  <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-xl ring-2 ring-primary/20 flex-shrink-0">
-                    <img src="/logo-128.png" alt="Youwee" className="w-full h-full object-cover" />
+            <div className="space-y-3 pl-12">
+              {/* App Info Card */}
+              <div className="p-4 rounded-xl bg-muted/30">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl overflow-hidden shadow-lg ring-2 ring-primary/20">
+                      <img src="/logo-64.png" alt="Youwee" className="w-full h-full object-cover" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">Youwee</span>
+                        <Badge variant="secondary" className="font-mono text-xs">v{appVersion}</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {isAppChecking ? (
+                          <span className="flex items-center gap-1">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Checking for updates...
+                          </span>
+                        ) : isAppUpdateAvailable && updater.updateInfo ? (
+                          <span className="text-primary font-medium">
+                            v{updater.updateInfo.version} available
+                          </span>
+                        ) : isAppUpToDate ? (
+                          <span className="flex items-center gap-1 text-emerald-500">
+                            <CheckCircle2 className="w-3 h-3" />
+                            Up to date
+                          </span>
+                        ) : isAppError ? (
+                          <span className="text-destructive">{updater.error || 'Check failed'}</span>
+                        ) : (
+                          'Modern video downloader'
+                        )}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-xl font-bold gradient-text">Youwee</h3>
-                    <p className="text-sm text-muted-foreground">Version {appVersion}</p>
-                    <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                      A beautiful, fast, and modern YouTube video downloader. 
-                      Download videos up to 8K with VP9 codec support.
-                    </p>
+                  <div className="flex items-center gap-2">
+                    {isAppUpdateAvailable && (
+                      <Button size="sm" onClick={updater.downloadAndInstall}>
+                        <Download className="w-4 h-4 mr-1.5" />
+                        Update
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={updater.checkForUpdate}
+                      disabled={isAppChecking}
+                      title="Check for updates"
+                    >
+                      <RefreshCw className={cn("w-4 h-4", isAppChecking && "animate-spin")} />
+                    </Button>
+                    <a 
+                      href="https://github.com/vanloctech/youwee" 
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button variant="ghost" size="icon" title="View on GitHub">
+                        <Github className="w-4 h-4" />
+                      </Button>
+                    </a>
                   </div>
                 </div>
+              </div>
 
-                <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-border/50">
-                  <span className="px-2.5 py-1 rounded-lg bg-muted/50 text-xs font-medium">Tauri 2.0</span>
-                  <span className="px-2.5 py-1 rounded-lg bg-muted/50 text-xs font-medium">React 19</span>
-                  <span className="px-2.5 py-1 rounded-lg bg-muted/50 text-xs font-medium">TypeScript</span>
-                  <span className="px-2.5 py-1 rounded-lg bg-muted/50 text-xs font-medium">yt-dlp</span>
+              {/* Auto Update Toggle */}
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-sm font-medium">Auto-check for updates</p>
+                  <p className="text-xs text-muted-foreground">Check for updates when app opens</p>
                 </div>
-
-                <div className="flex items-center justify-between mt-4 pt-4 border-t border-border/50">
-                  <p className="text-xs text-muted-foreground">
-                    Open source under MIT License
-                  </p>
-                  <a 
-                    href="https://github.com/vanloctech/youwee" 
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-foreground text-background hover:opacity-90 transition-opacity"
-                  >
-                    <Github className="w-4 h-4" />
-                    GitHub
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
+                <Switch
+                  checked={settings.autoCheckUpdate}
+                  onCheckedChange={updateAutoCheckUpdate}
+                />
               </div>
             </div>
           </section>
