@@ -14,6 +14,7 @@ permissions:
 
 env:
   FFMPEG_VERSION: ${{ inputs.ffmpeg_version || 'master' }}
+  X265_VERSION: "4.1"
 
 jobs:
   build-macos-arm:
@@ -55,21 +56,27 @@ jobs:
       - name: Build x265
         run: |
           cd $BUILD_DIR
-          git clone --depth 1 https://bitbucket.org/multicoreware/x265_git.git x265
-          mkdir -p x265/build_dir && cd x265/build_dir
+          
+          # Download tarball instead of shallow clone (shallow clone breaks version detection and x265.pc generation)
+          curl -L -o x265.tar.gz "https://bitbucket.org/multicoreware/x265_git/downloads/x265_${{ env.X265_VERSION }}.tar.gz"
+          tar -xzf x265.tar.gz
+          cd x265_${{ env.X265_VERSION }}/build/linux
+          
           cmake -G "Unix Makefiles" \
                 -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR \
                 -DENABLE_SHARED=OFF \
                 -DENABLE_STATIC=ON \
                 -DENABLE_CLI=OFF \
-                ../source
+                ../../source
           make -j$(sysctl -n hw.ncpu)
           make install
           
-          # Verify x265 was installed correctly
-          echo "=== Checking x265 installation ==="
-          ls -la $INSTALL_DIR/lib/pkgconfig/
-          cat $INSTALL_DIR/lib/pkgconfig/x265.pc || echo "x265.pc not found"
+          # Add -lstdc++ for static linking (required by FFmpeg)
+          echo "Libs.private: -lstdc++" >> "$INSTALL_DIR/lib/pkgconfig/x265.pc"
+          
+          # Verify x265.pc was created
+          echo "=== x265.pc content ==="
+          cat $INSTALL_DIR/lib/pkgconfig/x265.pc
         env:
           PKG_CONFIG_PATH: ${{ github.workspace }}/ffmpeg_install/lib/pkgconfig
 
@@ -143,6 +150,7 @@ jobs:
                       --pkg-config-flags="--static" \
                       --extra-cflags="-I$INSTALL_DIR/include" \
                       --extra-ldflags="-L$INSTALL_DIR/lib" \
+                      --extra-libs="-lstdc++ -lm" \
                       --disable-shared \
                       --enable-static \
                       --enable-gpl \
@@ -188,7 +196,7 @@ jobs:
             ffmpeg-macos-arm64.tar.gz.sha256
 
   build-macos-intel:
-    runs-on: macos-15-intel  # Intel runner (macos-15 is also Apple Silicon)
+    runs-on: macos-13  # Intel runner
     
     env:
       BUILD_DIR: ${{ github.workspace }}/ffmpeg_build
@@ -226,21 +234,27 @@ jobs:
       - name: Build x265
         run: |
           cd $BUILD_DIR
-          git clone --depth 1 https://bitbucket.org/multicoreware/x265_git.git x265
-          mkdir -p x265/build_dir && cd x265/build_dir
+          
+          # Download tarball instead of shallow clone (shallow clone breaks version detection and x265.pc generation)
+          curl -L -o x265.tar.gz "https://bitbucket.org/multicoreware/x265_git/downloads/x265_${{ env.X265_VERSION }}.tar.gz"
+          tar -xzf x265.tar.gz
+          cd x265_${{ env.X265_VERSION }}/build/linux
+          
           cmake -G "Unix Makefiles" \
                 -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR \
                 -DENABLE_SHARED=OFF \
                 -DENABLE_STATIC=ON \
                 -DENABLE_CLI=OFF \
-                ../source
+                ../../source
           make -j$(sysctl -n hw.ncpu)
           make install
           
-          # Verify x265 was installed correctly
-          echo "=== Checking x265 installation ==="
-          ls -la $INSTALL_DIR/lib/pkgconfig/
-          cat $INSTALL_DIR/lib/pkgconfig/x265.pc || echo "x265.pc not found"
+          # Add -lstdc++ for static linking (required by FFmpeg)
+          echo "Libs.private: -lstdc++" >> "$INSTALL_DIR/lib/pkgconfig/x265.pc"
+          
+          # Verify x265.pc was created
+          echo "=== x265.pc content ==="
+          cat $INSTALL_DIR/lib/pkgconfig/x265.pc
         env:
           PKG_CONFIG_PATH: ${{ github.workspace }}/ffmpeg_install/lib/pkgconfig
 
@@ -314,6 +328,7 @@ jobs:
                       --pkg-config-flags="--static" \
                       --extra-cflags="-I$INSTALL_DIR/include" \
                       --extra-ldflags="-L$INSTALL_DIR/lib" \
+                      --extra-libs="-lstdc++ -lm" \
                       --disable-shared \
                       --enable-static \
                       --enable-gpl \
@@ -390,7 +405,7 @@ jobs:
             
             ## Included Codecs
             - x264 (H.264)
-            - x265 (HEVC)
+            - x265 (HEVC) v${{ env.X265_VERSION }}
             - libvpx (VP8/VP9)
             - libaom (AV1)
             - libopus (Opus audio)
