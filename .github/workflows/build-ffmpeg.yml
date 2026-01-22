@@ -18,7 +18,7 @@ env:
 
 jobs:
   build-macos-arm:
-    runs-on: macos-14  # Apple Silicon runner
+    runs-on: macos-latest  # Apple Silicon runner
     
     env:
       BUILD_DIR: ${{ github.workspace }}/ffmpeg_build
@@ -207,7 +207,7 @@ jobs:
             ffmpeg-macos-arm64.tar.gz.sha256
 
   build-macos-intel:
-    runs-on: macos-13  # Intel runner
+    runs-on: macos-15-intel  # Intel runner
     
     env:
       BUILD_DIR: ${{ github.workspace }}/ffmpeg_build
