@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - macOS app icon now follows Apple guidelines with rounded corners and proper padding
+- Improved Gemini API error handling with detailed error messages
+- Updated AI model lists to use stable versions (removed preview models)
 
 ## [0.3.2] - 2026-01-22
 
