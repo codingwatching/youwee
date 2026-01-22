@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Merged App Updates section into About section in Settings for cleaner UI
+
+### Fixed
+- macOS app icon now follows Apple guidelines with rounded corners and proper padding
+
 ## [0.3.2] - 2026-01-22
 
 ### Added
