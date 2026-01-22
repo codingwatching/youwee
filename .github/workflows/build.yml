@@ -33,13 +33,13 @@ jobs:
             yt_dlp_url: https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos
             yt_dlp_name: yt-dlp-aarch64-apple-darwin
           
-          # macOS Intel
+          # macOS Intel (yt-dlp_macos is Universal Binary for both Intel and Apple Silicon)
           - platform: macos-15
             target: x86_64-apple-darwin
             os_name: macos
             arch: x86_64
             friendly_name: Mac-Intel
-            yt_dlp_url: https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos_legacy
+            yt_dlp_url: https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos
             yt_dlp_name: yt-dlp-x86_64-apple-darwin
           
           # Linux x86_64

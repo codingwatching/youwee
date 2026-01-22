@@ -117,16 +117,11 @@ pub async fn get_ytdlp_version_internal(app: &AppHandle) -> Result<YtdlpVersionI
 }
 
 /// Get the appropriate download URL and binary name for current platform
+/// Note: yt-dlp_macos is a Universal Binary that works on both Intel and Apple Silicon
+/// The legacy build (yt-dlp_macos_legacy) was discontinued in August 2025
 pub fn get_ytdlp_download_info() -> (&'static str, &'static str, &'static str) {
     #[cfg(target_os = "macos")]
-    {
-        #[cfg(target_arch = "aarch64")]
-        { ("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos", "yt-dlp", "yt-dlp_macos") }
-        #[cfg(target_arch = "x86_64")]
-        { ("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos_legacy", "yt-dlp", "yt-dlp_macos_legacy") }
-        #[cfg(not(any(target_arch = "aarch64", target_arch = "x86_64")))]
-        { ("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos", "yt-dlp", "yt-dlp_macos") }
-    }
+    { ("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos", "yt-dlp", "yt-dlp_macos") }
     #[cfg(target_os = "linux")]
     { ("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux", "yt-dlp", "yt-dlp_linux") }
     #[cfg(target_os = "windows")]
