@@ -62,8 +62,10 @@ jobs:
           tar -xzf x265.tar.gz
           cd x265_${{ env.X265_VERSION }}/build/linux
           
+          # Note: -DCMAKE_POLICY_VERSION_MINIMUM=3.5 is needed for CMake 4.x compatibility
           cmake -G "Unix Makefiles" \
                 -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR \
+                -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
                 -DENABLE_SHARED=OFF \
                 -DENABLE_STATIC=ON \
                 -DENABLE_CLI=OFF \
@@ -240,8 +242,10 @@ jobs:
           tar -xzf x265.tar.gz
           cd x265_${{ env.X265_VERSION }}/build/linux
           
+          # Note: -DCMAKE_POLICY_VERSION_MINIMUM=3.5 is needed for CMake 4.x compatibility
           cmake -G "Unix Makefiles" \
                 -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR \
+                -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
                 -DENABLE_SHARED=OFF \
                 -DENABLE_STATIC=ON \
                 -DENABLE_CLI=OFF \
