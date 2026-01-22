@@ -147,6 +147,7 @@ pub async fn generate_with_gemini(
     let client = Client::new();
     let prompt = build_prompt(transcript, style, language);
     
+    // Gemini API endpoint - use v1beta for latest models
     let url = format!(
         "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
         model, api_key
@@ -160,7 +161,7 @@ pub async fn generate_with_gemini(
         }],
         "generationConfig": {
             "temperature": 0.7,
-            "maxOutputTokens": 1024,
+            "maxOutputTokens": 1024
         }
     });
     
@@ -172,16 +173,37 @@ pub async fn generate_with_gemini(
         .await
         .map_err(|e| AIError::NetworkError(e.to_string()))?;
     
-    if !response.status().is_success() {
-        let status = response.status();
-        let text = response.text().await.unwrap_or_default();
-        return Err(AIError::ApiError(format!("Status {}: {}", status, text)));
+    let status = response.status();
+    let response_text = response.text().await.unwrap_or_default();
+    
+    if !status.is_success() {
+        // Parse error message from response
+        if let Ok(error_json) = serde_json::from_str::<serde_json::Value>(&response_text) {
+            let error_msg = error_json
+                .get("error")
+                .and_then(|e| e.get("message"))
+                .and_then(|m| m.as_str())
+                .unwrap_or(&response_text);
+            return Err(AIError::ApiError(format!("Gemini API error: {}", error_msg)));
+        }
+        return Err(AIError::ApiError(format!("Status {}: {}", status, response_text)));
     }
     
-    let json: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| AIError::ParseError(e.to_string()))?;
+    let json: serde_json::Value = serde_json::from_str(&response_text)
+        .map_err(|e| AIError::ParseError(format!("Failed to parse response: {}", e)))?;
+    
+    // Check for blocked content or errors in response
+    if let Some(error) = json.get("error") {
+        let msg = error.get("message").and_then(|m| m.as_str()).unwrap_or("Unknown error");
+        return Err(AIError::ApiError(format!("Gemini error: {}", msg)));
+    }
+    
+    // Check prompt feedback for blocked content
+    if let Some(feedback) = json.get("promptFeedback") {
+        if let Some(block_reason) = feedback.get("blockReason") {
+            return Err(AIError::ApiError(format!("Content blocked: {:?}", block_reason)));
+        }
+    }
     
     let summary = json
         .get("candidates")
@@ -191,7 +213,11 @@ pub async fn generate_with_gemini(
         .and_then(|p| p.get(0))
         .and_then(|p| p.get("text"))
         .and_then(|t| t.as_str())
-        .ok_or_else(|| AIError::ParseError("No text in response".to_string()))?;
+        .ok_or_else(|| {
+            // Provide more context about why parsing failed
+            AIError::ParseError(format!("Could not extract text from response. Response: {}", 
+                &response_text[..response_text.len().min(500)]))
+        })?;
     
     Ok(SummaryResult {
         summary: summary.trim().to_string(),
