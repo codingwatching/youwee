@@ -17,20 +17,16 @@
 
 - **Batch Downloads** - Download multiple videos at once
 - **Playlist Support** - Download entire YouTube playlists
-- **Multiple Quality Options** - From 360p to 4K Ultra HD
-- **Subtitle Support** - Ability to embed subtitles into videos or save them as separate files.
-- **Batch Downloading** - Support for downloading multiple videos simultaneously.
-- **Expanded Compatibility** - Added support for 1800+ websites powered by yt-dlp.
-- **Download Management** - Added Download History and Library sections.
-- **8K Resolution Support** - High-quality video downloading now supports up to 8K resolution.
-- **Developer Tools** - Added access to yt-dlp logs and execution commands for debugging.
+- **Multiple Quality Options** - From 360p to 8K Ultra HD
+- **Subtitle Support** - Embed subtitles into videos or save as separate files
+- **Universal Downloads** - Support for 1800+ websites powered by yt-dlp
+- **Download History** - Track all your downloads in the Library
 - **Audio Extraction** - Extract audio in MP3, M4A, or Opus formats
 - **6 Beautiful Themes** - Midnight, Aurora, Sunset, Ocean, Forest, Candy
 - **Dark/Light Mode** - Choose your preferred appearance
-- **H.264 Codec** - Maximum compatibility with all players
 - **File Size Estimation** - Know the size before downloading
 - **Fast & Lightweight** - Built with Tauri for minimal resource usage
-- **No External Dependencies** - yt-dlp bundled with the app
+- **Auto-Updates** - Stay up to date with the latest features
 
 ## 📸 Screenshots
 |                 Download                 |                     Setting                      |
@@ -40,16 +36,17 @@
 
 ## 🚀 Installation
 
-### Download Pre-built Binaries
+### Download for your platform
 
-Download the latest release for your platform from the [Releases](https://github.com/vanloctech/youwee/releases) page:
+| Platform | Download |
+|----------|----------|
+| **Windows** (x64) | [Download .msi](https://github.com/vanloctech/youwee/releases/latest/download/Youwee_x64-setup.msi) |
+| **macOS** (Apple Silicon) | [Download .dmg](https://github.com/vanloctech/youwee/releases/latest/download/Youwee_aarch64.dmg) |
+| **macOS** (Intel) | [Download .dmg](https://github.com/vanloctech/youwee/releases/latest/download/Youwee_x64.dmg) |
+| **Linux** (x64 deb) | [Download .deb](https://github.com/vanloctech/youwee/releases/latest/download/Youwee_amd64.deb) |
+| **Linux** (x64 AppImage) | [Download .AppImage](https://github.com/vanloctech/youwee/releases/latest/download/Youwee_amd64.AppImage) |
 
-| Platform | Architecture | File |
-|----------|--------------|------|
-| Windows | x86_64 | `.msi` / `.exe` |
-| macOS | Apple Silicon (M1/M2/M3) | `.dmg` |
-| macOS | Intel | `.dmg` |
-| Linux | x86_64 | `.deb` / `.AppImage` |
+> See all releases on the [Releases page](https://github.com/vanloctech/youwee/releases)
 
 ### Build from Source
 
@@ -75,31 +72,6 @@ bun run tauri dev
 # Build for production
 bun run tauri build
 ```
-
-## 🎯 Usage
-
-1. **Add URLs** - Paste YouTube video or playlist URLs
-2. **Configure Settings** - Choose quality, format, and output folder
-3. **Start Download** - Click the download button and watch the progress
-
-### Supported Formats
-
-| Type | Formats |
-|------|---------|
-| Video | MP4, MKV, WebM |
-| Audio | MP3, M4A (AAC), Opus |
-
-### Quality Options
-
-| Quality | Resolution |
-|---------|------------|
-| Best | Highest available |
-| 4K | 2160p |
-| 2K | 1440p |
-| 1080p | Full HD |
-| 720p | HD |
-| 480p | SD |
-| 360p | Low |
 
 ## 🛠️ Tech Stack
 
@@ -139,24 +111,6 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/):
 - `test:` - Adding or updating tests
 - `chore:` - Maintenance tasks
 
-### Project Structure
-
-```
-youwee/
-├── src/                    # React frontend
-│   ├── components/         # UI components
-│   ├── contexts/           # React contexts
-│   ├── hooks/              # Custom hooks
-│   ├── lib/                # Utilities and types
-│   └── pages/              # Page components
-├── src-tauri/              # Rust backend
-│   ├── src/                # Rust source code
-│   ├── icons/              # App icons
-│   └── bin/                # yt-dlp binaries
-├── public/                 # Static assets
-└── .github/                # GitHub workflows
-```
-
 ### Development Tips
 
 - Run `bun run tauri dev` for hot-reloading development
@@ -170,6 +124,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp) - The powerful video downloader
+- [FFmpeg](https://ffmpeg.org/) - Multimedia framework for audio/video processing
+- [Bun](https://bun.sh/) - Fast JavaScript runtime for YouTube extraction
 - [Tauri](https://tauri.app/) - Build smaller, faster, and more secure desktop apps
 - [shadcn/ui](https://ui.shadcn.com/) - Beautiful UI components
 - [Lucide Icons](https://lucide.dev/) - Beautiful open-source icons
