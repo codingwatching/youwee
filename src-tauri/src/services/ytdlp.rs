@@ -218,16 +218,16 @@ pub async fn get_ytdlp_version_internal(app: &AppHandle) -> Result<YtdlpVersionI
 
 /// Get the appropriate download URL and binary name for current platform
 /// Note: yt-dlp_macos is a Universal Binary that works on both Intel and Apple Silicon
-/// The legacy build (yt-dlp_macos_legacy) was discontinued in August 2025
+/// Using nightly builds for latest features and fixes
 pub fn get_ytdlp_download_info() -> (&'static str, &'static str, &'static str) {
     #[cfg(target_os = "macos")]
-    { ("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos", "yt-dlp", "yt-dlp_macos") }
+    { ("https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp_macos", "yt-dlp", "yt-dlp_macos") }
     #[cfg(target_os = "linux")]
-    { ("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux", "yt-dlp", "yt-dlp_linux") }
+    { ("https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp_linux", "yt-dlp", "yt-dlp_linux") }
     #[cfg(target_os = "windows")]
-    { ("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe", "yt-dlp.exe", "yt-dlp.exe") }
+    { ("https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp.exe", "yt-dlp.exe", "yt-dlp.exe") }
     #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
-    { ("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp", "yt-dlp", "yt-dlp") }
+    { ("https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp", "yt-dlp", "yt-dlp") }
 }
 
 /// Verify SHA256 checksum

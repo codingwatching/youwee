@@ -24,13 +24,13 @@ pub async fn get_ytdlp_version(app: AppHandle) -> Result<YtdlpVersionInfo, Strin
 #[tauri::command]
 pub async fn check_ytdlp_update() -> Result<String, String> {
     let client = reqwest::Client::builder()
-        .user_agent("Youwee/0.3.2")
+        .user_agent("Youwee/0.4.0")
         .timeout(std::time::Duration::from_secs(10))
         .build()
         .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
     
     let response = client
-        .get("https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest")
+        .get("https://api.github.com/repos/yt-dlp/yt-dlp-nightly-builds/releases/latest")
         .send()
         .await
         .map_err(|e| {
@@ -77,13 +77,13 @@ pub async fn update_ytdlp(app: AppHandle) -> Result<String, String> {
     let binary_path = bin_dir.join(filename);
     
     let client = reqwest::Client::builder()
-        .user_agent("Youwee/0.3.2")
+        .user_agent("Youwee/0.4.0")
         .timeout(std::time::Duration::from_secs(300))
         .build()
         .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
     
     // Download checksums
-    let checksums_url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS";
+    let checksums_url = "https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/SHA2-256SUMS";
     let checksums_response = client.get(checksums_url).send().await
         .map_err(|e| format!("Failed to download checksums: {}", e))?;
     
@@ -173,7 +173,7 @@ pub async fn download_ffmpeg(app: AppHandle) -> Result<String, String> {
         .map_err(|e| format!("Failed to create bin directory: {}", e))?;
     
     let client = reqwest::Client::builder()
-        .user_agent("Youwee/0.3.2")
+        .user_agent("Youwee/0.4.0")
         .timeout(std::time::Duration::from_secs(600))
         .build()
         .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
@@ -284,7 +284,7 @@ pub async fn download_bun(app: AppHandle) -> Result<String, String> {
         .map_err(|e| format!("Failed to create bin directory: {}", e))?;
     
     let client = reqwest::Client::builder()
-        .user_agent("Youwee/0.3.2")
+        .user_agent("Youwee/0.4.0")
         .timeout(std::time::Duration::from_secs(300))
         .build()
         .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
