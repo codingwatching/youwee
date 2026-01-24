@@ -104,3 +104,23 @@ pub async fn open_file_location(filepath: String) -> Result<(), String> {
     
     Ok(())
 }
+
+#[tauri::command]
+pub async fn open_macos_privacy_settings() -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        // Open Privacy & Security > Full Disk Access in System Settings
+        // This URL scheme works on macOS Ventura (13.0) and later
+        tokio::process::Command::new("open")
+            .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")
+            .spawn()
+            .map_err(|e| format!("Failed to open Privacy Settings: {}", e))?;
+    }
+    
+    #[cfg(not(target_os = "macos"))]
+    {
+        return Err("This command is only available on macOS".to_string());
+    }
+    
+    Ok(())
+}

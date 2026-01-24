@@ -59,6 +59,11 @@ pub async fn download_video(
     use_bun_runtime: Option<bool>,
     use_actual_player_js: Option<bool>,
     history_id: Option<String>,
+    // Cookie settings
+    cookie_mode: Option<String>,
+    cookie_browser: Option<String>,
+    cookie_browser_profile: Option<String>,
+    cookie_file_path: Option<String>,
 ) -> Result<(), String> {
     CANCEL_FLAG.store(false, Ordering::SeqCst);
     
@@ -120,6 +125,33 @@ pub async fn download_video(
         if subtitle_embed {
             args.push("--embed-subs".to_string());
         }
+    }
+    
+    // Cookie/Authentication settings
+    let mode = cookie_mode.as_deref().unwrap_or("off");
+    match mode {
+        "browser" => {
+            if let Some(browser) = cookie_browser.as_ref() {
+                let mut cookie_arg = browser.clone();
+                // Add profile if specified
+                if let Some(profile) = cookie_browser_profile.as_ref() {
+                    if !profile.is_empty() {
+                        cookie_arg = format!("{}:{}", browser, profile);
+                    }
+                }
+                args.push("--cookies-from-browser".to_string());
+                args.push(cookie_arg);
+            }
+        }
+        "file" => {
+            if let Some(file_path) = cookie_file_path.as_ref() {
+                if !file_path.is_empty() {
+                    args.push("--cookies".to_string());
+                    args.push(file_path.clone());
+                }
+            }
+        }
+        _ => {}
     }
     
     // Playlist handling

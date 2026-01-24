@@ -293,7 +293,7 @@ export function QueueItem({
           {/* Error Message */}
           {isError && item.error && (
             <span 
-              className="text-xs text-red-500/80 truncate max-w-[120px] sm:max-w-[200px]" 
+              className="text-xs text-red-500/80 line-clamp-2" 
               title={item.error}
             >
               {item.error}

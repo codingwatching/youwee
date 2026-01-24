@@ -5,6 +5,7 @@ import { SimpleMarkdown } from '@/components/ui/simple-markdown';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useAI } from '@/contexts/AIContext';
+import { useDownload } from '@/contexts/DownloadContext';
 import { cn } from '@/lib/utils';
 import { LANGUAGE_OPTIONS, type SummaryStyle } from '@/lib/types';
 import {
@@ -44,6 +45,7 @@ interface SummaryResult {
 
 export function SummaryPage() {
   const ai = useAI();
+  const { cookieSettings } = useDownload();
   
   // URL input
   const [url, setUrl] = useState('');
@@ -108,7 +110,13 @@ export function SummaryPage() {
           thumbnail?: string;
           duration?: number;
         };
-      }>('get_video_info', { url: url.trim() });
+      }>('get_video_info', { 
+        url: url.trim(),
+        cookieMode: cookieSettings.mode,
+        cookieBrowser: cookieSettings.browser || null,
+        cookieBrowserProfile: cookieSettings.browserProfile || null,
+        cookieFilePath: cookieSettings.filePath || null,
+      });
 
       if (isCancelledRef.current) return;
 
@@ -125,6 +133,10 @@ export function SummaryPage() {
       const transcript = await invoke<string>('get_video_transcript', {
         url: url.trim(),
         languages: transcriptLanguages,
+        cookieMode: cookieSettings.mode,
+        cookieBrowser: cookieSettings.browser || null,
+        cookieBrowserProfile: cookieSettings.browserProfile || null,
+        cookieFilePath: cookieSettings.filePath || null,
       });
 
       if (isCancelledRef.current) return;
@@ -163,7 +175,7 @@ export function SummaryPage() {
         setLoadingStatus('');
       }
     }
-  }, [url, ai.config, summaryStyle, summaryLanguage, transcriptLanguages]);
+  }, [url, ai.config, summaryStyle, summaryLanguage, transcriptLanguages, cookieSettings]);
 
   const handleStop = useCallback(() => {
     isCancelledRef.current = true;

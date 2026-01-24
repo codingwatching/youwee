@@ -58,6 +58,9 @@ pub fn run() {
             // Bun commands
             commands::check_bun,
             commands::download_bun,
+            // Browser detection
+            commands::detect_installed_browsers,
+            commands::get_browser_profiles,
             // Log commands
             commands::get_logs,
             commands::add_log,
@@ -73,6 +76,7 @@ pub fn run() {
             commands::check_file_exists,
             commands::update_summary,
             commands::add_summary_only_history,
+            commands::open_macos_privacy_settings,
             // AI commands
             commands::save_ai_config,
             commands::get_ai_config,

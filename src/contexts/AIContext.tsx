@@ -1,6 +1,22 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import type { AIConfig, AIProvider, ModelOption, LanguageOption } from '@/lib/types';
+import type { AIConfig, AIProvider, ModelOption, LanguageOption, CookieSettings } from '@/lib/types';
+
+// Cookie settings storage key (same as in DownloadContext)
+const COOKIE_STORAGE_KEY = 'youwee-cookie-settings';
+
+// Load cookie settings from localStorage
+function loadCookieSettings(): CookieSettings {
+  try {
+    const saved = localStorage.getItem(COOKIE_STORAGE_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error('Failed to load cookie settings:', e);
+  }
+  return { mode: 'off' };
+}
 
 // Task status for background summary generation
 export interface SummaryTask {
@@ -157,7 +173,15 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
   const fetchTranscript = useCallback(async (url: string): Promise<string> => {
     const languages = config.transcript_languages || ['en'];
-    return await invoke<string>('get_video_transcript', { url, languages });
+    const cookieSettings = loadCookieSettings();
+    return await invoke<string>('get_video_transcript', { 
+      url, 
+      languages,
+      cookieMode: cookieSettings.mode,
+      cookieBrowser: cookieSettings.browser || null,
+      cookieBrowserProfile: cookieSettings.browserProfile || null,
+      cookieFilePath: cookieSettings.filePath || null,
+    });
   }, [config.transcript_languages]);
 
   // Background task management
@@ -210,6 +234,9 @@ export function AIProvider({ children }: { children: ReactNode }) {
     // Get languages from current config
     const languages = config.transcript_languages || ['en'];
     
+    // Get cookie settings
+    const cookieSettings = loadCookieSettings();
+    
     // Run in background (not awaited, fire-and-forget)
     (async () => {
       try {
@@ -217,7 +244,14 @@ export function AIProvider({ children }: { children: ReactNode }) {
         if (import.meta.env.DEV) {
           console.log(`[AI] Fetching transcript for URL: ${url}, languages: ${languages.join(', ')}`);
         }
-        const transcript = await invoke<string>('get_video_transcript', { url, languages });
+        const transcript = await invoke<string>('get_video_transcript', { 
+          url, 
+          languages,
+          cookieMode: cookieSettings.mode,
+          cookieBrowser: cookieSettings.browser || null,
+          cookieBrowserProfile: cookieSettings.browserProfile || null,
+          cookieFilePath: cookieSettings.filePath || null,
+        });
         
         if (import.meta.env.DEV) {
           console.log(`[AI] Got transcript (${transcript.length} chars), first 200:`, transcript.slice(0, 200));
@@ -299,13 +333,20 @@ export function AIProvider({ children }: { children: ReactNode }) {
     
     const languages = config.transcript_languages || ['en'];
     
+    // Get cookie settings
+    const cookieSettings = loadCookieSettings();
+    
     // Run in background
     (async () => {
       try {
         // Fetch transcript
         const transcript = await invoke<string>('get_video_transcript', { 
           url: itemInfo.url, 
-          languages 
+          languages,
+          cookieMode: cookieSettings.mode,
+          cookieBrowser: cookieSettings.browser || null,
+          cookieBrowserProfile: cookieSettings.browserProfile || null,
+          cookieFilePath: cookieSettings.filePath || null,
         });
         
         // Update to generating status

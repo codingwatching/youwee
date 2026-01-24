@@ -191,6 +191,24 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
       console.error('Failed to parse settings:', e);
     }
     
+    // Load cookie settings
+    let cookieMode = 'off';
+    let cookieBrowser: string | null = null;
+    let cookieBrowserProfile: string | null = null;
+    let cookieFilePath: string | null = null;
+    try {
+      const savedCookieSettings = localStorage.getItem('youwee-cookie-settings');
+      if (savedCookieSettings) {
+        const parsed = JSON.parse(savedCookieSettings);
+        cookieMode = parsed.mode || 'off';
+        cookieBrowser = parsed.browser || null;
+        cookieBrowserProfile = parsed.browserProfile || null;
+        cookieFilePath = parsed.filePath || null;
+      }
+    } catch (e) {
+      console.error('Failed to parse cookie settings:', e);
+    }
+    
     // Use saved output path if entry has no filepath
     if (!outputPath && savedOutputPath) {
       outputPath = savedOutputPath;
@@ -251,6 +269,11 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
         useBunRuntime,
         useActualPlayerJs,
         historyId: entry.id,
+        // Cookie settings
+        cookieMode,
+        cookieBrowser,
+        cookieBrowserProfile,
+        cookieFilePath,
       });
       
       // Mark as completed

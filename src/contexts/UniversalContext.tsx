@@ -12,9 +12,11 @@ import type {
   Format,
   AudioBitrate,
   ItemUniversalSettings,
+  CookieSettings,
 } from '@/lib/types';
 
 const STORAGE_KEY = 'youwee-universal-settings';
+const COOKIE_STORAGE_KEY = 'youwee-cookie-settings';
 
 // Simplified settings for Universal downloads (no codec, subtitles, playlist)
 export interface UniversalSettings {
@@ -36,6 +38,19 @@ function loadSavedSettings(): Partial<UniversalSettings> {
     console.error('Failed to load saved settings:', e);
   }
   return {};
+}
+
+// Load cookie settings from localStorage (shared with DownloadContext)
+function loadCookieSettings(): CookieSettings {
+  try {
+    const saved = localStorage.getItem(COOKIE_STORAGE_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error('Failed to load cookie settings:', e);
+  }
+  return { mode: 'off' };
 }
 
 // Save settings to localStorage
@@ -284,6 +299,7 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
         // Fallback to current global settings if not available
         const itemSettings = item.settings as ItemUniversalSettings | undefined;
         const logStderr = localStorage.getItem('youwee_log_stderr') !== 'false';
+        const cookieSettings = loadCookieSettings();
         
         await invoke('download_video', {
           id: item.id,
@@ -301,6 +317,11 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
           subtitleFormat: 'srt',
           // Logging settings
           logStderr,
+          // Cookie settings
+          cookieMode: cookieSettings.mode,
+          cookieBrowser: cookieSettings.browser || null,
+          cookieBrowserProfile: cookieSettings.browserProfile || null,
+          cookieFilePath: cookieSettings.filePath || null,
         });
         
         setItems(items => items.map(i => 
