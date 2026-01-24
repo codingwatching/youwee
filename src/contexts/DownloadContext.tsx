@@ -16,9 +16,13 @@ import type {
   SubtitleFormat,
   PlaylistVideoEntry,
   ItemDownloadSettings,
+  CookieSettings,
+  CookieMode,
+  BrowserType,
 } from '@/lib/types';
 
 const STORAGE_KEY = 'youwee-settings';
+const COOKIE_STORAGE_KEY = 'youwee-cookie-settings';
 
 // Load settings from localStorage
 function loadSavedSettings(): Partial<DownloadSettings> {
@@ -31,6 +35,28 @@ function loadSavedSettings(): Partial<DownloadSettings> {
     console.error('Failed to load saved settings:', e);
   }
   return {};
+}
+
+// Load cookie settings from localStorage
+function loadCookieSettings(): CookieSettings {
+  try {
+    const saved = localStorage.getItem(COOKIE_STORAGE_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error('Failed to load cookie settings:', e);
+  }
+  return { mode: 'off' };
+}
+
+// Save cookie settings to localStorage
+function saveCookieSettings(settings: CookieSettings) {
+  try {
+    localStorage.setItem(COOKIE_STORAGE_KEY, JSON.stringify(settings));
+  } catch (e) {
+    console.error('Failed to save cookie settings:', e);
+  }
 }
 
 // Save settings to localStorage
@@ -69,6 +95,7 @@ interface DownloadContextType {
   isDownloading: boolean;
   isExpandingPlaylist: boolean;
   settings: DownloadSettings;
+  cookieSettings: CookieSettings;
   currentPlaylistInfo: PlaylistInfo | null;
   addFromText: (text: string) => Promise<number>;
   importFromFile: () => Promise<number>;
@@ -96,6 +123,8 @@ interface DownloadContextType {
   // YouTube specific settings
   updateUseBunRuntime: (enabled: boolean) => void;
   updateUseActualPlayerJs: (enabled: boolean) => void;
+  // Cookie settings
+  updateCookieSettings: (updates: Partial<CookieSettings>) => void;
 }
 
 const DownloadContext = createContext<DownloadContextType | null>(null);
@@ -128,6 +157,9 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
       useActualPlayerJs: saved.useActualPlayerJs || false,
     };
   });
+  
+  // Load cookie settings on init
+  const [cookieSettings, setCookieSettings] = useState<CookieSettings>(() => loadCookieSettings());
   
   const [currentPlaylistInfo, setCurrentPlaylistInfo] = useState<PlaylistInfo | null>(null);
   
@@ -267,7 +299,11 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
       const limit = settings.playlistLimit > 0 ? settings.playlistLimit : undefined;
       const entries = await invoke<PlaylistVideoEntry[]>('get_playlist_entries', { 
         url, 
-        limit 
+        limit,
+        cookieMode: cookieSettings.mode,
+        cookieBrowser: cookieSettings.browser || null,
+        cookieBrowserProfile: cookieSettings.browserProfile || null,
+        cookieFilePath: cookieSettings.filePath || null,
       });
       
       // Snapshot current settings for these items
@@ -314,7 +350,7 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
       console.error('Failed to expand playlist:', error);
       throw error;
     }
-  }, [settings]);
+  }, [settings, cookieSettings]);
 
   // Format duration from seconds to "mm:ss" or "hh:mm:ss"
   const formatDuration = (seconds: number): string => {
@@ -491,6 +527,11 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
           // YouTube specific settings
           useBunRuntime: settings.useBunRuntime,
           useActualPlayerJs: settings.useActualPlayerJs,
+          // Cookie settings
+          cookieMode: cookieSettings.mode,
+          cookieBrowser: cookieSettings.browser || null,
+          cookieBrowserProfile: cookieSettings.browserProfile || null,
+          cookieFilePath: cookieSettings.filePath || null,
           // No history_id for new downloads
           historyId: null,
         });
@@ -532,7 +573,7 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
       isDownloadingRef.current = false;
       setCurrentPlaylistInfo(null);
     }
-  }, [settings]);
+  }, [settings, cookieSettings]);
 
   const stopDownload = useCallback(async () => {
     try {
@@ -667,11 +708,20 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const updateCookieSettings = useCallback((updates: Partial<CookieSettings>) => {
+    setCookieSettings(s => {
+      const newSettings = { ...s, ...updates };
+      saveCookieSettings(newSettings);
+      return newSettings;
+    });
+  }, []);
+
   const value: DownloadContextType = {
     items,
     isDownloading,
     isExpandingPlaylist,
     settings,
+    cookieSettings,
     currentPlaylistInfo,
     addFromText,
     importFromFile,
@@ -697,6 +747,7 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     updateSubtitleFormat,
     updateUseBunRuntime,
     updateUseActualPlayerJs,
+    updateCookieSettings,
   };
 
   return (

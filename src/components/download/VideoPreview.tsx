@@ -12,6 +12,23 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import type { CookieSettings } from '@/lib/types';
+
+// Cookie settings storage key (same as in DownloadContext)
+const COOKIE_STORAGE_KEY = 'youwee-cookie-settings';
+
+// Load cookie settings from localStorage
+function loadCookieSettings(): CookieSettings {
+  try {
+    const saved = localStorage.getItem(COOKIE_STORAGE_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error('Failed to load cookie settings:', e);
+  }
+  return { mode: 'off' };
+}
 
 interface VideoInfo {
   id: string;
@@ -116,7 +133,14 @@ export function VideoPreview({ url, onClose, onFormatSelect, className }: VideoP
       setError(null);
       
       try {
-        const result = await invoke<VideoInfoResponse>('get_video_info', { url });
+        const cookieSettings = loadCookieSettings();
+        const result = await invoke<VideoInfoResponse>('get_video_info', { 
+          url,
+          cookieMode: cookieSettings.mode,
+          cookieBrowser: cookieSettings.browser || null,
+          cookieBrowserProfile: cookieSettings.browserProfile || null,
+          cookieFilePath: cookieSettings.filePath || null,
+        });
         if (!cancelled) {
           setData(result);
         }
@@ -152,11 +176,14 @@ export function VideoPreview({ url, onClose, onFormatSelect, className }: VideoP
   if (error) {
     return (
       <div className={cn("rounded-xl border bg-destructive/5 border-destructive/20 p-4", className)}>
-        <div className="flex items-center gap-3 text-destructive">
-          <AlertCircle className="w-5 h-5" />
-          <span className="text-sm flex-1">Failed to fetch video info</span>
+        <div className="flex items-start gap-3 text-destructive">
+          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium">Failed to fetch video info</p>
+            <p className="text-xs mt-1 opacity-80">{error}</p>
+          </div>
           {onClose && (
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+            <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={onClose}>
               <X className="w-4 h-4" />
             </Button>
           )}

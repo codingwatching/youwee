@@ -7,12 +7,20 @@ use tokio::process::Command;
 use tokio::time::timeout;
 use uuid::Uuid;
 use crate::types::{VideoInfo, FormatOption, VideoInfoResponse, PlaylistVideoEntry, SubtitleInfo};
-use crate::services::{run_ytdlp_json, run_ytdlp_with_stderr, parse_ytdlp_error};
+use crate::services::{parse_ytdlp_error, run_ytdlp_json_with_cookies, run_ytdlp_with_stderr_and_cookies, build_cookie_args};
 use crate::database::add_log_internal;
 
 /// Get video transcript/subtitles for AI summarization
 #[tauri::command]
-pub async fn get_video_transcript(app: AppHandle, url: String, languages: Option<Vec<String>>) -> Result<String, String> {
+pub async fn get_video_transcript(
+    app: AppHandle,
+    url: String,
+    languages: Option<Vec<String>>,
+    cookie_mode: Option<String>,
+    cookie_browser: Option<String>,
+    cookie_browser_profile: Option<String>,
+    cookie_file_path: Option<String>,
+) -> Result<String, String> {
     // Log the URL being processed
     #[cfg(debug_assertions)]
     println!("[TRANSCRIPT] Fetching transcript for URL: {}", &url);
@@ -77,7 +85,14 @@ pub async fn get_video_transcript(app: AppHandle, url: String, languages: Option
         
         let subtitle_result = timeout(
             Duration::from_secs(45),
-            run_ytdlp_with_stderr(&app, &subtitle_args.iter().map(|s| *s).collect::<Vec<_>>())
+            run_ytdlp_with_stderr_and_cookies(
+                &app,
+                &subtitle_args.iter().map(|s| *s).collect::<Vec<_>>(),
+                cookie_mode.as_deref(),
+                cookie_browser.as_deref(),
+                cookie_browser_profile.as_deref(),
+                cookie_file_path.as_deref(),
+            )
         ).await;
         
         match &subtitle_result {
@@ -207,7 +222,14 @@ pub async fn get_video_transcript(app: AppHandle, url: String, languages: Option
     
     let info_result = timeout(
         Duration::from_secs(45),  // Increased from 15
-        run_ytdlp_json(&app, &info_args.iter().map(|s| *s).collect::<Vec<_>>())
+        run_ytdlp_json_with_cookies(
+            &app,
+            &info_args.iter().map(|s| *s).collect::<Vec<_>>(),
+            cookie_mode.as_deref(),
+            cookie_browser.as_deref(),
+            cookie_browser_profile.as_deref(),
+            cookie_file_path.as_deref(),
+        )
     ).await;
     
     match &info_result {
@@ -394,7 +416,14 @@ fn parse_subtitle_file(content: &str) -> String {
 }
 
 #[tauri::command]
-pub async fn get_video_info(app: AppHandle, url: String) -> Result<VideoInfoResponse, String> {
+pub async fn get_video_info(
+    app: AppHandle,
+    url: String,
+    cookie_mode: Option<String>,
+    cookie_browser: Option<String>,
+    cookie_browser_profile: Option<String>,
+    cookie_file_path: Option<String>,
+) -> Result<VideoInfoResponse, String> {
     let args = [
         "--dump-json",
         "--no-download",
@@ -404,7 +433,14 @@ pub async fn get_video_info(app: AppHandle, url: String) -> Result<VideoInfoResp
         &url,
     ];
     
-    let json_output = run_ytdlp_json(&app, &args).await?;
+    let json_output = run_ytdlp_json_with_cookies(
+        &app,
+        &args,
+        cookie_mode.as_deref(),
+        cookie_browser.as_deref(),
+        cookie_browser_profile.as_deref(),
+        cookie_file_path.as_deref(),
+    ).await?;
     
     let json: serde_json::Value = serde_json::from_str(&json_output)
         .map_err(|e| format!("Failed to parse JSON: {}", e))?;
@@ -467,31 +503,48 @@ pub async fn get_video_info(app: AppHandle, url: String) -> Result<VideoInfoResp
 }
 
 #[tauri::command]
-pub async fn get_playlist_entries(app: AppHandle, url: String, limit: Option<u32>) -> Result<Vec<PlaylistVideoEntry>, String> {
+pub async fn get_playlist_entries(
+    app: AppHandle,
+    url: String,
+    limit: Option<u32>,
+    cookie_mode: Option<String>,
+    cookie_browser: Option<String>,
+    cookie_browser_profile: Option<String>,
+    cookie_file_path: Option<String>,
+) -> Result<Vec<PlaylistVideoEntry>, String> {
     let mut args = vec![
-        "--flat-playlist",
-        "--dump-json",
-        "--no-warnings",
-        "--socket-timeout", "30",
+        "--flat-playlist".to_string(),
+        "--dump-json".to_string(),
+        "--no-warnings".to_string(),
+        "--socket-timeout".to_string(), "30".to_string(),
     ];
     
-    let limit_str: String;
     if let Some(l) = limit {
         if l > 0 {
-            limit_str = l.to_string();
-            args.push("--playlist-end");
-            args.push(&limit_str);
+            args.push("--playlist-end".to_string());
+            args.push(l.to_string());
         }
     }
     
-    args.push(&url);
+    // Add cookie args
+    let cookie_args = build_cookie_args(
+        cookie_mode.as_deref(),
+        cookie_browser.as_deref(),
+        cookie_browser_profile.as_deref(),
+        cookie_file_path.as_deref(),
+    );
+    args.extend(cookie_args);
+    
+    args.push(url.clone());
+    
+    let args_ref: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
     
     let sidecar_result = app.shell().sidecar("yt-dlp");
     
     let output = match sidecar_result {
         Ok(sidecar) => {
             let (mut rx, _child) = sidecar
-                .args(&args)
+                .args(&args_ref)
                 .spawn()
                 .map_err(|e| format!("Failed to start yt-dlp: {}", e))?;
             
@@ -583,7 +636,14 @@ pub async fn get_playlist_entries(app: AppHandle, url: String, limit: Option<u32
 }
 
 #[tauri::command]
-pub async fn get_available_subtitles(app: AppHandle, url: String) -> Result<Vec<SubtitleInfo>, String> {
+pub async fn get_available_subtitles(
+    app: AppHandle,
+    url: String,
+    cookie_mode: Option<String>,
+    cookie_browser: Option<String>,
+    cookie_browser_profile: Option<String>,
+    cookie_file_path: Option<String>,
+) -> Result<Vec<SubtitleInfo>, String> {
     let args = [
         "--list-subs",
         "--skip-download",
@@ -591,7 +651,14 @@ pub async fn get_available_subtitles(app: AppHandle, url: String) -> Result<Vec<
         &url,
     ];
     
-    let output = run_ytdlp_json(&app, &args).await;
+    let output = run_ytdlp_json_with_cookies(
+        &app,
+        &args,
+        cookie_mode.as_deref(),
+        cookie_browser.as_deref(),
+        cookie_browser_profile.as_deref(),
+        cookie_file_path.as_deref(),
+    ).await;
     
     let mut subtitles: Vec<SubtitleInfo> = Vec::new();
     

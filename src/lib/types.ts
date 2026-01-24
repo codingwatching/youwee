@@ -193,6 +193,32 @@ export type HistorySort = 'recent' | 'oldest' | 'title' | 'size';
 export type AIProvider = 'gemini' | 'openai' | 'ollama' | 'proxy';
 export type SummaryStyle = 'short' | 'concise' | 'detailed';
 
+// Cookie/Authentication types
+export type CookieMode = 'off' | 'browser' | 'file';
+export type BrowserType = 'chrome' | 'firefox' | 'safari' | 'edge' | 'brave' | 'opera' | 'vivaldi';
+
+export const BROWSER_OPTIONS: { value: BrowserType; label: string }[] = [
+  { value: 'chrome', label: 'Google Chrome' },
+  { value: 'firefox', label: 'Mozilla Firefox' },
+  { value: 'safari', label: 'Safari' },
+  { value: 'edge', label: 'Microsoft Edge' },
+  { value: 'brave', label: 'Brave' },
+  { value: 'opera', label: 'Opera' },
+  { value: 'vivaldi', label: 'Vivaldi' },
+];
+
+export interface CookieSettings {
+  mode: CookieMode;
+  browser?: BrowserType;
+  browserProfile?: string;
+  filePath?: string;
+}
+
+export interface BrowserProfile {
+  folder_name: string;   // Used for yt-dlp: "Profile 1"
+  display_name: string;  // Shown to user: "Loc Nguyen"
+}
+
 export interface AIConfig {
   enabled: boolean;
   provider: AIProvider;

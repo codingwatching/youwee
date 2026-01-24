@@ -1,5 +1,5 @@
 use std::process::Stdio;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 use tokio::process::Command;
 use crate::types::{YtdlpVersionInfo, FfmpegStatus, BunStatus};
@@ -14,6 +14,18 @@ use crate::utils::{extract_tar_gz, extract_tar_xz, extract_zip, extract_bun_from
 #[derive(Deserialize)]
 struct GitHubRelease {
     tag_name: String,
+}
+
+#[derive(Serialize)]
+pub struct DetectedBrowser {
+    pub name: String,
+    pub browser_type: String,
+}
+
+#[derive(Serialize)]
+pub struct BrowserProfile {
+    pub folder_name: String,   // Used for yt-dlp: "Profile 1"
+    pub display_name: String,  // Shown to user: "Loc Nguyen" or fallback to folder_name
 }
 
 #[tauri::command]
@@ -328,4 +340,339 @@ pub async fn download_bun(app: AppHandle) -> Result<String, String> {
         .map_err(|e| format!("Failed to verify Bun installation: {}", e))?;
     
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+#[tauri::command]
+pub async fn detect_installed_browsers() -> Result<Vec<DetectedBrowser>, String> {
+    let mut browsers = Vec::new();
+    
+    #[cfg(target_os = "macos")]
+    {
+        let browser_checks = [
+            ("Google Chrome", "chrome", "/Applications/Google Chrome.app"),
+            ("Firefox", "firefox", "/Applications/Firefox.app"),
+            ("Safari", "safari", "/Applications/Safari.app"),
+            ("Microsoft Edge", "edge", "/Applications/Microsoft Edge.app"),
+            ("Brave", "brave", "/Applications/Brave Browser.app"),
+            ("Opera", "opera", "/Applications/Opera.app"),
+            ("Vivaldi", "vivaldi", "/Applications/Vivaldi.app"),
+        ];
+        
+        for (name, browser_type, path) in browser_checks {
+            if std::path::Path::new(path).exists() {
+                browsers.push(DetectedBrowser {
+                    name: name.to_string(),
+                    browser_type: browser_type.to_string(),
+                });
+            }
+        }
+    }
+    
+    #[cfg(target_os = "windows")]
+    {
+        let local_app_data = std::env::var("LOCALAPPDATA").unwrap_or_default();
+        let program_files = std::env::var("PROGRAMFILES").unwrap_or_default();
+        let program_files_x86 = std::env::var("PROGRAMFILES(X86)").unwrap_or_default();
+        
+        let browser_checks: [(&str, &str, Vec<String>); 6] = [
+            ("Google Chrome", "chrome", vec![
+                format!("{}\\Google\\Chrome\\Application\\chrome.exe", local_app_data),
+                format!("{}\\Google\\Chrome\\Application\\chrome.exe", program_files),
+                format!("{}\\Google\\Chrome\\Application\\chrome.exe", program_files_x86),
+            ]),
+            ("Firefox", "firefox", vec![
+                format!("{}\\Mozilla Firefox\\firefox.exe", program_files),
+                format!("{}\\Mozilla Firefox\\firefox.exe", program_files_x86),
+            ]),
+            ("Microsoft Edge", "edge", vec![
+                format!("{}\\Microsoft\\Edge\\Application\\msedge.exe", program_files),
+                format!("{}\\Microsoft\\Edge\\Application\\msedge.exe", program_files_x86),
+            ]),
+            ("Brave", "brave", vec![
+                format!("{}\\BraveSoftware\\Brave-Browser\\Application\\brave.exe", local_app_data),
+                format!("{}\\BraveSoftware\\Brave-Browser\\Application\\brave.exe", program_files),
+            ]),
+            ("Opera", "opera", vec![
+                format!("{}\\Programs\\Opera\\opera.exe", local_app_data),
+                format!("{}\\Opera\\opera.exe", program_files),
+            ]),
+            ("Vivaldi", "vivaldi", vec![
+                format!("{}\\Vivaldi\\Application\\vivaldi.exe", local_app_data),
+            ]),
+        ];
+        
+        for (name, browser_type, paths) in browser_checks {
+            for path in paths {
+                if std::path::Path::new(&path).exists() {
+                    browsers.push(DetectedBrowser {
+                        name: name.to_string(),
+                        browser_type: browser_type.to_string(),
+                    });
+                    break;
+                }
+            }
+        }
+    }
+    
+    #[cfg(target_os = "linux")]
+    {
+        let browser_checks = [
+            ("Google Chrome", "chrome", vec!["google-chrome", "google-chrome-stable"]),
+            ("Firefox", "firefox", vec!["firefox"]),
+            ("Brave", "brave", vec!["brave-browser", "brave"]),
+            ("Opera", "opera", vec!["opera"]),
+            ("Vivaldi", "vivaldi", vec!["vivaldi", "vivaldi-stable"]),
+        ];
+        
+        for (name, browser_type, commands) in browser_checks {
+            for cmd in commands {
+                let result = Command::new("which")
+                    .arg(cmd)
+                    .stdout(Stdio::null())
+                    .stderr(Stdio::null())
+                    .status()
+                    .await;
+                
+                if let Ok(status) = result {
+                    if status.success() {
+                        browsers.push(DetectedBrowser {
+                            name: name.to_string(),
+                            browser_type: browser_type.to_string(),
+                        });
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    
+    Ok(browsers)
+}
+
+#[tauri::command]
+pub async fn get_browser_profiles(browser: String) -> Result<Vec<BrowserProfile>, String> {
+    let mut profiles = Vec::new();
+    
+    // Helper function to read display name from Chrome/Chromium Preferences file
+    fn get_chromium_profile_name(prefs_path: &std::path::Path) -> Option<String> {
+        if let Ok(content) = std::fs::read_to_string(prefs_path) {
+            // Simple JSON parsing for profile.name
+            // Looking for: "profile": { ... "name": "Display Name" ... }
+            if let Some(profile_start) = content.find("\"profile\"") {
+                let profile_section = &content[profile_start..];
+                // Find "name": "value" pattern
+                if let Some(name_start) = profile_section.find("\"name\"") {
+                    let after_name = &profile_section[name_start + 6..]; // skip "name"
+                    // Find the colon and then the opening quote
+                    if let Some(colon_pos) = after_name.find(':') {
+                        let after_colon = &after_name[colon_pos + 1..];
+                        // Skip whitespace and find opening quote
+                        let trimmed = after_colon.trim_start();
+                        if trimmed.starts_with('"') {
+                            let value_start = &trimmed[1..]; // skip opening quote
+                            if let Some(end_quote) = value_start.find('"') {
+                                let name = &value_start[..end_quote];
+                                if !name.is_empty() {
+                                    return Some(name.to_string());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+    
+    #[cfg(target_os = "macos")]
+    {
+        let home = std::env::var("HOME").unwrap_or_default();
+        
+        let profile_dir = match browser.as_str() {
+            "chrome" => format!("{}/Library/Application Support/Google/Chrome", home),
+            "edge" => format!("{}/Library/Application Support/Microsoft Edge", home),
+            "brave" => format!("{}/Library/Application Support/BraveSoftware/Brave-Browser", home),
+            "vivaldi" => format!("{}/Library/Application Support/Vivaldi", home),
+            "opera" => format!("{}/Library/Application Support/com.operasoftware.Opera", home),
+            "firefox" => {
+                // Firefox uses profiles.ini - display name is the same as folder name
+                let profiles_ini = format!("{}/Library/Application Support/Firefox/profiles.ini", home);
+                if let Ok(content) = std::fs::read_to_string(&profiles_ini) {
+                    for line in content.lines() {
+                        if line.starts_with("Name=") {
+                            let name = line.trim_start_matches("Name=");
+                            if !name.is_empty() {
+                                profiles.push(BrowserProfile {
+                                    folder_name: name.to_string(),
+                                    display_name: name.to_string(),
+                                });
+                            }
+                        }
+                    }
+                }
+                return Ok(profiles);
+            }
+            "safari" => return Ok(profiles), // Safari has no profiles
+            _ => return Ok(profiles),
+        };
+        
+        // For Chromium-based browsers, scan directory for profile folders
+        if let Ok(entries) = std::fs::read_dir(&profile_dir) {
+            let exclude_dirs = [
+                "Crashpad", "GrShaderCache", "ShaderCache", "BrowserMetrics",
+                "Crowd Deny", "FileTypePolicies", "MEIPreload", "SafetyTips",
+                "SSLErrorAssistant", "Subresource Filter", "WidevineCdm",
+                "extensions", "hyphen-data", "pnacl", "ZxcvbnData",
+                "component_crx_cache", "CertificateRevocation", "OriginTrials",
+                "System Profile", "Guest Profile",
+            ];
+            
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    let folder_name = entry.file_name().to_string_lossy().to_string();
+                    let prefs_path = path.join("Preferences");
+                    if prefs_path.exists() && !exclude_dirs.contains(&folder_name.as_str()) {
+                        let display_name = get_chromium_profile_name(&prefs_path)
+                            .unwrap_or_else(|| folder_name.clone());
+                        profiles.push(BrowserProfile {
+                            folder_name,
+                            display_name,
+                        });
+                    }
+                }
+            }
+        }
+        
+        // Sort: "Default" first, then others alphabetically by folder_name
+        profiles.sort_by(|a, b| {
+            if a.folder_name == "Default" {
+                std::cmp::Ordering::Less
+            } else if b.folder_name == "Default" {
+                std::cmp::Ordering::Greater
+            } else {
+                a.folder_name.cmp(&b.folder_name)
+            }
+        });
+    }
+    
+    #[cfg(target_os = "windows")]
+    {
+        let local_app_data = std::env::var("LOCALAPPDATA").unwrap_or_default();
+        let app_data = std::env::var("APPDATA").unwrap_or_default();
+        
+        let profile_dir = match browser.as_str() {
+            "chrome" => format!("{}\\Google\\Chrome\\User Data", local_app_data),
+            "edge" => format!("{}\\Microsoft\\Edge\\User Data", local_app_data),
+            "brave" => format!("{}\\BraveSoftware\\Brave-Browser\\User Data", local_app_data),
+            "vivaldi" => format!("{}\\Vivaldi\\User Data", local_app_data),
+            "opera" => format!("{}\\Opera Software\\Opera Stable", app_data),
+            "firefox" => {
+                let profiles_ini = format!("{}\\Mozilla\\Firefox\\profiles.ini", app_data);
+                if let Ok(content) = std::fs::read_to_string(&profiles_ini) {
+                    for line in content.lines() {
+                        if line.starts_with("Name=") {
+                            let name = line.trim_start_matches("Name=");
+                            if !name.is_empty() {
+                                profiles.push(BrowserProfile {
+                                    folder_name: name.to_string(),
+                                    display_name: name.to_string(),
+                                });
+                            }
+                        }
+                    }
+                }
+                return Ok(profiles);
+            }
+            _ => return Ok(profiles),
+        };
+        
+        if let Ok(entries) = std::fs::read_dir(&profile_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    let folder_name = entry.file_name().to_string_lossy().to_string();
+                    let prefs_path = path.join("Preferences");
+                    if prefs_path.exists() {
+                        let display_name = get_chromium_profile_name(&prefs_path)
+                            .unwrap_or_else(|| folder_name.clone());
+                        profiles.push(BrowserProfile {
+                            folder_name,
+                            display_name,
+                        });
+                    }
+                }
+            }
+        }
+        
+        profiles.sort_by(|a, b| {
+            if a.folder_name == "Default" {
+                std::cmp::Ordering::Less
+            } else if b.folder_name == "Default" {
+                std::cmp::Ordering::Greater
+            } else {
+                a.folder_name.cmp(&b.folder_name)
+            }
+        });
+    }
+    
+    #[cfg(target_os = "linux")]
+    {
+        let home = std::env::var("HOME").unwrap_or_default();
+        
+        let profile_dir = match browser.as_str() {
+            "chrome" => format!("{}/.config/google-chrome", home),
+            "brave" => format!("{}/.config/BraveSoftware/Brave-Browser", home),
+            "vivaldi" => format!("{}/.config/vivaldi", home),
+            "opera" => format!("{}/.config/opera", home),
+            "firefox" => {
+                let profiles_ini = format!("{}/.mozilla/firefox/profiles.ini", home);
+                if let Ok(content) = std::fs::read_to_string(&profiles_ini) {
+                    for line in content.lines() {
+                        if line.starts_with("Name=") {
+                            let name = line.trim_start_matches("Name=");
+                            if !name.is_empty() {
+                                profiles.push(BrowserProfile {
+                                    folder_name: name.to_string(),
+                                    display_name: name.to_string(),
+                                });
+                            }
+                        }
+                    }
+                }
+                return Ok(profiles);
+            }
+            _ => return Ok(profiles),
+        };
+        
+        if let Ok(entries) = std::fs::read_dir(&profile_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    let folder_name = entry.file_name().to_string_lossy().to_string();
+                    let prefs_path = path.join("Preferences");
+                    if prefs_path.exists() {
+                        let display_name = get_chromium_profile_name(&prefs_path)
+                            .unwrap_or_else(|| folder_name.clone());
+                        profiles.push(BrowserProfile {
+                            folder_name,
+                            display_name,
+                        });
+                    }
+                }
+            }
+        }
+        
+        profiles.sort_by(|a, b| {
+            if a.folder_name == "Default" {
+                std::cmp::Ordering::Less
+            } else if b.folder_name == "Default" {
+                std::cmp::Ordering::Greater
+            } else {
+                a.folder_name.cmp(&b.folder_name)
+            }
+        });
+    }
+    
+    Ok(profiles)
 }

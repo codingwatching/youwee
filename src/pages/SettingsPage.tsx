@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getVersion } from '@tauri-apps/api/app';
+import { invoke } from '@tauri-apps/api/core';
+import { open } from '@tauri-apps/plugin-dialog';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useDependencies } from '@/contexts/DependenciesContext';
 import { useDownload } from '@/contexts/DownloadContext';
@@ -8,8 +10,8 @@ import { useHistory } from '@/contexts/HistoryContext';
 import { useAI } from '@/contexts/AIContext';
 import { themes } from '@/lib/themes';
 import type { ThemeName } from '@/lib/themes';
-import type { AIProvider, SummaryStyle } from '@/lib/types';
-import { LANGUAGE_OPTIONS, DEFAULT_TRANSCRIPT_LANGUAGES } from '@/lib/types';
+import type { AIProvider, SummaryStyle, BrowserType, CookieMode, BrowserProfile } from '@/lib/types';
+import { LANGUAGE_OPTIONS, DEFAULT_TRANSCRIPT_LANGUAGES, BROWSER_OPTIONS } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { 
   Check, 
@@ -37,6 +39,9 @@ import {
   Heart,
   FileText,
   Bug,
+  KeyRound,
+  Globe,
+  FolderOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -62,17 +67,71 @@ const themeGradients: Record<ThemeName, string> = {
 
 export function SettingsPage() {
   const { theme, setTheme, mode, setMode } = useTheme();
-  const { settings, updateAutoCheckUpdate, updateUseBunRuntime, updateUseActualPlayerJs } = useDownload();
+  const { settings, cookieSettings, updateAutoCheckUpdate, updateUseBunRuntime, updateUseActualPlayerJs, updateCookieSettings } = useDownload();
   const { maxEntries, setMaxEntries, totalCount } = useHistory();
   const updater = useUpdater();
   const ai = useAI();
   const [appVersion, setAppVersion] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
+  const [detectedBrowsers, setDetectedBrowsers] = useState<{ name: string; browser_type: string }[]>([]);
+  const [isDetectingBrowsers, setIsDetectingBrowsers] = useState(false);
+  const [browserProfiles, setBrowserProfiles] = useState<BrowserProfile[]>([]);
+  const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
+  const [useCustomProfile, setUseCustomProfile] = useState(false);
 
   // Get app version from Tauri
   useEffect(() => {
     getVersion().then(setAppVersion);
   }, []);
+
+  // Detect installed browsers on mount
+  useEffect(() => {
+    const detectBrowsers = async () => {
+      setIsDetectingBrowsers(true);
+      try {
+        const browsers = await invoke<{ name: string; browser_type: string }[]>('detect_installed_browsers');
+        setDetectedBrowsers(browsers);
+        // Auto-select first detected browser if no browser is set
+        if (browsers.length > 0 && !cookieSettings.browser) {
+          updateCookieSettings({ browser: browsers[0].browser_type as BrowserType });
+        }
+      } catch (error) {
+        console.error('Failed to detect browsers:', error);
+      } finally {
+        setIsDetectingBrowsers(false);
+      }
+    };
+    detectBrowsers();
+  }, []);
+
+  // Load browser profiles when browser changes
+  useEffect(() => {
+    const loadProfiles = async () => {
+      if (!cookieSettings.browser || cookieSettings.browser === 'safari') {
+        setBrowserProfiles([]);
+        return;
+      }
+      
+      setIsLoadingProfiles(true);
+      try {
+        const profiles = await invoke<BrowserProfile[]>('get_browser_profiles', { browser: cookieSettings.browser });
+        setBrowserProfiles(profiles);
+        // Auto-select first profile if current profile is not in list
+        const currentProfile = cookieSettings.browserProfile || '';
+        const profileExists = profiles.some(p => p.folder_name === currentProfile);
+        if (profiles.length > 0 && !profileExists) {
+          updateCookieSettings({ browserProfile: profiles[0].folder_name });
+          setUseCustomProfile(false);
+        }
+      } catch (error) {
+        console.error('Failed to load browser profiles:', error);
+        setBrowserProfiles([]);
+      } finally {
+        setIsLoadingProfiles(false);
+      }
+    };
+    loadProfiles();
+  }, [cookieSettings.browser]);
   
   const {
     ytdlpInfo,
@@ -458,6 +517,240 @@ export function SettingsPage() {
                 Learn more about this issue
                 <ExternalLink className="w-3 h-3" />
               </a>
+            </div>
+
+            {/* Video Authentication Section */}
+            <div className="p-4 rounded-xl bg-muted/30">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                  <KeyRound className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <span className="font-medium">Video Authentication</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Access private, age-restricted, or members-only videos
+                  </p>
+                </div>
+              </div>
+              
+              {/* Cookie Mode Selection */}
+              <div className="mt-3 pt-3 border-t border-border/50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium">Cookie Source</p>
+                    <p className="text-xs text-muted-foreground">Import cookies for authenticated downloads</p>
+                  </div>
+                  <Select
+                    value={cookieSettings.mode}
+                    onValueChange={(v) => updateCookieSettings({ mode: v as CookieMode })}
+                  >
+                    <SelectTrigger className="w-[140px] h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="off">Off</SelectItem>
+                      <SelectItem value="browser">From Browser</SelectItem>
+                      <SelectItem value="file">From File</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              {/* Browser Selection (when mode is 'browser') */}
+              {cookieSettings.mode === 'browser' && (
+                <div className="mt-3 pt-3 border-t border-border/50 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium">Browser</p>
+                      <p className="text-xs text-muted-foreground">
+                        {isDetectingBrowsers ? 'Detecting...' : `${detectedBrowsers.length} browser(s) detected`}
+                      </p>
+                    </div>
+                    <Select
+                      value={cookieSettings.browser || ''}
+                      onValueChange={(v) => updateCookieSettings({ browser: v as BrowserType })}
+                      disabled={isDetectingBrowsers}
+                    >
+                      <SelectTrigger className="w-[160px] h-8">
+                        <SelectValue placeholder="Select browser" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {detectedBrowsers.map((browser) => (
+                          <SelectItem key={browser.browser_type} value={browser.browser_type}>
+                            <div className="flex items-center gap-2">
+                              <Globe className="w-3 h-3" />
+                              {browser.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                        {/* Show all options if not detected */}
+                        {detectedBrowsers.length === 0 && BROWSER_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {/* Browser Profile - hidden for Safari */}
+                  {cookieSettings.browser !== 'safari' && (
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-medium">Profile</p>
+                        <p className="text-xs text-muted-foreground">
+                          {isLoadingProfiles ? 'Loading...' : 
+                           browserProfiles.length > 0 ? `${browserProfiles.length} profile(s) found` : 
+                           'No profiles detected'}
+                        </p>
+                      </div>
+                      {!useCustomProfile && browserProfiles.length > 0 ? (
+                        <div className="flex items-center gap-1">
+                          <Select
+                            value={cookieSettings.browserProfile || ''}
+                            onValueChange={(v) => {
+                              if (v === '__custom__') {
+                                setUseCustomProfile(true);
+                                updateCookieSettings({ browserProfile: '' });
+                              } else {
+                                updateCookieSettings({ browserProfile: v });
+                              }
+                            }}
+                            disabled={isLoadingProfiles}
+                          >
+                            <SelectTrigger className="w-[200px] h-8">
+                              <SelectValue placeholder="Select profile" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {browserProfiles.map((profile) => (
+                                <SelectItem key={profile.folder_name} value={profile.folder_name}>
+                                  {profile.folder_name === profile.display_name 
+                                    ? profile.folder_name 
+                                    : `${profile.folder_name} (${profile.display_name})`}
+                                </SelectItem>
+                              ))}
+                              <SelectItem value="__custom__">
+                                <span className="text-muted-foreground">Custom...</span>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="text"
+                            value={cookieSettings.browserProfile || ''}
+                            onChange={(e) => updateCookieSettings({ browserProfile: e.target.value })}
+                            placeholder="Profile name"
+                            className="w-[160px] h-8 text-xs"
+                          />
+                          {browserProfiles.length > 0 && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 px-2"
+                              onClick={() => {
+                                setUseCustomProfile(false);
+                                if (browserProfiles.length > 0) {
+                                  updateCookieSettings({ browserProfile: browserProfiles[0].folder_name });
+                                }
+                              }}
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* macOS Permission Warning */}
+                  {navigator.platform.includes('Mac') && (
+                    <div className="flex items-start gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                      <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 text-xs">
+                        <p className="font-medium text-amber-500">Full Disk Access Required</p>
+                        <p className="text-muted-foreground mt-0.5">
+                          macOS requires Full Disk Access permission to read browser cookies.
+                          For debug mode, grant access to <strong>Terminal</strong> or your IDE.
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs gap-1.5"
+                            onClick={async () => {
+                              try {
+                                await invoke('open_macos_privacy_settings');
+                              } catch (error) {
+                                console.error('Failed to open settings:', error);
+                              }
+                            }}
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            Open Settings
+                          </Button>
+                          <a 
+                            href="https://support.apple.com/en-vn/guide/mac-help/mchld5a35146/mac"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline"
+                          >
+                            Learn more
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* File Selection (when mode is 'file') */}
+              {cookieSettings.mode === 'file' && (
+                <div className="mt-3 pt-3 border-t border-border/50 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium">Cookie File</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {cookieSettings.filePath || 'No file selected'}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          const file = await open({
+                            multiple: false,
+                            filters: [{ name: 'Cookie files', extensions: ['txt'] }],
+                            title: 'Select cookies.txt file',
+                          });
+                          if (file) {
+                            updateCookieSettings({ filePath: file as string });
+                          }
+                        } catch (error) {
+                          console.error('Failed to select cookie file:', error);
+                        }
+                      }}
+                      className="gap-1.5"
+                    >
+                      <FolderOpen className="w-3.5 h-3.5" />
+                      Browse
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Use Netscape cookie format. Export from browser extensions like{' '}
+                    <a 
+                      href="https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      Get cookies.txt LOCALLY
+                    </a>
+                  </p>
+                </div>
+              )}
             </div>
           </section>
 

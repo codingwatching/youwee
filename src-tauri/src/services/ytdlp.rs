@@ -76,13 +76,28 @@ pub fn parse_ytdlp_error(stderr: &str) -> Option<String> {
     }
     
     // Video unavailable
-    if stderr_lower.contains("video unavailable") || stderr_lower.contains("private video") {
-        return Some("This video is unavailable or private.".to_string());
+    if stderr_lower.contains("video unavailable") {
+        return Some("This video is unavailable.".to_string());
+    }
+    
+    // Private video - needs authentication
+    if stderr_lower.contains("private video") {
+        return Some("This video is private. Please enable authentication in Settings → Video Authentication to access it.".to_string());
     }
     
     // Age restricted
     if stderr_lower.contains("age-restricted") || stderr_lower.contains("sign in to confirm your age") {
-        return Some("This video is age-restricted and requires sign-in.".to_string());
+        return Some("This video is age-restricted. Please enable authentication in Settings → Video Authentication to access it.".to_string());
+    }
+    
+    // Members-only / subscription required
+    if stderr_lower.contains("members-only") || stderr_lower.contains("member-only") || stderr_lower.contains("join this channel") {
+        return Some("This video is for channel members only. Please enable authentication in Settings → Video Authentication with a subscribed account.".to_string());
+    }
+    
+    // Login required (generic)
+    if stderr_lower.contains("sign in") || stderr_lower.contains("login required") || stderr_lower.contains("cookies") && stderr_lower.contains("required") {
+        return Some("This video requires sign-in. Please enable authentication in Settings → Video Authentication to access it.".to_string());
     }
     
     // Geographic restriction
@@ -117,18 +132,25 @@ pub async fn run_ytdlp_json(app: &AppHandle, args: &[&str]) -> Result<String, St
                 .map_err(|e| format!("Failed to start yt-dlp: {}", e))?;
             
             let mut output = String::new();
+            let mut stderr_output = String::new();
             
             while let Some(event) = rx.recv().await {
                 match event {
                     CommandEvent::Stdout(bytes) => {
                         output.push_str(&String::from_utf8_lossy(&bytes));
                     }
-                    CommandEvent::Stderr(_) => {}
+                    CommandEvent::Stderr(bytes) => {
+                        stderr_output.push_str(&String::from_utf8_lossy(&bytes));
+                    }
                     CommandEvent::Error(err) => {
                         return Err(format!("Process error: {}", err));
                     }
                     CommandEvent::Terminated(status) => {
                         if status.code != Some(0) {
+                            // Parse stderr for user-friendly error
+                            if let Some(parsed_error) = parse_ytdlp_error(&stderr_output) {
+                                return Err(parsed_error);
+                            }
                             return Err("yt-dlp command failed".to_string());
                         }
                     }
@@ -149,6 +171,11 @@ pub async fn run_ytdlp_json(app: &AppHandle, args: &[&str]) -> Result<String, St
                 .map_err(|e| format!("Failed to run yt-dlp: {}", e))?;
             
             if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                // Parse stderr for user-friendly error
+                if let Some(parsed_error) = parse_ytdlp_error(&stderr) {
+                    return Err(parsed_error);
+                }
                 return Err("yt-dlp command failed".to_string());
             }
             
@@ -238,4 +265,79 @@ pub fn verify_sha256(data: &[u8], expected_hash: &str) -> bool {
     let result = hasher.finalize();
     let computed_hash = hex::encode(result);
     computed_hash.eq_ignore_ascii_case(expected_hash)
+}
+
+/// Build cookie args for yt-dlp based on cookie settings
+pub fn build_cookie_args(
+    cookie_mode: Option<&str>,
+    cookie_browser: Option<&str>,
+    cookie_browser_profile: Option<&str>,
+    cookie_file_path: Option<&str>,
+) -> Vec<String> {
+    let mut args = Vec::new();
+    
+    let mode = cookie_mode.unwrap_or("off");
+    match mode {
+        "browser" => {
+            if let Some(browser) = cookie_browser {
+                let mut cookie_arg = browser.to_string();
+                if let Some(profile) = cookie_browser_profile {
+                    if !profile.is_empty() {
+                        cookie_arg = format!("{}:{}", browser, profile);
+                    }
+                }
+                args.push("--cookies-from-browser".to_string());
+                args.push(cookie_arg);
+            }
+        }
+        "file" => {
+            if let Some(file_path) = cookie_file_path {
+                if !file_path.is_empty() {
+                    args.push("--cookies".to_string());
+                    args.push(file_path.to_string());
+                }
+            }
+        }
+        _ => {}
+    }
+    
+    args
+}
+
+/// Helper to run yt-dlp command with cookie support and get JSON output
+pub async fn run_ytdlp_json_with_cookies(
+    app: &AppHandle,
+    base_args: &[&str],
+    cookie_mode: Option<&str>,
+    cookie_browser: Option<&str>,
+    cookie_browser_profile: Option<&str>,
+    cookie_file_path: Option<&str>,
+) -> Result<String, String> {
+    // Build full args with cookies
+    let cookie_args = build_cookie_args(cookie_mode, cookie_browser, cookie_browser_profile, cookie_file_path);
+    let mut args: Vec<String> = base_args.iter().map(|s| s.to_string()).collect();
+    args.extend(cookie_args);
+    
+    let args_ref: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+    
+    run_ytdlp_json(app, &args_ref).await
+}
+
+/// Helper to run yt-dlp command with cookie support and get output with stderr
+pub async fn run_ytdlp_with_stderr_and_cookies(
+    app: &AppHandle,
+    base_args: &[&str],
+    cookie_mode: Option<&str>,
+    cookie_browser: Option<&str>,
+    cookie_browser_profile: Option<&str>,
+    cookie_file_path: Option<&str>,
+) -> Result<YtdlpOutput, String> {
+    // Build full args with cookies
+    let cookie_args = build_cookie_args(cookie_mode, cookie_browser, cookie_browser_profile, cookie_file_path);
+    let mut args: Vec<String> = base_args.iter().map(|s| s.to_string()).collect();
+    args.extend(cookie_args);
+    
+    let args_ref: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+    
+    run_ytdlp_with_stderr(app, &args_ref).await
 }
