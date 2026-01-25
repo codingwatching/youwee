@@ -26,6 +26,7 @@ export function ProcessingPage() {
     videoMetadata: metadata,
     isLoadingVideo,
     isGeneratingPreview,
+    isUsingPreview,
     selection,
     isProcessing,
     progress,
@@ -95,6 +96,7 @@ export function ProcessingPage() {
               metadata={metadata}
               isLoadingVideo={isLoadingVideo}
               isGeneratingPreview={isGeneratingPreview}
+              isUsingPreview={isUsingPreview}
               isProcessing={isProcessing}
               progress={progress}
               selection={selection}

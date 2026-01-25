@@ -13,6 +13,7 @@ import {
   VolumeX,
   Film,
   Loader2,
+  Eye,
 } from 'lucide-react';
 import type { TimelineSelection, VideoMetadata, ProcessingProgress } from '@/lib/types';
 
@@ -22,6 +23,7 @@ export interface VideoPlayerProps {
   metadata: VideoMetadata | null;
   isLoadingVideo: boolean;
   isGeneratingPreview: boolean;
+  isUsingPreview: boolean;
   isProcessing: boolean;
   progress: ProcessingProgress | null;
   selection: TimelineSelection | null;
@@ -35,6 +37,7 @@ export const VideoPlayer = memo(function VideoPlayer({
   metadata,
   isLoadingVideo,
   isGeneratingPreview,
+  isUsingPreview,
   isProcessing,
   progress,
   selection,
@@ -179,9 +182,22 @@ export const VideoPlayer = memo(function VideoPlayer({
             {videoPath && (
               <>
                 <div className="flex-1 min-w-0 mr-3">
-                  <p className="text-sm font-medium text-white truncate">
-                    {videoPath.split('/').pop()}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-white truncate">
+                      {videoPath.split('/').pop()}
+                    </p>
+                    {isUsingPreview && (
+                      <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 flex-shrink-0">
+                        <Eye className="w-3 h-3 text-amber-400" />
+                        <span className="text-[10px] font-medium text-amber-400">Preview</span>
+                      </div>
+                    )}
+                  </div>
+                  {isUsingPreview && (
+                    <p className="text-[10px] text-white/50 mt-0.5">
+                      Lower quality for editing - output uses original
+                    </p>
+                  )}
                 </div>
                 <Button
                   variant="ghost"

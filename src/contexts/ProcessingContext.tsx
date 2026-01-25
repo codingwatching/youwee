@@ -23,6 +23,7 @@ interface ProcessingContextValue {
   videoMetadata: VideoMetadata | null;
   isLoadingVideo: boolean;
   isGeneratingPreview: boolean;
+  isUsingPreview: boolean;
   videoError: string | null;
   duration: number;
   
@@ -97,6 +98,7 @@ export function ProcessingProvider({ children }: { children: ReactNode }) {
   const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(null);
   const [isLoadingVideo, setIsLoadingVideo] = useState(false);
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
+  const [isUsingPreview, setIsUsingPreview] = useState(false);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [duration, setDuration] = useState(0);
   
@@ -214,6 +216,7 @@ export function ProcessingProvider({ children }: { children: ReactNode }) {
     setGeneratedCommand(null);
     setMessages([]);
     setCompletedOutputPath(null);
+    setIsUsingPreview(false);
     
     try {
       const metadata = await invoke<VideoMetadata>('get_video_metadata', { path });
@@ -234,7 +237,8 @@ export function ProcessingProvider({ children }: { children: ReactNode }) {
         if (existingPreview) {
           const previewSrc = await loadVideoAsBlob(existingPreview);
           setVideoSrc(previewSrc);
-          addMessage('system', 'Ready');
+          setIsUsingPreview(true);
+          addMessage('system', 'Preview ready - output will use original quality');
         } else {
           setIsGeneratingPreview(true);
           try {
@@ -244,10 +248,12 @@ export function ProcessingProvider({ children }: { children: ReactNode }) {
             });
             const previewSrc = await loadVideoAsBlob(previewPath);
             setVideoSrc(previewSrc);
-            addMessage('system', 'Ready');
+            setIsUsingPreview(true);
+            addMessage('system', 'Preview ready - output will use original quality');
           } catch (previewErr) {
             const originalSrc = await loadVideoAsBlob(path);
             setVideoSrc(originalSrc);
+            setIsUsingPreview(false);
             addMessage('system', `Preview failed: ${previewErr}`);
           } finally {
             setIsGeneratingPreview(false);
@@ -624,6 +630,7 @@ export function ProcessingProvider({ children }: { children: ReactNode }) {
         videoMetadata,
         isLoadingVideo,
         isGeneratingPreview,
+        isUsingPreview,
         videoError,
         duration,
         currentTime,
