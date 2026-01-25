@@ -15,11 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Real-time FFmpeg progress tracking with cancel support
 - FFmpeg update checker - check for new versions from GitHub releases
 - Bun runtime update checker - check for new versions from GitHub releases
+- **Post-processing settings** - Embed metadata and thumbnails into downloaded files
+  - Embed Metadata: Add title, artist, description to files (enabled by default)
+  - Embed Thumbnail: Add cover art/thumbnail to files (enabled by default, requires FFmpeg)
 
 ### Fixed
 - AI error message "AI Features is disabled" no longer shows when download fails (Windows)
 - Summarize button now hidden when AI features disabled
 - Summarize button hidden on failed download items to prevent confusion
+- Embed thumbnail now converts to JPG for better MP4 compatibility (fixes "Encoder not found" error)
 
 
 ## [0.4.1] - 2026-01-24

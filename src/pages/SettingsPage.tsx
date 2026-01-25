@@ -67,7 +67,7 @@ const themeGradients: Record<ThemeName, string> = {
 
 export function SettingsPage() {
   const { theme, setTheme, mode, setMode } = useTheme();
-  const { settings, cookieSettings, updateAutoCheckUpdate, updateUseBunRuntime, updateUseActualPlayerJs, updateCookieSettings } = useDownload();
+  const { settings, cookieSettings, updateAutoCheckUpdate, updateUseBunRuntime, updateUseActualPlayerJs, updateCookieSettings, updateEmbedMetadata, updateEmbedThumbnail } = useDownload();
   const { maxEntries, setMaxEntries, totalCount } = useHistory();
   const updater = useUpdater();
   const ai = useAI();
@@ -1174,6 +1174,48 @@ export function SettingsPage() {
                 </div>
               </div>
             )}
+          </section>
+
+          {/* Divider */}
+          <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+
+          {/* Post-processing Section */}
+          <section className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-lg shadow-emerald-500/20">
+                <Film className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold">Post-processing</h2>
+                <p className="text-xs text-muted-foreground">Embed metadata and thumbnails into downloaded files</p>
+              </div>
+            </div>
+
+            <div className="space-y-3 pl-12">
+              {/* Embed Metadata */}
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-sm font-medium">Embed Metadata</p>
+                  <p className="text-xs text-muted-foreground">Add title, artist, description to files</p>
+                </div>
+                <Switch
+                  checked={settings.embedMetadata}
+                  onCheckedChange={updateEmbedMetadata}
+                />
+              </div>
+
+              {/* Embed Thumbnail */}
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-sm font-medium">Embed Thumbnail</p>
+                  <p className="text-xs text-muted-foreground">Add cover art/thumbnail (requires FFmpeg)</p>
+                </div>
+                <Switch
+                  checked={settings.embedThumbnail}
+                  onCheckedChange={updateEmbedThumbnail}
+                />
+              </div>
+            </div>
           </section>
 
           {/* Divider */}

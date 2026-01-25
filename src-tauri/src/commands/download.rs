@@ -64,6 +64,9 @@ pub async fn download_video(
     cookie_browser: Option<String>,
     cookie_browser_profile: Option<String>,
     cookie_file_path: Option<String>,
+    // Embed settings
+    embed_metadata: Option<bool>,
+    embed_thumbnail: Option<bool>,
 ) -> Result<(), String> {
     CANCEL_FLAG.store(false, Ordering::SeqCst);
     
@@ -184,6 +187,17 @@ pub async fn download_video(
     } else {
         args.push("--merge-output-format".to_string());
         args.push(format.clone());
+    }
+    
+    // Embed metadata and thumbnail
+    if embed_metadata.unwrap_or(false) {
+        args.push("--embed-metadata".to_string());
+    }
+    if embed_thumbnail.unwrap_or(false) {
+        args.push("--embed-thumbnail".to_string());
+        // Convert thumbnail to jpg for better compatibility with MP4 container
+        args.push("--convert-thumbnails".to_string());
+        args.push("jpg".to_string());
     }
     
     args.push(url.clone());

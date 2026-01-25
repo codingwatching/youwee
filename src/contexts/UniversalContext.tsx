@@ -17,6 +17,7 @@ import type {
 
 const STORAGE_KEY = 'youwee-universal-settings';
 const COOKIE_STORAGE_KEY = 'youwee-cookie-settings';
+const DOWNLOAD_STORAGE_KEY = 'youwee-settings';
 
 // Simplified settings for Universal downloads (no codec, subtitles, playlist)
 export interface UniversalSettings {
@@ -51,6 +52,23 @@ function loadCookieSettings(): CookieSettings {
     console.error('Failed to load cookie settings:', e);
   }
   return { mode: 'off' };
+}
+
+// Load embed settings from main download settings
+function loadEmbedSettings(): { embedMetadata: boolean; embedThumbnail: boolean } {
+  try {
+    const saved = localStorage.getItem(DOWNLOAD_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return {
+        embedMetadata: parsed.embedMetadata !== false, // Default true
+        embedThumbnail: parsed.embedThumbnail !== false, // Default true
+      };
+    }
+  } catch (e) {
+    console.error('Failed to load embed settings:', e);
+  }
+  return { embedMetadata: true, embedThumbnail: true };
 }
 
 // Save settings to localStorage
@@ -300,6 +318,7 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
         const itemSettings = item.settings as ItemUniversalSettings | undefined;
         const logStderr = localStorage.getItem('youwee_log_stderr') !== 'false';
         const cookieSettings = loadCookieSettings();
+        const embedSettings = loadEmbedSettings();
         
         await invoke('download_video', {
           id: item.id,
@@ -322,6 +341,9 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
           cookieBrowser: cookieSettings.browser || null,
           cookieBrowserProfile: cookieSettings.browserProfile || null,
           cookieFilePath: cookieSettings.filePath || null,
+          // Post-processing settings (from main download settings)
+          embedMetadata: embedSettings.embedMetadata,
+          embedThumbnail: embedSettings.embedThumbnail,
         });
         
         setItems(items => items.map(i => 

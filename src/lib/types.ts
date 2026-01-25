@@ -75,6 +75,9 @@ export interface DownloadSettings {
   // YouTube specific settings
   useBunRuntime: boolean; // Use Bun runtime for YouTube downloads (fixes 360p issue)
   useActualPlayerJs: boolean; // Use actual player.js version for YouTube (fixes some download issues)
+  // Post-processing settings
+  embedMetadata: boolean; // Embed metadata (title, artist, description) into downloaded files
+  embedThumbnail: boolean; // Embed thumbnail as cover art (requires FFmpeg)
 }
 
 export interface DownloadProgress {

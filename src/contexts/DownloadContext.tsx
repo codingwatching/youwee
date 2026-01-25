@@ -76,6 +76,8 @@ function saveSettings(settings: DownloadSettings) {
       subtitleFormat: settings.subtitleFormat,
       useBunRuntime: settings.useBunRuntime,
       useActualPlayerJs: settings.useActualPlayerJs,
+      embedMetadata: settings.embedMetadata,
+      embedThumbnail: settings.embedThumbnail,
     }));
   } catch (e) {
     console.error('Failed to save settings:', e);
@@ -123,6 +125,9 @@ interface DownloadContextType {
   updateUseActualPlayerJs: (enabled: boolean) => void;
   // Cookie settings
   updateCookieSettings: (updates: Partial<CookieSettings>) => void;
+  // Post-processing settings
+  updateEmbedMetadata: (enabled: boolean) => void;
+  updateEmbedThumbnail: (enabled: boolean) => void;
 }
 
 const DownloadContext = createContext<DownloadContextType | null>(null);
@@ -153,6 +158,9 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
       // YouTube specific settings
       useBunRuntime: saved.useBunRuntime || false,
       useActualPlayerJs: saved.useActualPlayerJs || false,
+      // Post-processing settings
+      embedMetadata: saved.embedMetadata !== false, // Default to true
+      embedThumbnail: saved.embedThumbnail !== false, // Default to true
     };
   });
   
@@ -530,6 +538,9 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
           cookieBrowser: cookieSettings.browser || null,
           cookieBrowserProfile: cookieSettings.browserProfile || null,
           cookieFilePath: cookieSettings.filePath || null,
+          // Post-processing settings
+          embedMetadata: settings.embedMetadata,
+          embedThumbnail: settings.embedThumbnail,
           // No history_id for new downloads
           historyId: null,
         });
@@ -714,6 +725,22 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const updateEmbedMetadata = useCallback((embedMetadata: boolean) => {
+    setSettings(s => {
+      const newSettings = { ...s, embedMetadata };
+      saveSettings(newSettings);
+      return newSettings;
+    });
+  }, []);
+
+  const updateEmbedThumbnail = useCallback((embedThumbnail: boolean) => {
+    setSettings(s => {
+      const newSettings = { ...s, embedThumbnail };
+      saveSettings(newSettings);
+      return newSettings;
+    });
+  }, []);
+
   const value: DownloadContextType = {
     items,
     isDownloading,
@@ -746,6 +773,8 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     updateUseBunRuntime,
     updateUseActualPlayerJs,
     updateCookieSettings,
+    updateEmbedMetadata,
+    updateEmbedThumbnail,
   };
 
   return (
