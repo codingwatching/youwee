@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **AI Video Processing page** - Edit videos using natural language prompts
+- AI-powered FFmpeg command generation (supports Gemini, OpenAI, Anthropic)
+- Video player with YouTube-style controls overlay
+- Chat interface with message history for iterative editing
+- Real-time FFmpeg progress tracking with cancel support
+
+### Fixed
+
+
 ## [0.4.1] - 2026-01-24
 
 ### Added
