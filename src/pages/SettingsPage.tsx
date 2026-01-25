@@ -765,7 +765,7 @@ export function SettingsPage() {
               </div>
               <div className="flex-1">
                 <h2 className="text-base font-semibold">AI Features</h2>
-                <p className="text-xs text-muted-foreground">Smart video summarization</p>
+                <p className="text-xs text-muted-foreground">Smart video summarization, post-processing automation</p>
               </div>
               <Switch
                 checked={ai.config.enabled}

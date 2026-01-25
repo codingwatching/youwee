@@ -67,9 +67,13 @@ export function QueueItem({
   const taskId = `queue-${item.id}`;
   const task = ai.getSummaryTask(taskId);
   
+  // Only show AI features if enabled
+  const aiEnabled = ai.config.enabled;
+  
   // Local summary state (from task or regenerated)
   const summary = task?.status === 'completed' ? task.summary : null;
-  const summaryError = task?.status === 'error' ? task.error : null;
+  // Don't show AI errors if AI is disabled (user didn't explicitly use AI)
+  const summaryError = aiEnabled && task?.status === 'error' ? task.error : null;
   const isGenerating = task?.status === 'fetching' || task?.status === 'generating';
   const generatingStatus = task?.status === 'fetching' ? 'fetching' : task?.status === 'generating' ? 'generating' : null;
 
@@ -300,8 +304,8 @@ export function QueueItem({
             </span>
           )}
           
-          {/* AI Summarize Button - Always show when not downloading/generating */}
-          {!isActive && !summary && !isGenerating && !summaryError && (
+          {/* AI Summarize Button - Only show when AI enabled and not in error/active state */}
+          {aiEnabled && !isActive && !isError && !summary && !isGenerating && !summaryError && (
             <button
               onClick={handleGenerateSummary}
               className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20 transition-colors font-medium"

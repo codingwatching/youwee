@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Real-time FFmpeg progress tracking with cancel support
 
 ### Fixed
+- AI error message "AI Features is disabled" no longer shows when download fails (Windows)
+- Summarize button now hidden when AI features disabled
+- Summarize button hidden on failed download items to prevent confusion
 
 
 ## [0.4.1] - 2026-01-24

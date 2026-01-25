@@ -95,8 +95,10 @@ export function HistoryItem({ entry }: HistoryItemProps) {
   
   // Get background task status from context
   const task = ai.getSummaryTask(entry.id);
+  const aiEnabled = ai.config.enabled;
   const isGeneratingSummary = task?.status === 'fetching' || task?.status === 'generating';
-  const summaryError = task?.status === 'error' ? task.error : null;
+  // Don't show AI errors if AI is disabled (user didn't explicitly use AI)
+  const summaryError = aiEnabled && task?.status === 'error' ? task.error : null;
   
   // Update local summary when task completes
   useEffect(() => {
@@ -152,10 +154,8 @@ export function HistoryItem({ entry }: HistoryItemProps) {
   }, [localSummary]);
 
   const handleGenerateSummary = useCallback(() => {
-    // Check if AI is enabled - if not, start task anyway to show error
+    // Don't do anything if AI is disabled
     if (!ai.config.enabled) {
-      // Manually set error state by creating a fake task
-      ai.startSummaryTask(entry.id, entry.url);
       return;
     }
     // Start background task - this will continue even if component unmounts
@@ -292,7 +292,7 @@ export function HistoryItem({ entry }: HistoryItemProps) {
                         </div>
                       </div>
                     </div>
-                ) : (
+                ) : aiEnabled ? (
                   <button
                     onClick={handleGenerateSummary}
                     disabled={isGeneratingSummary}
@@ -313,7 +313,7 @@ export function HistoryItem({ entry }: HistoryItemProps) {
                       </>
                     )}
                   </button>
-                )}
+                ) : null}
                 {summaryError && (
                   <p className="text-xs text-destructive mt-1">{summaryError}</p>
                 )}
