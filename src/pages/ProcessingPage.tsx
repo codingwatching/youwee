@@ -380,7 +380,7 @@ function HistoryDialog({ open, onOpenChange, history, onDelete }: HistoryDialogP
           {/* Left: Job List */}
           <div className="w-80 border-r flex flex-col min-h-0 overflow-hidden">
             <ScrollArea className="flex-1">
-              <div className="p-2 space-y-1">
+              <div className="p-3 space-y-1">
                 {history.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mb-3">
@@ -399,34 +399,18 @@ function HistoryDialog({ open, onOpenChange, history, onDelete }: HistoryDialogP
                         selectedJob?.id === job.id && "bg-muted"
                       )}
                     >
-                      <div className="flex items-start gap-2">
-                        <div className={cn(
-                          "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5",
-                          job.status === 'completed' && "bg-green-500/10",
-                          job.status === 'failed' && "bg-red-500/10",
-                          job.status === 'cancelled' && "bg-yellow-500/10"
-                        )}>
-                          {job.status === 'completed' ? (
-                            <Check className="w-4 h-4 text-green-500" />
-                          ) : job.status === 'failed' ? (
-                            <AlertCircle className="w-4 h-4 text-red-500" />
-                          ) : (
-                            <Clock className="w-4 h-4 text-yellow-500" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium break-words">
-                            {job.input_path.split('/').pop()}
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <p className="text-sm font-medium break-all">
+                          {job.input_path.split('/').pop()}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {formatDate(job.created_at)}
+                        </p>
+                        {job.user_prompt && (
+                          <p className="text-xs text-muted-foreground/70 mt-1 break-all line-clamp-3">
+                            "{job.user_prompt}"
                           </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {formatDate(job.created_at)}
-                          </p>
-                          {job.user_prompt && (
-                            <p className="text-xs text-muted-foreground/70 mt-1 break-words line-clamp-3">
-                              "{job.user_prompt}"
-                            </p>
-                          )}
-                        </div>
+                        )}
                       </div>
                     </button>
                   ))
