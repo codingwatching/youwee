@@ -291,11 +291,9 @@ If the request is NOT related to video/audio processing (e.g., general chat, que
 3. Use -ss BEFORE -i for fast seeking when cutting
 4. Output to same directory with descriptive suffix (e.g., _cut, _720p, _audio)
 5. Use hardware acceleration when beneficial (-hwaccel auto)
-6. For audio extraction: use AAC codec (-c:a aac) with .m4a extension, or copy codec if source is already AAC. DO NOT use libmp3lame (not available)
-7. Include -progress pipe:2 for progress tracking (outputs to stderr)
-8. IMPORTANT: Use the exact full path provided above for input and output files
-9. Wrap file paths in double quotes
-10. Available encoders: libx264, libx265, libvpx, libaom, libopus, aac. DO NOT use libmp3lame.
+6. Include -progress pipe:2 for progress tracking (outputs to stderr)
+7. IMPORTANT: Use the exact full path provided above for input and output files
+8. Wrap file paths in double quotes
 
 ## Response Format (JSON only, no markdown outside)
 For valid video requests:
