@@ -48,6 +48,7 @@ import {
   MessageSquare,
   Calendar,
   Trash2,
+  Copy,
 } from 'lucide-react';
 import type { TimelineSelection, VideoMetadata, ProcessingProgress, ProcessingJob } from '@/lib/types';
 
@@ -329,6 +330,17 @@ interface HistoryDialogProps {
 
 function HistoryDialog({ open, onOpenChange, history, onDelete }: HistoryDialogProps) {
   const [selectedJob, setSelectedJob] = useState<ProcessingJob | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const copyCommand = useCallback(async (command: string) => {
+    try {
+      await navigator.clipboard.writeText(command);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  }, []);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -402,15 +414,15 @@ function HistoryDialog({ open, onOpenChange, history, onDelete }: HistoryDialogP
                             <Clock className="w-4 h-4 text-yellow-500" />
                           )}
                         </div>
-                        <div className="flex-1 min-w-0 overflow-hidden">
-                          <p className="text-sm font-medium truncate">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium break-words">
                             {job.input_path.split('/').pop()}
                           </p>
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {formatDate(job.created_at)}
                           </p>
                           {job.user_prompt && (
-                            <p className="text-xs text-muted-foreground/70 mt-1 line-clamp-2">
+                            <p className="text-xs text-muted-foreground/70 mt-1 break-words line-clamp-3">
                               "{job.user_prompt}"
                             </p>
                           )}
@@ -509,9 +521,29 @@ function HistoryDialog({ open, onOpenChange, history, onDelete }: HistoryDialogP
 
                   {/* FFmpeg Command */}
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm font-medium">
-                      <Terminal className="w-4 h-4 text-orange-500" />
-                      FFmpeg Command
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <Terminal className="w-4 h-4 text-orange-500" />
+                        FFmpeg Command
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1.5 text-xs"
+                        onClick={() => copyCommand(selectedJob.ffmpeg_command)}
+                      >
+                        {copied ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-green-500" />
+                            Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            Copy
+                          </>
+                        )}
+                      </Button>
                     </div>
                     <div className="p-3 rounded-lg bg-zinc-900 border border-zinc-800 overflow-x-auto">
                       <code className="text-xs text-zinc-300 break-all whitespace-pre-wrap font-mono block">
