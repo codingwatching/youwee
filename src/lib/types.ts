@@ -209,7 +209,7 @@ export type HistoryFilter =
 export type HistorySort = 'recent' | 'oldest' | 'title' | 'size';
 
 // AI types
-export type AIProvider = 'gemini' | 'openai' | 'ollama' | 'proxy';
+export type AIProvider = 'gemini' | 'openai' | 'deepseek' | 'qwen' | 'ollama' | 'proxy';
 export type SummaryStyle = 'short' | 'concise' | 'detailed';
 
 // Cookie/Authentication types

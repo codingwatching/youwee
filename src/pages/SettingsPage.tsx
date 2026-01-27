@@ -907,19 +907,20 @@ export function SettingsPage() {
                   </div>
                   <Select
                     value={ai.config.provider}
-                    onValueChange={(v) =>
+                    onValueChange={(v) => {
+                      const defaultModels: Record<string, string> = {
+                        gemini: 'gemini-2.0-flash',
+                        openai: 'gpt-4o-mini',
+                        deepseek: 'deepseek-chat',
+                        qwen: 'qwen-turbo',
+                        ollama: 'llama3.2',
+                        proxy: 'gpt-4o-mini',
+                      };
                       ai.updateConfig({
                         provider: v as AIProvider,
-                        model:
-                          v === 'gemini'
-                            ? 'gemini-2.0-flash'
-                            : v === 'openai'
-                              ? 'gpt-4o-mini'
-                              : v === 'proxy'
-                                ? 'gpt-4o-mini'
-                                : 'llama3.2',
-                      })
-                    }
+                        model: defaultModels[v] || 'gpt-4o-mini',
+                      });
+                    }}
                   >
                     <SelectTrigger className="w-[160px] h-9">
                       <SelectValue />
@@ -927,6 +928,8 @@ export function SettingsPage() {
                     <SelectContent>
                       <SelectItem value="gemini">Gemini</SelectItem>
                       <SelectItem value="openai">OpenAI</SelectItem>
+                      <SelectItem value="deepseek">DeepSeek</SelectItem>
+                      <SelectItem value="qwen">Qwen</SelectItem>
                       <SelectItem value="proxy">Proxy (Custom)</SelectItem>
                       <SelectItem value="ollama">Ollama (Local)</SelectItem>
                     </SelectContent>
@@ -943,7 +946,17 @@ export function SettingsPage() {
                           type={showApiKey ? 'text' : 'password'}
                           value={ai.config.api_key || ''}
                           onChange={(e) => ai.updateConfig({ api_key: e.target.value })}
-                          placeholder={`Enter ${ai.config.provider === 'gemini' ? 'Gemini' : ai.config.provider === 'proxy' ? 'Proxy' : 'OpenAI'} API key`}
+                          placeholder={`Enter ${
+                            ai.config.provider === 'gemini'
+                              ? 'Gemini'
+                              : ai.config.provider === 'openai'
+                                ? 'OpenAI'
+                                : ai.config.provider === 'deepseek'
+                                  ? 'DeepSeek'
+                                  : ai.config.provider === 'qwen'
+                                    ? 'Qwen (DashScope)'
+                                    : 'Proxy'
+                          } API key`}
                           className="h-9 pr-10"
                         />
                         <button
@@ -974,13 +987,27 @@ export function SettingsPage() {
                           href={
                             ai.config.provider === 'gemini'
                               ? 'https://aistudio.google.com/apikey'
-                              : 'https://platform.openai.com/api-keys'
+                              : ai.config.provider === 'openai'
+                                ? 'https://platform.openai.com/api-keys'
+                                : ai.config.provider === 'deepseek'
+                                  ? 'https://platform.deepseek.com/api_keys'
+                                  : ai.config.provider === 'qwen'
+                                    ? 'https://dashscope.console.aliyun.com/apiKey'
+                                    : '#'
                           }
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-primary hover:underline"
                         >
-                          {ai.config.provider === 'gemini' ? 'Google AI Studio' : 'OpenAI Platform'}
+                          {ai.config.provider === 'gemini'
+                            ? 'Google AI Studio'
+                            : ai.config.provider === 'openai'
+                              ? 'OpenAI Platform'
+                              : ai.config.provider === 'deepseek'
+                                ? 'DeepSeek Platform'
+                                : ai.config.provider === 'qwen'
+                                  ? 'Alibaba DashScope'
+                                  : 'Provider'}
                         </a>
                       </p>
                     )}
