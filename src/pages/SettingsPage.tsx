@@ -56,6 +56,7 @@ import type {
   BrowserProfile,
   BrowserType,
   CookieMode,
+  ProxyMode,
   SummaryStyle,
 } from '@/lib/types';
 import { BROWSER_OPTIONS, DEFAULT_TRANSCRIPT_LANGUAGES, LANGUAGE_OPTIONS } from '@/lib/types';
@@ -76,10 +77,12 @@ export function SettingsPage() {
   const {
     settings,
     cookieSettings,
+    proxySettings,
     updateAutoCheckUpdate,
     updateUseBunRuntime,
     updateUseActualPlayerJs,
     updateCookieSettings,
+    updateProxySettings,
     updateEmbedMetadata,
     updateEmbedThumbnail,
   } = useDownload();
@@ -870,6 +873,105 @@ export function SettingsPage() {
                     >
                       Get cookies.txt LOCALLY
                     </a>
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Network Proxy Section */}
+            <div className="p-4 rounded-xl bg-muted/30">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
+                  <Globe className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <span className="font-medium">Network Proxy</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Route downloads through a proxy server
+                  </p>
+                </div>
+              </div>
+
+              {/* Proxy Mode Selection */}
+              <div className="mt-3 pt-3 border-t border-border/50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium">Proxy Type</p>
+                    <p className="text-xs text-muted-foreground">HTTP or SOCKS5 proxy</p>
+                  </div>
+                  <Select
+                    value={proxySettings.mode}
+                    onValueChange={(v) => updateProxySettings({ mode: v as ProxyMode })}
+                  >
+                    <SelectTrigger className="w-[140px] h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="off">Off</SelectItem>
+                      <SelectItem value="http">HTTP/HTTPS</SelectItem>
+                      <SelectItem value="socks5">SOCKS5</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Proxy Settings (when mode is not 'off') */}
+              {proxySettings.mode !== 'off' && (
+                <div className="mt-3 pt-3 border-t border-border/50 space-y-3">
+                  {/* Host and Port */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <p className="text-xs font-medium mb-1">Host</p>
+                      <Input
+                        type="text"
+                        value={proxySettings.host || ''}
+                        onChange={(e) => updateProxySettings({ host: e.target.value })}
+                        placeholder="127.0.0.1 or proxy.example.com"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="w-24">
+                      <p className="text-xs font-medium mb-1">Port</p>
+                      <Input
+                        type="number"
+                        value={proxySettings.port || ''}
+                        onChange={(e) =>
+                          updateProxySettings({
+                            port: e.target.value ? Number(e.target.value) : undefined,
+                          })
+                        }
+                        placeholder="7890"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Username and Password (optional) */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <p className="text-xs font-medium mb-1">Username (optional)</p>
+                      <Input
+                        type="text"
+                        value={proxySettings.username || ''}
+                        onChange={(e) => updateProxySettings({ username: e.target.value })}
+                        placeholder="username"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-medium mb-1">Password (optional)</p>
+                      <Input
+                        type="password"
+                        value={proxySettings.password || ''}
+                        onChange={(e) => updateProxySettings({ password: e.target.value })}
+                        placeholder="password"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    Common proxies: Clash (7890), V2Ray (10809), Shadowsocks (1080)
                   </p>
                 </div>
               )}

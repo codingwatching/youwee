@@ -212,6 +212,17 @@ export type HistorySort = 'recent' | 'oldest' | 'title' | 'size';
 export type AIProvider = 'gemini' | 'openai' | 'deepseek' | 'qwen' | 'ollama' | 'proxy';
 export type SummaryStyle = 'short' | 'concise' | 'detailed';
 
+// Network Proxy types
+export type ProxyMode = 'off' | 'http' | 'socks5';
+
+export interface ProxySettings {
+  mode: ProxyMode;
+  host?: string; // e.g., "127.0.0.1" or "proxy.example.com"
+  port?: number; // e.g., 7890
+  username?: string; // Optional auth
+  password?: string; // Optional auth
+}
+
 // Cookie/Authentication types
 export type CookieMode = 'off' | 'browser' | 'file';
 export type BrowserType = 'chrome' | 'firefox' | 'safari' | 'edge' | 'brave' | 'opera' | 'vivaldi';

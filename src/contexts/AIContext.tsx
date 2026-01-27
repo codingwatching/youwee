@@ -14,10 +14,12 @@ import type {
   CookieSettings,
   LanguageOption,
   ModelOption,
+  ProxySettings,
 } from '@/lib/types';
 
 // Cookie settings storage key (same as in DownloadContext)
 const COOKIE_STORAGE_KEY = 'youwee-cookie-settings';
+const PROXY_STORAGE_KEY = 'youwee-proxy-settings';
 
 // Load cookie settings from localStorage
 function loadCookieSettings(): CookieSettings {
@@ -30,6 +32,34 @@ function loadCookieSettings(): CookieSettings {
     console.error('Failed to load cookie settings:', e);
   }
   return { mode: 'off' };
+}
+
+// Load proxy settings from localStorage
+function loadProxySettings(): ProxySettings {
+  try {
+    const saved = localStorage.getItem(PROXY_STORAGE_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error('Failed to load proxy settings:', e);
+  }
+  return { mode: 'off' };
+}
+
+// Build proxy URL string from settings
+function buildProxyUrl(settings: ProxySettings): string | undefined {
+  if (settings.mode === 'off' || !settings.host || !settings.port) {
+    return undefined;
+  }
+
+  const protocol = settings.mode === 'socks5' ? 'socks5' : 'http';
+  const auth =
+    settings.username && settings.password
+      ? `${encodeURIComponent(settings.username)}:${encodeURIComponent(settings.password)}@`
+      : '';
+
+  return `${protocol}://${auth}${settings.host}:${settings.port}`;
 }
 
 // Task status for background summary generation
@@ -195,6 +225,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     async (url: string): Promise<string> => {
       const languages = config.transcript_languages || ['en'];
       const cookieSettings = loadCookieSettings();
+      const proxySettings = loadProxySettings();
       return await invoke<string>('get_video_transcript', {
         url,
         languages,
@@ -202,6 +233,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
         cookieBrowser: cookieSettings.browser || null,
         cookieBrowserProfile: cookieSettings.browserProfile || null,
         cookieFilePath: cookieSettings.filePath || null,
+        proxyUrl: buildProxyUrl(proxySettings) || null,
       });
     },
     [config.transcript_languages],
@@ -261,6 +293,9 @@ export function AIProvider({ children }: { children: ReactNode }) {
       // Get cookie settings
       const cookieSettings = loadCookieSettings();
 
+      // Get proxy settings
+      const proxySettings = loadProxySettings();
+
       // Run in background (not awaited, fire-and-forget)
       (async () => {
         try {
@@ -277,6 +312,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
             cookieBrowser: cookieSettings.browser || null,
             cookieBrowserProfile: cookieSettings.browserProfile || null,
             cookieFilePath: cookieSettings.filePath || null,
+            proxyUrl: buildProxyUrl(proxySettings) || null,
           });
 
           if (import.meta.env.DEV) {
@@ -374,6 +410,9 @@ export function AIProvider({ children }: { children: ReactNode }) {
       // Get cookie settings
       const cookieSettings = loadCookieSettings();
 
+      // Get proxy settings
+      const proxySettings = loadProxySettings();
+
       // Run in background
       (async () => {
         try {
@@ -385,6 +424,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
             cookieBrowser: cookieSettings.browser || null,
             cookieBrowserProfile: cookieSettings.browserProfile || null,
             cookieFilePath: cookieSettings.filePath || null,
+            proxyUrl: buildProxyUrl(proxySettings) || null,
           });
 
           // Update to generating status
