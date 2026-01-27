@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Settings page redesigned** - New sidebar navigation with 5 sections (General, Dependencies, AI, Network, About)
 - **Universal page** now has Video/Audio toggle like YouTube page for consistency
-- **macOS app icon** updated with proper Apple guidelines padding (84%)
+- **macOS app icon** updated with proper Apple guidelines padding
 
 ### Fixed
 - Downloads now save to library correctly when using updated yt-dlp
