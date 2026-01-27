@@ -48,6 +48,11 @@ pub struct AIConfig {
     pub timeout_seconds: Option<u64>, // Timeout for AI generation (default 120s)
     #[serde(default)]
     pub transcript_languages: Option<Vec<String>>, // Languages to try for transcript extraction
+    // Whisper settings
+    #[serde(default)]
+    pub whisper_enabled: bool, // Enable Whisper as fallback transcription
+    #[serde(default)]
+    pub whisper_api_key: Option<String>, // Separate OpenAI key for Whisper (used when provider != openai)
 }
 
 impl Default for AIConfig {
@@ -63,6 +68,8 @@ impl Default for AIConfig {
             summary_language: "auto".to_string(),
             timeout_seconds: Some(120),
             transcript_languages: Some(vec!["en".to_string()]),
+            whisper_enabled: false,
+            whisper_api_key: None,
         }
     }
 }

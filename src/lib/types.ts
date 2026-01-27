@@ -260,6 +260,9 @@ export interface AIConfig {
   summary_language: string;
   timeout_seconds?: number; // Timeout for AI generation (default 120s)
   transcript_languages?: string[]; // Languages to try for transcript extraction (order matters)
+  // Whisper settings
+  whisper_enabled?: boolean; // Enable Whisper as fallback transcription
+  whisper_api_key?: string; // Separate OpenAI key for Whisper (used when provider !== 'openai')
 }
 
 // Available languages (shared between transcript extraction and summary output)

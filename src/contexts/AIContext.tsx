@@ -116,6 +116,8 @@ const defaultConfig: AIConfig = {
   summary_language: 'auto',
   timeout_seconds: 120,
   transcript_languages: ['en'],
+  whisper_enabled: false,
+  whisper_api_key: undefined,
 };
 
 const AIContext = createContext<AIContextValue | undefined>(undefined);
@@ -226,17 +228,72 @@ export function AIProvider({ children }: { children: ReactNode }) {
       const languages = config.transcript_languages || ['en'];
       const cookieSettings = loadCookieSettings();
       const proxySettings = loadProxySettings();
-      return await invoke<string>('get_video_transcript', {
-        url,
-        languages,
-        cookieMode: cookieSettings.mode,
-        cookieBrowser: cookieSettings.browser || null,
-        cookieBrowserProfile: cookieSettings.browserProfile || null,
-        cookieFilePath: cookieSettings.filePath || null,
-        proxyUrl: buildProxyUrl(proxySettings) || null,
-      });
+
+      // Try YouTube captions first
+      try {
+        const transcript = await invoke<string>('get_video_transcript', {
+          url,
+          languages,
+          cookieMode: cookieSettings.mode,
+          cookieBrowser: cookieSettings.browser || null,
+          cookieBrowserProfile: cookieSettings.browserProfile || null,
+          cookieFilePath: cookieSettings.filePath || null,
+          proxyUrl: buildProxyUrl(proxySettings) || null,
+        });
+
+        // Check if we got meaningful transcript
+        if (transcript && transcript.trim().length > 50) {
+          return transcript;
+        }
+      } catch (error) {
+        // No YouTube captions available, will try Whisper fallback
+        if (import.meta.env.DEV) {
+          console.log('[AI] YouTube transcript failed, trying Whisper fallback:', error);
+        }
+      }
+
+      // Fallback to Whisper if enabled
+      if (config.whisper_enabled) {
+        // Determine which API key to use for Whisper
+        const whisperKey = config.provider === 'openai' ? config.api_key : config.whisper_api_key;
+
+        if (whisperKey) {
+          if (import.meta.env.DEV) {
+            console.log('[AI] Using Whisper transcription for:', url);
+          }
+
+          return await invoke<string>('transcribe_url_with_whisper', {
+            url,
+            responseFormat: 'text',
+            openaiApiKey: whisperKey,
+            language: languages[0] || null, // Use first preferred language as hint
+            cookieMode: cookieSettings.mode,
+            cookieBrowser: cookieSettings.browser || null,
+            cookieBrowserProfile: cookieSettings.browserProfile || null,
+            cookieFilePath: cookieSettings.filePath || null,
+            proxyUrl: buildProxyUrl(proxySettings) || null,
+          });
+        } else {
+          throw new Error(
+            'Whisper is enabled but no API key configured. ' +
+              (config.provider === 'openai'
+                ? 'Please add your OpenAI API key.'
+                : 'Please add a Whisper API key in Settings.'),
+          );
+        }
+      }
+
+      throw new Error(
+        'No transcript available. Enable Whisper in Settings to transcribe videos without captions.',
+      );
     },
-    [config.transcript_languages],
+    [
+      config.transcript_languages,
+      config.whisper_enabled,
+      config.provider,
+      config.api_key,
+      config.whisper_api_key,
+    ],
   );
 
   // Background task management

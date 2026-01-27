@@ -1458,6 +1458,73 @@ export function SettingsPage() {
                     );
                   })()}
                 </div>
+
+                {/* Whisper Transcription Fallback */}
+                <div className="space-y-3 py-2 border-t border-border/50 mt-4 pt-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Whisper Transcription</p>
+                      <p className="text-xs text-muted-foreground">
+                        Use OpenAI Whisper to transcribe videos without captions
+                      </p>
+                    </div>
+                    <Switch
+                      checked={ai.config.whisper_enabled || false}
+                      onCheckedChange={(enabled) => ai.updateConfig({ whisper_enabled: enabled })}
+                    />
+                  </div>
+
+                  {ai.config.whisper_enabled && (
+                    <div className="space-y-3 pl-4 border-l-2 border-primary/20">
+                      {/* Show API key info based on provider */}
+                      {ai.config.provider === 'openai' ? (
+                        <div className="flex items-center gap-2 text-xs p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Using your OpenAI API key for Whisper</span>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">OpenAI API Key (for Whisper)</p>
+                          <div className="relative">
+                            <Input
+                              type={showApiKey ? 'text' : 'password'}
+                              value={ai.config.whisper_api_key || ''}
+                              onChange={(e) => ai.updateConfig({ whisper_api_key: e.target.value })}
+                              placeholder="sk-..."
+                              className="h-9 pr-10"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowApiKey(!showApiKey)}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+                            >
+                              {showApiKey ? (
+                                <EyeOff className="w-4 h-4" />
+                              ) : (
+                                <Eye className="w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Whisper requires an OpenAI API key.{' '}
+                            <a
+                              href="https://platform.openai.com/api-keys"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline"
+                            >
+                              Get one here
+                            </a>
+                          </p>
+                        </div>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        When enabled, Whisper will transcribe videos that don't have captions. Cost:
+                        ~$0.006/minute of audio.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </section>
