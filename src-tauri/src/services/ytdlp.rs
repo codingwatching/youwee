@@ -6,11 +6,11 @@ use tauri_plugin_shell::process::CommandEvent;
 use tokio::process::Command;
 use crate::types::YtdlpVersionInfo;
 
-/// Get the path to yt-dlp binary, prioritizing BUNDLED version for stability
+/// Get the path to yt-dlp binary, prioritizing USER-UPDATED version
 /// Returns: (path, is_bundled)
-/// - First checks bundled sidecar next to executable (most stable)
+/// - First checks app_data_dir/bin (user-updated version takes priority)
+/// - Then checks bundled sidecar next to executable
 /// - Then checks resource_dir/bin (Tauri bundled)
-/// - Then checks app_data_dir/bin (user-updated - may have bugs)
 /// - Finally falls back to system yt-dlp
 pub async fn get_ytdlp_path(app: &AppHandle) -> Option<(PathBuf, bool)> {
     #[cfg(windows)]
@@ -18,7 +18,15 @@ pub async fn get_ytdlp_path(app: &AppHandle) -> Option<(PathBuf, bool)> {
     #[cfg(not(windows))]
     let binary_name = "yt-dlp";
     
-    // 1. Check bundled sidecar next to executable FIRST (most stable)
+    // 1. Check app_data_dir/bin FIRST (user-updated version takes priority)
+    if let Ok(app_data_dir) = app.path().app_data_dir() {
+        let user_binary = app_data_dir.join("bin").join(binary_name);
+        if user_binary.exists() {
+            return Some((user_binary, false));
+        }
+    }
+    
+    // 2. Check bundled sidecar next to executable
     if let Ok(exe_path) = std::env::current_exe() {
         if let Some(exe_dir) = exe_path.parent() {
             let bundled_binary = exe_dir.join(binary_name);
@@ -28,19 +36,11 @@ pub async fn get_ytdlp_path(app: &AppHandle) -> Option<(PathBuf, bool)> {
         }
     }
     
-    // 2. Check bundled sidecar in resource_dir
+    // 3. Check bundled sidecar in resource_dir
     if let Ok(resource_dir) = app.path().resource_dir() {
         let bundled_binary = resource_dir.join("bin").join(binary_name);
         if bundled_binary.exists() {
             return Some((bundled_binary, true));
-        }
-    }
-    
-    // 3. Check app_data_dir/bin (user-updated version - may have bugs in nightly)
-    if let Ok(app_data_dir) = app.path().app_data_dir() {
-        let user_binary = app_data_dir.join("bin").join(binary_name);
-        if user_binary.exists() {
-            return Some((user_binary, false));
         }
     }
     
