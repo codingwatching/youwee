@@ -228,7 +228,7 @@ export function DependenciesProvider({ children }: { children: ReactNode }) {
       setChannelError(null);
       setChannelDownloadSuccess(false);
       try {
-        await invoke<string>('download_ytdlp_channel', { channel });
+        const newVersion = await invoke<string>('download_ytdlp_channel', { channel });
         setChannelDownloadSuccess(true);
         // Refresh all versions to update UI
         await refreshAllYtdlpVersions();
@@ -236,6 +236,13 @@ export function DependenciesProvider({ children }: { children: ReactNode }) {
         if (channel === ytdlpChannel) {
           await refreshYtdlpVersion();
         }
+        // Reset update info to show "Up to date" instead of "available"
+        setYtdlpChannelUpdateInfo({
+          channel: channel,
+          current_version: newVersion,
+          latest_version: newVersion,
+          update_available: false,
+        });
         // Hide success message after 3 seconds
         setTimeout(() => setChannelDownloadSuccess(false), 3000);
       } catch (err) {
