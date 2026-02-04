@@ -185,6 +185,8 @@ interface DownloadContextType {
   updateEmbedThumbnail: (enabled: boolean) => void;
   // Live stream settings
   updateLiveFromStart: (enabled: boolean) => void;
+  // Speed limit settings
+  updateSpeedLimit: (enabled: boolean, value: number, unit: 'K' | 'M' | 'G') => void;
 }
 
 const DownloadContext = createContext<DownloadContextType | null>(null);
@@ -220,6 +222,10 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
       embedThumbnail: saved.embedThumbnail === true, // Default to false (requires FFmpeg)
       // Live stream settings
       liveFromStart: saved.liveFromStart === true, // Default to false
+      // Speed limit settings
+      speedLimitEnabled: saved.speedLimitEnabled === true, // Default to false (unlimited)
+      speedLimitValue: saved.speedLimitValue || 10,
+      speedLimitUnit: saved.speedLimitUnit || 'M',
     };
   });
 
@@ -656,6 +662,10 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
           embedThumbnail: settings.embedThumbnail,
           // Live stream settings
           liveFromStart: settings.liveFromStart,
+          // Speed limit settings
+          speedLimit: settings.speedLimitEnabled
+            ? `${settings.speedLimitValue}${settings.speedLimitUnit}`
+            : null,
           // No history_id for new downloads
           historyId: null,
         });
@@ -878,6 +888,17 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const updateSpeedLimit = useCallback(
+    (speedLimitEnabled: boolean, speedLimitValue: number, speedLimitUnit: 'K' | 'M' | 'G') => {
+      setSettings((s) => {
+        const newSettings = { ...s, speedLimitEnabled, speedLimitValue, speedLimitUnit };
+        saveSettings(newSettings);
+        return newSettings;
+      });
+    },
+    [],
+  );
+
   const value: DownloadContextType = {
     items,
     isDownloading,
@@ -916,6 +937,7 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     updateEmbedMetadata,
     updateEmbedThumbnail,
     updateLiveFromStart,
+    updateSpeedLimit,
   };
 
   return <DownloadContext.Provider value={value}>{children}</DownloadContext.Provider>;

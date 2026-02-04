@@ -90,6 +90,10 @@ export interface DownloadSettings {
   embedThumbnail: boolean; // Embed thumbnail as cover art (requires FFmpeg)
   // Live stream settings
   liveFromStart: boolean; // Download live streams from the beginning
+  // Speed limit settings
+  speedLimitEnabled: boolean; // true = limited, false = unlimited
+  speedLimitValue: number; // e.g. 10
+  speedLimitUnit: 'K' | 'M' | 'G'; // KB/s, MB/s, GB/s
 }
 
 export interface DownloadProgress {

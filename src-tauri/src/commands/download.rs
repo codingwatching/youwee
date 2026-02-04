@@ -79,6 +79,8 @@ pub async fn download_video(
     proxy_url: Option<String>,
     // Live stream settings
     live_from_start: Option<bool>,
+    // Speed limit settings
+    speed_limit: Option<String>,
 ) -> Result<(), String> {
     CANCEL_FLAG.store(false, Ordering::SeqCst);
     
@@ -182,6 +184,14 @@ pub async fn download_video(
     if live_from_start.unwrap_or(false) {
         args.push("--live-from-start".to_string());
         args.push("--no-part".to_string());
+    }
+    
+    // Speed limit settings
+    if let Some(limit) = speed_limit.as_ref() {
+        if !limit.is_empty() {
+            args.push("--limit-rate".to_string());
+            args.push(limit.clone());
+        }
     }
     
     // Playlist handling

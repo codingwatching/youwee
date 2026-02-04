@@ -8,21 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Live stream download support** - Download YouTube live streams with option to start from beginning
-  - Toggle "Download live from start" in Settings Panel (More Settings) or Settings → General
-  - LIVE badge displayed on queue items for live stream videos
-  - Uses yt-dlp's `--live-from-start` and `--no-part` flags when enabled (default: OFF)
+- **Live stream download support** - Toggle in Settings → Download, shows LIVE badge on queue items
+- **Download speed limit** - Limit bandwidth with custom value and unit (KB/s, MB/s, GB/s)
 
 ### Fixed
-- **ChromeOS compatibility** - Fixed "invalid output path: must be an absolute path" error on Chromebooks
-  - Auto-creates Downloads folder if it doesn't exist (common on ChromeOS Linux container)
-  - Falls back to `$HOME/Downloads` if Tauri's `downloadDir()` returns empty path
-  - Better error messages when output path is invalid
+- **ChromeOS compatibility** - Fixed "invalid output path" error, auto-creates Downloads folder
 
 ### Changed
-- **Compact Advanced Settings** - Redesigned popover for smaller screens
-  - Reduced width and spacing for better fit on low-height displays
-  - Added scroll when content overflows (max 50% viewport height)
+- **New Download settings section** - Moved Post-processing, Live Stream, Speed Limit to dedicated section
+- **Compact Advanced Settings popover** - Better fit for small screens with scroll support
 
 ## [0.6.1] - 2026-02-03
 

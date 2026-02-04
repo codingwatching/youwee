@@ -36,6 +36,10 @@ export interface UniversalSettings {
   outputPath: string;
   audioBitrate: AudioBitrate;
   concurrentDownloads: number;
+  // Speed limit settings
+  speedLimitEnabled: boolean;
+  speedLimitValue: number;
+  speedLimitUnit: 'K' | 'M' | 'G';
 }
 
 // Load settings from localStorage
@@ -161,6 +165,10 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
       outputPath: saved.outputPath || '',
       audioBitrate: saved.audioBitrate || 'auto',
       concurrentDownloads: saved.concurrentDownloads || 1,
+      // Speed limit settings
+      speedLimitEnabled: saved.speedLimitEnabled === true, // Default to false (unlimited)
+      speedLimitValue: saved.speedLimitValue || 10,
+      speedLimitUnit: saved.speedLimitUnit || 'M',
     };
   });
 
@@ -429,6 +437,10 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
           // Post-processing settings (from main download settings)
           embedMetadata: embedSettings.embedMetadata,
           embedThumbnail: embedSettings.embedThumbnail,
+          // Speed limit settings
+          speedLimit: settings.speedLimitEnabled
+            ? `${settings.speedLimitValue}${settings.speedLimitUnit}`
+            : null,
         });
 
         setItems((items) =>

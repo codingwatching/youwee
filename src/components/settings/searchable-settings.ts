@@ -1,4 +1,10 @@
-export type SettingsSectionId = 'general' | 'dependencies' | 'ai' | 'network' | 'about';
+export type SettingsSectionId =
+  | 'general'
+  | 'dependencies'
+  | 'download'
+  | 'ai'
+  | 'network'
+  | 'about';
 
 export interface SearchableSetting {
   id: string;
@@ -42,25 +48,41 @@ export const SEARCHABLE_SETTINGS: SearchableSetting[] = [
     section: 'general',
   },
   {
+    id: 'max-history',
+    label: 'Max History Entries',
+    description: 'Limit number of download history entries',
+    keywords: ['history', 'storage', 'limit', 'entries', 'database'],
+    section: 'general',
+  },
+
+  // Download Section
+  {
     id: 'embed-metadata',
     label: 'Embed Metadata',
     description: 'Add title, artist, description to files',
     keywords: ['metadata', 'title', 'artist', 'tags', 'post-processing'],
-    section: 'general',
+    section: 'download',
   },
   {
     id: 'embed-thumbnail',
     label: 'Embed Thumbnail',
     description: 'Embed video thumbnail as cover art',
     keywords: ['thumbnail', 'cover', 'art', 'image', 'post-processing'],
-    section: 'general',
+    section: 'download',
   },
   {
-    id: 'max-history',
-    label: 'Max History Entries',
-    description: 'Limit number of download history entries',
-    keywords: ['history', 'storage', 'limit', 'entries', 'database'],
-    section: 'general',
+    id: 'live-from-start',
+    label: 'Live From Start',
+    description: 'Download live streams from the beginning',
+    keywords: ['live', 'stream', 'start', 'beginning', 'broadcast'],
+    section: 'download',
+  },
+  {
+    id: 'speed-limit',
+    label: 'Speed Limit',
+    description: 'Limit download bandwidth',
+    keywords: ['speed', 'limit', 'bandwidth', 'rate', 'throttle', 'slow'],
+    section: 'download',
   },
 
   // Dependencies Section
@@ -223,6 +245,7 @@ export function searchSettings(query: string): SearchableSetting[] {
 export const SECTION_INFO: Record<SettingsSectionId, { label: string; icon: string }> = {
   general: { label: 'General', icon: 'Palette' },
   dependencies: { label: 'Dependencies', icon: 'Package' },
+  download: { label: 'Download', icon: 'ArrowDownToLine' },
   ai: { label: 'AI Features', icon: 'Sparkles' },
   network: { label: 'Network & Auth', icon: 'Globe' },
   about: { label: 'About', icon: 'Info' },

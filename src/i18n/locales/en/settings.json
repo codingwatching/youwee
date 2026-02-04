@@ -4,6 +4,7 @@
   "sections": {
     "general": "General",
     "dependencies": "Dependencies",
+    "download": "Download",
     "ai": "AI Features",
     "network": "Network & Auth",
     "about": "About"
@@ -19,20 +20,28 @@
     "light": "Light",
     "dark": "Dark",
     "colorTheme": "Color Theme",
+    "storage": "Storage",
+    "storageDesc": "Manage download history",
+    "maxHistory": "Max history entries",
+    "currentlyStoring": "Currently storing {{count}} downloads"
+  },
+  "download": {
     "postProcessing": "Post-processing",
     "postProcessingDesc": "Embed metadata and thumbnails into downloaded files",
     "embedMetadata": "Embed Metadata",
     "embedMetadataDesc": "Add title, artist, description to files",
     "embedThumbnail": "Embed Thumbnail",
     "embedThumbnailDesc": "Add cover art/thumbnail (requires FFmpeg)",
-    "storage": "Storage",
-    "storageDesc": "Manage download history",
-    "maxHistory": "Max history entries",
-    "currentlyStoring": "Currently storing {{count}} downloads",
     "liveStream": "Live Stream",
     "liveStreamDesc": "Configure live stream download behavior",
     "liveFromStart": "Download from Start",
-    "liveFromStartDesc": "Download live streams from the beginning instead of current time"
+    "liveFromStartDesc": "Download live streams from the beginning instead of current time",
+    "speedLimit": "Speed Limit",
+    "speedLimitDesc": "Limit download bandwidth",
+    "downloadSpeed": "Download Speed",
+    "downloadSpeedDesc": "Set maximum download speed",
+    "unlimited": "Unlimited",
+    "limited": "Limited"
   },
   "dependencies": {
     "title": "Dependencies",

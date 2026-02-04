@@ -4,6 +4,7 @@
   "sections": {
     "general": "Chung",
     "dependencies": "Phụ thuộc",
+    "download": "Tải xuống",
     "ai": "Tính năng AI",
     "network": "Mạng & Xác thực",
     "about": "Giới thiệu"
@@ -19,20 +20,28 @@
     "light": "Sáng",
     "dark": "Tối",
     "colorTheme": "Màu chủ đề",
+    "storage": "Lưu trữ",
+    "storageDesc": "Quản lý lịch sử tải xuống",
+    "maxHistory": "Số lượng lịch sử tối đa",
+    "currentlyStoring": "Đang lưu {{count}} bản tải"
+  },
+  "download": {
     "postProcessing": "Hậu xử lý",
     "postProcessingDesc": "Nhúng metadata và thumbnail vào file đã tải",
     "embedMetadata": "Nhúng Metadata",
     "embedMetadataDesc": "Thêm tiêu đề, nghệ sĩ, mô tả vào file",
     "embedThumbnail": "Nhúng Thumbnail",
     "embedThumbnailDesc": "Thêm ảnh bìa/thumbnail (yêu cầu FFmpeg)",
-    "storage": "Lưu trữ",
-    "storageDesc": "Quản lý lịch sử tải xuống",
-    "maxHistory": "Số lượng lịch sử tối đa",
-    "currentlyStoring": "Đang lưu {{count}} bản tải",
     "liveStream": "Live Stream",
     "liveStreamDesc": "Cấu hình tải video trực tiếp",
     "liveFromStart": "Tải từ đầu",
-    "liveFromStartDesc": "Tải live stream từ đầu thay vì từ thời điểm hiện tại"
+    "liveFromStartDesc": "Tải live stream từ đầu thay vì từ thời điểm hiện tại",
+    "speedLimit": "Giới hạn tốc độ",
+    "speedLimitDesc": "Giới hạn băng thông tải xuống",
+    "downloadSpeed": "Tốc độ tải",
+    "downloadSpeedDesc": "Đặt tốc độ tải tối đa",
+    "unlimited": "Không giới hạn",
+    "limited": "Giới hạn"
   },
   "dependencies": {
     "title": "Phụ thuộc",

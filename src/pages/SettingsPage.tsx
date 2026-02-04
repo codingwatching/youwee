@@ -25,6 +25,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DependenciesSection,
+  DownloadSection,
   GeneralSection,
   NetworkSection,
   SettingsCard,
@@ -130,6 +131,8 @@ export function SettingsPage() {
               {activeSection === 'dependencies' && (
                 <DependenciesSection highlightId={highlightId} />
               )}
+
+              {activeSection === 'download' && <DownloadSection highlightId={highlightId} />}
 
               {activeSection === 'ai' && (
                 <AISettingsContent

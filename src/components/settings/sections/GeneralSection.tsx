@@ -1,4 +1,4 @@
-import { Check, Database, Film, Moon, Palette, Radio, Sun } from 'lucide-react';
+import { Check, Database, Moon, Palette, Sun } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   Select,
@@ -7,8 +7,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { useDownload } from '@/contexts/DownloadContext';
 import { useHistory } from '@/contexts/HistoryContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { ThemeName } from '@/lib/themes';
@@ -40,8 +38,6 @@ export function GeneralSection({ highlightId }: GeneralSectionProps) {
   const { t: tCommon, i18n } = useTranslation('common');
   const { t } = useTranslation('settings');
   const { theme, setTheme, mode, setMode } = useTheme();
-  const { settings, updateEmbedMetadata, updateEmbedThumbnail, updateLiveFromStart } =
-    useDownload();
   const { maxEntries, setMaxEntries, totalCount } = useHistory();
 
   const handleLanguageChange = (langCode: string) => {
@@ -156,53 +152,6 @@ export function GeneralSection({ highlightId }: GeneralSectionProps) {
             ))}
           </div>
         </div>
-      </SettingsSection>
-
-      <SettingsDivider />
-
-      {/* Post-processing */}
-      <SettingsSection
-        title={t('general.postProcessing')}
-        description={t('general.postProcessingDesc')}
-        icon={<Film className="w-5 h-5 text-white" />}
-        iconClassName="bg-gradient-to-br from-emerald-500 to-green-600 shadow-emerald-500/20"
-      >
-        <SettingsRow
-          id="embed-metadata"
-          label={t('general.embedMetadata')}
-          description={t('general.embedMetadataDesc')}
-          highlight={highlightId === 'embed-metadata'}
-        >
-          <Switch checked={settings.embedMetadata} onCheckedChange={updateEmbedMetadata} />
-        </SettingsRow>
-
-        <SettingsRow
-          id="embed-thumbnail"
-          label={t('general.embedThumbnail')}
-          description={t('general.embedThumbnailDesc')}
-          highlight={highlightId === 'embed-thumbnail'}
-        >
-          <Switch checked={settings.embedThumbnail} onCheckedChange={updateEmbedThumbnail} />
-        </SettingsRow>
-      </SettingsSection>
-
-      <SettingsDivider />
-
-      {/* Live Stream */}
-      <SettingsSection
-        title={t('general.liveStream')}
-        description={t('general.liveStreamDesc')}
-        icon={<Radio className="w-5 h-5 text-white" />}
-        iconClassName="bg-gradient-to-br from-red-500 to-rose-600 shadow-red-500/20"
-      >
-        <SettingsRow
-          id="live-from-start"
-          label={t('general.liveFromStart')}
-          description={t('general.liveFromStartDesc')}
-          highlight={highlightId === 'live-from-start'}
-        >
-          <Switch checked={settings.liveFromStart} onCheckedChange={updateLiveFromStart} />
-        </SettingsRow>
       </SettingsSection>
 
       <SettingsDivider />

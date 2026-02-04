@@ -4,6 +4,7 @@
   "sections": {
     "general": "通用",
     "dependencies": "依赖项",
+    "download": "下载",
     "ai": "AI 功能",
     "network": "网络与认证",
     "about": "关于"
@@ -19,20 +20,28 @@
     "light": "浅色",
     "dark": "深色",
     "colorTheme": "颜色主题",
+    "storage": "存储",
+    "storageDesc": "管理下载历史",
+    "maxHistory": "最大历史记录数",
+    "currentlyStoring": "当前存储 {{count}} 个下载"
+  },
+  "download": {
     "postProcessing": "后处理",
     "postProcessingDesc": "将元数据和缩略图嵌入已下载的文件",
     "embedMetadata": "嵌入元数据",
     "embedMetadataDesc": "将标题、艺术家、描述添加到文件",
     "embedThumbnail": "嵌入缩略图",
     "embedThumbnailDesc": "添加封面/缩略图（需要 FFmpeg）",
-    "storage": "存储",
-    "storageDesc": "管理下载历史",
-    "maxHistory": "最大历史记录数",
-    "currentlyStoring": "当前存储 {{count}} 个下载",
     "liveStream": "直播",
     "liveStreamDesc": "配置直播下载行为",
     "liveFromStart": "从头下载",
-    "liveFromStartDesc": "从直播开始处下载，而不是从当前时间"
+    "liveFromStartDesc": "从直播开始处下载，而不是从当前时间",
+    "speedLimit": "速度限制",
+    "speedLimitDesc": "限制下载带宽",
+    "downloadSpeed": "下载速度",
+    "downloadSpeedDesc": "设置最大下载速度",
+    "unlimited": "无限制",
+    "limited": "有限制"
   },
   "dependencies": {
     "title": "依赖项",
