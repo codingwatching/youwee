@@ -10,7 +10,7 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
 use crate::database::{add_history_internal, add_log_internal};
-use crate::services::get_ytdlp_path;
+use crate::services::{get_deno_path, get_ffmpeg_path, get_ytdlp_path};
 use crate::utils::{sanitize_output_path, CommandExt};
 
 pub static METADATA_CANCEL_FLAG: AtomicBool = AtomicBool::new(false);
@@ -107,6 +107,13 @@ pub async fn fetch_metadata(
     write_description: bool,
     write_comments: bool,
     write_thumbnail: bool,
+    // Cookie settings (optional)
+    cookie_mode: Option<String>,
+    cookie_browser: Option<String>,
+    cookie_browser_profile: Option<String>,
+    cookie_file_path: Option<String>,
+    // Proxy settings (optional)
+    proxy_url: Option<String>,
 ) -> Result<(), String> {
     METADATA_CANCEL_FLAG.store(false, Ordering::SeqCst);
 
@@ -157,6 +164,57 @@ pub async fn fetch_metadata(
         args.push("jpg".to_string());
     }
 
+    // Auto use Deno runtime for YouTube (required for JS extractor)
+    if url.contains("youtube.com") || url.contains("youtu.be") {
+        if let Some(deno_path) = get_deno_path(&app).await {
+            args.push("--js-runtimes".to_string());
+            args.push(format!("deno:{}", deno_path.to_string_lossy()));
+        }
+    }
+
+    // Add FFmpeg location if available (for thumbnail conversion)
+    if let Some(ffmpeg_path) = get_ffmpeg_path(&app).await {
+        if let Some(parent) = ffmpeg_path.parent() {
+            args.push("--ffmpeg-location".to_string());
+            args.push(parent.to_string_lossy().to_string());
+        }
+    }
+
+    // Cookie/Authentication settings
+    let mode = cookie_mode.as_deref().unwrap_or("off");
+    match mode {
+        "browser" => {
+            if let Some(browser) = cookie_browser.as_ref() {
+                let mut cookie_arg = browser.clone();
+                // Add profile if specified
+                if let Some(profile) = cookie_browser_profile.as_ref() {
+                    if !profile.is_empty() {
+                        cookie_arg = format!("{}:{}", browser, profile);
+                    }
+                }
+                args.push("--cookies-from-browser".to_string());
+                args.push(cookie_arg);
+            }
+        }
+        "file" => {
+            if let Some(file_path) = cookie_file_path.as_ref() {
+                if !file_path.is_empty() {
+                    args.push("--cookies".to_string());
+                    args.push(file_path.clone());
+                }
+            }
+        }
+        _ => {}
+    }
+
+    // Proxy settings
+    if let Some(proxy) = proxy_url.as_ref() {
+        if !proxy.is_empty() {
+            args.push("--proxy".to_string());
+            args.push(proxy.clone());
+        }
+    }
+
     // Print JSON info for parsing
     args.push("--print".to_string());
     args.push("%(title)s|||%(thumbnail)s|||%(duration)s".to_string());
@@ -177,7 +235,7 @@ pub async fn fetch_metadata(
     .ok();
 
     // Get yt-dlp path
-    if let Some((binary_path, _)) = get_ytdlp_path(&app).await {
+    if let Some((binary_path, is_bundled)) = get_ytdlp_path(&app).await {
         let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/Users".to_string());
         let current_path = std::env::var("PATH").unwrap_or_default();
         let extended_path = format!(
@@ -185,8 +243,9 @@ pub async fn fetch_metadata(
             home_dir, home_dir, current_path
         );
 
-        // Log command
-        let command_str = format!("{} {}", binary_path.display(), args.join(" "));
+        // Log command with binary path info (same format as download.rs)
+        let binary_info = format!("{} (bundled: {})", binary_path.display(), is_bundled);
+        let command_str = format!("[{}] yt-dlp {}", binary_info, args.join(" "));
         add_log_internal("command", &command_str, None, Some(&url)).ok();
 
         let mut cmd = Command::new(&binary_path);

@@ -11,6 +11,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useDownload } from './DownloadContext';
 
 const STORAGE_KEY = 'youwee_metadata_settings';
 
@@ -74,6 +75,7 @@ function saveSettings(settings: MetadataSettings) {
 const MetadataContext = createContext<MetadataContextType | null>(null);
 
 export function MetadataProvider({ children }: { children: ReactNode }) {
+  const { cookieSettings, getProxyUrl } = useDownload();
   const [items, setItems] = useState<MetadataItem[]>([]);
   const [isFetching, setIsFetching] = useState(false);
   const cancelRef = useRef(false);
@@ -207,6 +209,13 @@ export function MetadataProvider({ children }: { children: ReactNode }) {
           writeDescription: settings.writeDescription,
           writeComments: settings.writeComments,
           writeThumbnail: settings.writeThumbnail,
+          // Cookie settings
+          cookieMode: cookieSettings.mode,
+          cookieBrowser: cookieSettings.browser || null,
+          cookieBrowserProfile: cookieSettings.browserProfile || null,
+          cookieFilePath: cookieSettings.filePath || null,
+          // Proxy settings
+          proxyUrl: getProxyUrl() || null,
         });
       } catch (error) {
         setItems((items) =>
@@ -218,7 +227,7 @@ export function MetadataProvider({ children }: { children: ReactNode }) {
     }
 
     setIsFetching(false);
-  }, [items, settings]);
+  }, [items, settings, cookieSettings, getProxyUrl]);
 
   const stopFetch = useCallback(async () => {
     cancelRef.current = true;
