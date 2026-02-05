@@ -125,6 +125,7 @@ pub async fn fetch_metadata(
         "--skip-download".to_string(),
         "--no-warnings".to_string(),
         "--no-simulate".to_string(), // Actually write files even with --print
+        "--no-playlist".to_string(), // Only fetch single video metadata
         "-o".to_string(),
         output_template.clone(),
     ];

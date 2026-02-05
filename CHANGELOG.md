@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Live stream progress UI** - Shows elapsed time with shimmer animation instead of 0%
+
+### Fixed
+- **Metadata ignores playlist** - URLs with `?list=` now fetch only single video metadata
+
 ## [0.7.0] - 2026-02-05
 
 ### Added
