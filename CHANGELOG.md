@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Metadata page** - Fetch video info (JSON, description, comments, thumbnail) without downloading video
 - **Live stream download support** - Toggle in Settings → Download, shows LIVE badge on queue items
 - **Download speed limit** - Limit bandwidth with custom value and unit (KB/s, MB/s, GB/s)
 

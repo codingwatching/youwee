@@ -9,6 +9,7 @@ import { DependenciesProvider, useDependencies } from '@/contexts/DependenciesCo
 import { DownloadProvider, useDownload } from '@/contexts/DownloadContext';
 import { HistoryProvider } from '@/contexts/HistoryContext';
 import { LogProvider } from '@/contexts/LogContext';
+import { MetadataProvider } from '@/contexts/MetadataContext';
 import { ProcessingProvider } from '@/contexts/ProcessingContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { UniversalProvider } from '@/contexts/UniversalContext';
@@ -17,6 +18,7 @@ import {
   DownloadPage,
   HistoryPage,
   LogsPage,
+  MetadataPage,
   ProcessingPage,
   SettingsPage,
   SummaryPage,
@@ -80,6 +82,7 @@ function AppContent() {
         {currentPage === 'universal' && <UniversalPage />}
         {currentPage === 'summary' && <SummaryPage />}
         {currentPage === 'processing' && <ProcessingPage />}
+        {currentPage === 'metadata' && <MetadataPage />}
         {currentPage === 'library' && <HistoryPage />}
         {currentPage === 'logs' && <LogsPage />}
         {currentPage === 'settings' && <SettingsPage />}
@@ -120,9 +123,11 @@ export function App() {
               <HistoryProvider>
                 <AIProvider>
                   <ProcessingProvider>
-                    <UpdaterWrapper>
-                      <AppContent />
-                    </UpdaterWrapper>
+                    <MetadataProvider>
+                      <UpdaterWrapper>
+                        <AppContent />
+                      </UpdaterWrapper>
+                    </MetadataProvider>
                   </ProcessingProvider>
                 </AIProvider>
               </HistoryProvider>

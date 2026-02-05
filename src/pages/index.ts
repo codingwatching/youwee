@@ -1,6 +1,7 @@
 export { DownloadPage } from './DownloadPage';
 export { HistoryPage } from './HistoryPage';
 export { LogsPage } from './LogsPage';
+export { MetadataPage } from './MetadataPage';
 export { ProcessingPage } from './ProcessingPage';
 export { SettingsPage } from './SettingsPage';
 export { SummaryPage } from './SummaryPage';

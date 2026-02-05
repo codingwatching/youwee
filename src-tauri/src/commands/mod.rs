@@ -6,6 +6,7 @@ mod dependencies;
 mod ai;
 mod processing;
 mod whisper;
+mod metadata;
 
 pub use logs::*;
 pub use history::*;
@@ -15,3 +16,4 @@ pub use dependencies::*;
 pub use ai::*;
 pub use processing::*;
 pub use whisper::*;
+pub use metadata::*;

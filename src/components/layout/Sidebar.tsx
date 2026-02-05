@@ -1,6 +1,7 @@
 import {
   ChevronLeft,
   ChevronRight,
+  FileJson,
   FolderDown,
   Globe,
   Moon,
@@ -22,6 +23,7 @@ export type Page =
   | 'universal'
   | 'summary'
   | 'processing'
+  | 'metadata'
   | 'library'
   | 'logs'
   | 'settings';
@@ -57,6 +59,11 @@ const navItems: NavItem[] = [
     id: 'processing',
     labelKey: 'sidebar.processing',
     icon: <Wand2 className="w-5 h-5" />,
+  },
+  {
+    id: 'metadata',
+    labelKey: 'sidebar.metadata',
+    icon: <FileJson className="w-5 h-5" />,
   },
   {
     id: 'library',

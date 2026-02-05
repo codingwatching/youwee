@@ -5,16 +5,19 @@ import { initReactI18next } from 'react-i18next';
 // Import translations
 import enCommon from './locales/en/common.json';
 import enDownload from './locales/en/download.json';
+import enMetadata from './locales/en/metadata.json';
 import enPages from './locales/en/pages.json';
 import enSettings from './locales/en/settings.json';
 import enUniversal from './locales/en/universal.json';
 import viCommon from './locales/vi/common.json';
 import viDownload from './locales/vi/download.json';
+import viMetadata from './locales/vi/metadata.json';
 import viPages from './locales/vi/pages.json';
 import viSettings from './locales/vi/settings.json';
 import viUniversal from './locales/vi/universal.json';
 import zhCNCommon from './locales/zh-CN/common.json';
 import zhCNDownload from './locales/zh-CN/download.json';
+import zhCNMetadata from './locales/zh-CN/metadata.json';
 import zhCNPages from './locales/zh-CN/pages.json';
 import zhCNSettings from './locales/zh-CN/settings.json';
 import zhCNUniversal from './locales/zh-CN/universal.json';
@@ -23,6 +26,7 @@ const resources = {
   en: {
     common: enCommon,
     download: enDownload,
+    metadata: enMetadata,
     universal: enUniversal,
     pages: enPages,
     settings: enSettings,
@@ -30,6 +34,7 @@ const resources = {
   vi: {
     common: viCommon,
     download: viDownload,
+    metadata: viMetadata,
     universal: viUniversal,
     pages: viPages,
     settings: viSettings,
@@ -37,6 +42,7 @@ const resources = {
   'zh-CN': {
     common: zhCNCommon,
     download: zhCNDownload,
+    metadata: zhCNMetadata,
     universal: zhCNUniversal,
     pages: zhCNPages,
     settings: zhCNSettings,
@@ -50,7 +56,7 @@ i18n
     resources,
     fallbackLng: 'en',
     defaultNS: 'common',
-    ns: ['common', 'download', 'universal', 'pages', 'settings'],
+    ns: ['common', 'download', 'metadata', 'universal', 'pages', 'settings'],
 
     detection: {
       order: ['localStorage', 'navigator', 'htmlTag'],

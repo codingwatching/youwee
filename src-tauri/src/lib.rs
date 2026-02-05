@@ -115,6 +115,9 @@ pub fn run() {
             commands::transcribe_video_with_whisper,
             commands::transcribe_url_with_whisper,
             commands::generate_subtitles_with_whisper,
+            // Metadata commands
+            commands::fetch_metadata,
+            commands::cancel_metadata_fetch,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
