@@ -81,7 +81,9 @@ function AppContent() {
         {currentPage === 'youtube' && (
           <DownloadPage onNavigateToSettings={() => setCurrentPage('settings')} />
         )}
-        {currentPage === 'universal' && <UniversalPage />}
+        {currentPage === 'universal' && (
+          <UniversalPage onNavigateToSettings={() => setCurrentPage('settings')} />
+        )}
         {currentPage === 'summary' && <SummaryPage />}
         {currentPage === 'processing' && <ProcessingPage />}
         {currentPage === 'metadata' && <MetadataPage />}

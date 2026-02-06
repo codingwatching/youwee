@@ -1,11 +1,17 @@
 import { Play, Square, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { QueueList, SettingsPanel, UrlInput } from '@/components/download';
+import { FFmpegRequiredDialog } from '@/components/FFmpegRequiredDialog';
 import { ThemePicker } from '@/components/settings/ThemePicker';
 import { Button } from '@/components/ui/button';
 import { useDependencies } from '@/contexts/DependenciesContext';
 import { useDownload } from '@/contexts/DownloadContext';
+import type { Quality } from '@/lib/types';
 import { cn } from '@/lib/utils';
+
+// Qualities that require FFmpeg for video+audio merging
+const FFMPEG_REQUIRED_QUALITIES: Quality[] = ['best', '8k', '4k', '2k'];
 
 interface DownloadPageProps {
   onNavigateToSettings?: () => void;
@@ -44,8 +50,29 @@ export function DownloadPage({ onNavigateToSettings }: DownloadPageProps) {
 
   const { ffmpegStatus } = useDependencies();
 
+  const [showFfmpegDialog, setShowFfmpegDialog] = useState(false);
+
   const pendingCount = items.filter((i) => i.status !== 'completed').length;
   const hasItems = items.length > 0;
+
+  // Check if FFmpeg is required for current quality setting
+  const ffmpegRequired =
+    FFMPEG_REQUIRED_QUALITIES.includes(settings.quality) && !ffmpegStatus?.installed;
+
+  // Handle start download with FFmpeg check
+  const handleStartDownload = () => {
+    if (ffmpegRequired) {
+      setShowFfmpegDialog(true);
+      return;
+    }
+    startDownload();
+  };
+
+  // Continue download after FFmpeg dialog (user chose to continue anyway or installed FFmpeg)
+  const handleFfmpegDialogContinue = () => {
+    setShowFfmpegDialog(false);
+    startDownload();
+  };
 
   // Calculate total file size from fetched video info (in bytes)
   // Only show if we have actual filesize data from videos
@@ -134,7 +161,7 @@ export function DownloadPage({ onNavigateToSettings }: DownloadPageProps) {
                     'shadow-lg shadow-primary/20',
                     pendingCount > 0 && 'animate-pulse-subtle',
                   )}
-                  onClick={startDownload}
+                  onClick={handleStartDownload}
                   disabled={pendingCount === 0}
                   title={t('actions.startDownload')}
                 >
@@ -171,6 +198,16 @@ export function DownloadPage({ onNavigateToSettings }: DownloadPageProps) {
             </div>
           </div>
         </footer>
+      )}
+
+      {/* FFmpeg Required Dialog - shown when starting download without FFmpeg */}
+      {showFfmpegDialog && (
+        <FFmpegRequiredDialog
+          quality={settings.quality}
+          onDismiss={() => setShowFfmpegDialog(false)}
+          onContinue={handleFfmpegDialogContinue}
+          onGoToSettings={onNavigateToSettings}
+        />
       )}
     </div>
   );

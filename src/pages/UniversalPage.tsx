@@ -1,16 +1,27 @@
 import { Play, Square, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   UniversalQueueList,
   UniversalSettingsPanel,
   UniversalUrlInput,
 } from '@/components/download';
+import { FFmpegRequiredDialog } from '@/components/FFmpegRequiredDialog';
 import { ThemePicker } from '@/components/settings/ThemePicker';
 import { Button } from '@/components/ui/button';
+import { useDependencies } from '@/contexts/DependenciesContext';
 import { useUniversal } from '@/contexts/UniversalContext';
+import type { Quality } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-export function UniversalPage() {
+// Qualities that require FFmpeg for video+audio merging
+const FFMPEG_REQUIRED_QUALITIES: Quality[] = ['best', '8k', '4k', '2k'];
+
+interface UniversalPageProps {
+  onNavigateToSettings?: () => void;
+}
+
+export function UniversalPage({ onNavigateToSettings }: UniversalPageProps) {
   const { t } = useTranslation('universal');
   const {
     items,
@@ -31,8 +42,31 @@ export function UniversalPage() {
     updateConcurrentDownloads,
   } = useUniversal();
 
+  const { ffmpegStatus } = useDependencies();
+
+  const [showFfmpegDialog, setShowFfmpegDialog] = useState(false);
+
   const pendingCount = items.filter((i) => i.status !== 'completed').length;
   const hasItems = items.length > 0;
+
+  // Check if FFmpeg is required for current quality setting
+  const ffmpegRequired =
+    FFMPEG_REQUIRED_QUALITIES.includes(settings.quality) && !ffmpegStatus?.installed;
+
+  // Handle start download with FFmpeg check
+  const handleStartDownload = () => {
+    if (ffmpegRequired) {
+      setShowFfmpegDialog(true);
+      return;
+    }
+    startDownload();
+  };
+
+  // Continue download after FFmpeg dialog
+  const handleFfmpegDialogContinue = () => {
+    setShowFfmpegDialog(false);
+    startDownload();
+  };
 
   // Calculate total file size from fetched video info (in bytes)
   const totalFileSize = items.reduce((sum, item) => {
@@ -107,7 +141,7 @@ export function UniversalPage() {
                     'shadow-lg shadow-primary/20',
                     pendingCount > 0 && 'animate-pulse-subtle',
                   )}
-                  onClick={startDownload}
+                  onClick={handleStartDownload}
                   disabled={pendingCount === 0}
                   title={t('actions.startDownload')}
                 >
@@ -144,6 +178,16 @@ export function UniversalPage() {
             </div>
           </div>
         </footer>
+      )}
+
+      {/* FFmpeg Required Dialog - shown when starting download without FFmpeg */}
+      {showFfmpegDialog && (
+        <FFmpegRequiredDialog
+          quality={settings.quality}
+          onDismiss={() => setShowFfmpegDialog(false)}
+          onContinue={handleFfmpegDialogContinue}
+          onGoToSettings={onNavigateToSettings}
+        />
       )}
     </div>
   );
