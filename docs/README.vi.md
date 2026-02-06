@@ -1,6 +1,11 @@
 # Youwee
 
 <div align="center">
+
+  [![English](https://img.shields.io/badge/lang-English-blue)](../README.md)
+  [![Tiếng Việt](https://img.shields.io/badge/lang-Tiếng_Việt-red)](README.vi.md)
+  [![简体中文](https://img.shields.io/badge/lang-简体中文-green)](README.zh-CN.md)
+
   <img src="../src-tauri/icons/icon.png" alt="Youwee Logo" width="128" height="128">
   
   **Ứng dụng tải video YouTube hiện đại, đẹp mắt được xây dựng với Tauri và React**
@@ -11,9 +16,6 @@
   [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
   [![FFmpeg](https://img.shields.io/badge/FFmpeg-007808?logo=ffmpeg&logoColor=white)](https://ffmpeg.org/)
   [![Reddit](https://img.shields.io/badge/Reddit-r%2Fyouwee-FF4500?logo=reddit&logoColor=white)](https://www.reddit.com/r/youwee)
-  [![English](https://img.shields.io/badge/lang-English-blue)](../README.md)
-  [![Tiếng Việt](https://img.shields.io/badge/lang-Tiếng_Việt-red)](README.vi.md)
-  [![简体中文](https://img.shields.io/badge/lang-简体中文-green)](README.zh-CN.md)
 </div>
 
 ---
