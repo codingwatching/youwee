@@ -56,6 +56,11 @@
 
 ### Download for your platform
 
+> ⚠️ **Note**: The app is not signed with an Apple Developer certificate yet. If macOS blocks the app, open terminal and run:
+> ```bash
+> xattr -cr /Applications/Youwee.app
+> ```
+
 | Platform | Download |
 |----------|----------|
 | **Windows** (x64) | [Download .msi](https://github.com/vanloctech/youwee/releases/latest/download/Youwee-Windows.msi) · [Download .exe](https://github.com/vanloctech/youwee/releases/latest/download/Youwee-Windows-Setup.exe) |
@@ -64,11 +69,6 @@
 | **Linux** (x64) | [Download .deb](https://github.com/vanloctech/youwee/releases/latest/download/Youwee-Linux.deb) · [Download .AppImage](https://github.com/vanloctech/youwee/releases/latest/download/Youwee-Linux.AppImage) |
 
 > See all releases on the [Releases page](https://github.com/vanloctech/youwee/releases)
-
-> ⚠️ **Note**: The app is not signed with an Apple Developer certificate yet. If macOS blocks the app, run:
-> ```bash
-> xattr -cr /Applications/Youwee.app
-> ```
 
 ### Build from Source
 
