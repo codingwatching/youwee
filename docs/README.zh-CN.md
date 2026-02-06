@@ -49,6 +49,10 @@
 
 </details>
 
+## 演示视频
+
+▶️ [在 YouTube 观看](https://www.youtube.com/watch?v=H7TtVZWxilU)
+
 
 ## 安装
 

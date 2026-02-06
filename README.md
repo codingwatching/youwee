@@ -51,6 +51,10 @@
 
 </details>
 
+## Demo Video
+
+▶️ [Watch on YouTube](https://www.youtube.com/watch?v=H7TtVZWxilU)
+
 
 ## Installation
 
