@@ -6,16 +6,20 @@
 
 1. Fork 仓库
 2. 创建功能分支：`git checkout -b feature/新功能`
-3. 进行更改
-4. 运行测试和代码检查：
+3. 安装 pre-commit hook（推荐）：
+   ```bash
+   cp scripts/pre-commit .git/hooks/ && chmod +x .git/hooks/pre-commit
+   ```
+4. 进行更改
+5. 运行测试和代码检查：
    ```bash
    bun run lint
    bun run build
    cd src-tauri && cargo check
    ```
-5. 提交更改：`git commit -m 'feat: 添加新功能'`
-6. 推送到分支：`git push origin feature/新功能`
-7. 创建 Pull Request
+6. 提交更改：`git commit -m 'feat: 添加新功能'`
+7. 推送到分支：`git push origin feature/新功能`
+8. 创建 Pull Request
 
 ## 提交规范
 

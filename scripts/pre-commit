@@ -1,0 +1,25 @@
+#!/bin/sh
+# Pre-commit hook: Check biome and cargo before commit
+# Install: cp scripts/pre-commit .git/hooks/ && chmod +x .git/hooks/pre-commit
+
+echo "🔍 Running pre-commit checks..."
+
+# Check biome (frontend)
+echo "→ Checking Biome..."
+bun run biome check . --colors=force || {
+  echo ""
+  echo "❌ Biome check failed. Run 'bun run biome check --write .' to fix."
+  exit 1
+}
+
+# Check cargo (Rust backend)
+echo ""
+echo "→ Checking Cargo..."
+cd src-tauri && cargo check --quiet 2>&1 || {
+  echo ""
+  echo "❌ Cargo check failed."
+  exit 1
+}
+
+echo ""
+echo "✅ All checks passed!"

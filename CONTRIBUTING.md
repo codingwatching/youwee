@@ -6,16 +6,20 @@ We welcome contributions! Here's how you can help.
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Make your changes
-4. Run tests and linting:
+3. Install pre-commit hook (recommended):
+   ```bash
+   cp scripts/pre-commit .git/hooks/ && chmod +x .git/hooks/pre-commit
+   ```
+4. Make your changes
+5. Run tests and linting:
    ```bash
    bun run lint
    bun run build
    cd src-tauri && cargo check
    ```
-5. Commit your changes: `git commit -m 'feat: add amazing feature'`
-6. Push to the branch: `git push origin feature/amazing-feature`
-7. Open a Pull Request
+6. Commit your changes: `git commit -m 'feat: add amazing feature'`
+7. Push to the branch: `git push origin feature/amazing-feature`
+8. Open a Pull Request
 
 ## Commit Convention
 

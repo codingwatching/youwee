@@ -6,16 +6,20 @@ Chúng tôi hoan nghênh mọi đóng góp! Đây là cách bạn có thể giú
 
 1. Fork repository
 2. Tạo nhánh tính năng: `git checkout -b feature/tinh-nang-moi`
-3. Thực hiện thay đổi
-4. Chạy tests và linting:
+3. Cài đặt pre-commit hook (khuyến nghị):
+   ```bash
+   cp scripts/pre-commit .git/hooks/ && chmod +x .git/hooks/pre-commit
+   ```
+4. Thực hiện thay đổi
+5. Chạy tests và linting:
    ```bash
    bun run lint
    bun run build
    cd src-tauri && cargo check
    ```
-5. Commit thay đổi: `git commit -m 'feat: thêm tính năng mới'`
-6. Push lên nhánh: `git push origin feature/tinh-nang-moi`
-7. Mở Pull Request
+6. Commit thay đổi: `git commit -m 'feat: thêm tính năng mới'`
+7. Push lên nhánh: `git push origin feature/tinh-nang-moi`
+8. Mở Pull Request
 
 ## Quy ước Commit
 
