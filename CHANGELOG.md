@@ -10,10 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **DPAPI error detection** - Detect Chrome 127+ App-Bound Encryption errors on Windows, show troubleshooting hint to use Firefox or Cookie File mode
 
+### Changed
+- **Processing input layout** - Move prompt templates button into input card, textarea on top with action buttons below
+
 ### Fixed
 - **8K download gets 4K** - High-res (8K/4K/2K) ignored user's codec setting and always forced VP9. Now respects codec choice and prioritizes AV1 for 8K, VP9 for 4K/2K when set to Auto
 - **Download speed not showing** - Fixed regex not capturing speed and ETA from yt-dlp progress output
 - **Failed to fetch video info for YouTube** - Add Deno JS runtime to video info, transcript, playlist, and subtitle fetching (same as download)
+- **Video title shows Unknown in Library** - Extract title from filepath when yt-dlp doesn't output Destination message
 
 ## [0.7.1] - 2026-02-06
 

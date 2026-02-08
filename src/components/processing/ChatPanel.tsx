@@ -120,64 +120,6 @@ export function ChatPanel({
               <p className="text-xs text-muted-foreground">{t('processing.chat.subtitle')}</p>
             </div>
           </div>
-
-          {/* Suggestions Button */}
-          <div className="relative">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => setShowSuggestions(!showSuggestions)}
-                  disabled={!hasVideo || isProcessing || isGenerating}
-                  className={cn(
-                    'h-8 w-8 rounded-lg flex items-center justify-center',
-                    'transition-all duration-200',
-                    'hover:bg-muted text-muted-foreground hover:text-foreground',
-                    'disabled:opacity-50 disabled:cursor-not-allowed',
-                    showSuggestions && 'bg-muted text-foreground',
-                  )}
-                >
-                  <Lightbulb className="w-4 h-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{t('processing.chat.promptTemplates')}</TooltipContent>
-            </Tooltip>
-
-            {/* Suggestions Dropdown */}
-            {showSuggestions && (
-              <div
-                className={cn(
-                  'absolute top-full right-0 mt-2 w-64',
-                  'bg-background/95 backdrop-blur-xl',
-                  'border border-border/50 rounded-xl shadow-xl',
-                  'p-2 z-50',
-                )}
-              >
-                <div className="text-xs text-muted-foreground px-2 py-1 mb-1">
-                  {t('processing.chat.promptTemplates')}
-                </div>
-                <div className="space-y-0.5 max-h-64 overflow-y-auto">
-                  {promptSuggestions.map((suggestion) => (
-                    <button
-                      type="button"
-                      key={suggestion.id}
-                      onClick={() => handleSelectSuggestion(suggestion.prompt)}
-                      className={cn(
-                        'w-full text-left px-3 py-2 rounded-lg',
-                        'text-sm transition-colors',
-                        'hover:bg-muted/70 text-foreground',
-                      )}
-                    >
-                      <div className="font-medium">{suggestion.label}</div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        {suggestion.prompt}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
@@ -336,7 +278,7 @@ export function ChatPanel({
       <div className="flex-shrink-0 p-3 pt-0">
         <div
           className={cn(
-            'relative flex items-end gap-2 p-2 rounded-2xl',
+            'relative flex flex-col p-2 rounded-2xl',
             'bg-background/60 backdrop-blur-md',
             'transition-all duration-300 ease-out',
             // Default state
@@ -362,7 +304,8 @@ export function ChatPanel({
             )}
           />
 
-          <div className="relative flex-1 min-w-0">
+          {/* Textarea */}
+          <div className="relative min-w-0">
             <textarea
               placeholder={t('processing.chat.inputPlaceholder')}
               value={inputMessage}
@@ -392,25 +335,87 @@ export function ChatPanel({
             />
           </div>
 
-          <button
-            type="button"
-            className={cn(
-              'relative flex-shrink-0 h-10 w-10 rounded-xl flex items-center justify-center',
-              'transition-all duration-300 ease-out',
-              inputMessage.trim() && hasVideo && !isProcessing && !isGenerating
-                ? 'btn-gradient shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:scale-105'
-                : 'bg-muted/50 text-muted-foreground/30 hover:bg-muted/70 hover:text-muted-foreground/50',
-            )}
-            onClick={handleSendMessage}
-            disabled={!inputMessage.trim() || !hasVideo || isProcessing || isGenerating}
-          >
-            <Send
-              className={cn(
-                'w-4 h-4 transition-transform duration-300',
-                inputMessage.trim() && '-rotate-45',
+          {/* Bottom row: Prompt Templates (left) + Send (right) */}
+          <div className="relative flex items-center justify-between mt-1 px-1">
+            {/* Prompt Templates Button */}
+            <div className="relative">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setShowSuggestions(!showSuggestions)}
+                    disabled={!hasVideo || isProcessing || isGenerating}
+                    className={cn(
+                      'h-8 w-8 rounded-lg flex items-center justify-center',
+                      'transition-all duration-200',
+                      'hover:bg-muted text-muted-foreground hover:text-foreground',
+                      'disabled:opacity-50 disabled:cursor-not-allowed',
+                      showSuggestions && 'bg-muted text-foreground',
+                    )}
+                  >
+                    <Lightbulb className="w-4 h-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t('processing.chat.promptTemplates')}</TooltipContent>
+              </Tooltip>
+
+              {/* Suggestions Dropdown */}
+              {showSuggestions && (
+                <div
+                  className={cn(
+                    'absolute bottom-full left-0 mb-2 w-64',
+                    'bg-background/95 backdrop-blur-xl',
+                    'border border-border/50 rounded-xl shadow-xl',
+                    'p-2 z-50',
+                  )}
+                >
+                  <div className="text-xs text-muted-foreground px-2 py-1 mb-1">
+                    {t('processing.chat.promptTemplates')}
+                  </div>
+                  <div className="space-y-0.5 max-h-64 overflow-y-auto">
+                    {promptSuggestions.map((suggestion) => (
+                      <button
+                        type="button"
+                        key={suggestion.id}
+                        onClick={() => handleSelectSuggestion(suggestion.prompt)}
+                        className={cn(
+                          'w-full text-left px-3 py-2 rounded-lg',
+                          'text-sm transition-colors',
+                          'hover:bg-muted/70 text-foreground',
+                        )}
+                      >
+                        <div className="font-medium">{suggestion.label}</div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {suggestion.prompt}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
-            />
-          </button>
+            </div>
+
+            {/* Send Button */}
+            <button
+              type="button"
+              className={cn(
+                'relative flex-shrink-0 h-10 w-10 rounded-xl flex items-center justify-center',
+                'transition-all duration-300 ease-out',
+                inputMessage.trim() && hasVideo && !isProcessing && !isGenerating
+                  ? 'btn-gradient shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:scale-105'
+                  : 'bg-muted/50 text-muted-foreground/30 hover:bg-muted/70 hover:text-muted-foreground/50',
+              )}
+              onClick={handleSendMessage}
+              disabled={!inputMessage.trim() || !hasVideo || isProcessing || isGenerating}
+            >
+              <Send
+                className={cn(
+                  'w-4 h-4 transition-transform duration-300',
+                  inputMessage.trim() && '-rotate-45',
+                )}
+              />
+            </button>
+          </div>
         </div>
       </div>
     </div>
