@@ -24,7 +24,6 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FFmpegRequiredDialog } from '@/components/FFmpegRequiredDialog';
 import { ThemePicker } from '@/components/settings/ThemePicker';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -470,6 +469,7 @@ export function ChannelsPage() {
     followedChannels,
     refreshChannels,
     followChannel,
+    unfollowChannel,
     browseUrl,
     setBrowseUrl,
     browseVideos,
@@ -603,6 +603,19 @@ export function ChannelsPage() {
     (c) => c.url === browseUrl || c.url === urlInput.trim(),
   );
 
+  const followedChannelId = followedChannels.find(
+    (c) => c.url === browseUrl || c.url === urlInput.trim(),
+  )?.id;
+
+  const [confirmBrowseUnfollow, setConfirmBrowseUnfollow] = useState(false);
+  const [confirmPanelUnfollowId, setConfirmPanelUnfollowId] = useState<string | null>(null);
+
+  const handleBrowseUnfollow = useCallback(async () => {
+    if (!followedChannelId) return;
+    await unfollowChannel(followedChannelId);
+    setConfirmBrowseUnfollow(false);
+  }, [followedChannelId, unfollowChannel]);
+
   const pendingCount = selectedVideoIds.size;
 
   // If viewing a specific followed channel detail
@@ -731,10 +744,35 @@ export function ChannelsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {isAlreadyFollowing ? (
-                    <Badge variant="secondary" className="gap-1 px-3 py-1">
-                      <Check className="w-3 h-3" />
-                      {t('following')}
-                    </Badge>
+                    confirmBrowseUnfollow ? (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={handleBrowseUnfollow}
+                          className="h-7 text-xs px-2.5"
+                        >
+                          {t('unfollow')}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setConfirmBrowseUnfollow(false)}
+                          className="h-7 text-xs px-2.5"
+                        >
+                          {t('cancel')}
+                        </Button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmBrowseUnfollow(true)}
+                        className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-secondary text-secondary-foreground hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer"
+                      >
+                        <Check className="w-3 h-3" />
+                        {t('following')}
+                      </button>
+                    )
                   ) : (
                     <Button
                       variant="outline"
@@ -890,54 +928,95 @@ export function ChannelsPage() {
 
                 <div className="flex-1 overflow-y-auto px-2 py-2 space-y-1">
                   {followedChannels.map((channel) => (
-                    <button
-                      key={channel.id}
-                      type="button"
-                      onClick={() => {
-                        setUrlInput(channel.url);
-                        setBrowseUrl(channel.url);
-                        fetchChannelVideos(channel.url);
-                      }}
-                      className={cn(
-                        'w-full flex items-center gap-2.5 p-2.5 rounded-xl transition-all duration-200',
-                        'hover:bg-accent/50 cursor-pointer text-left',
-                        'border border-transparent',
-                        browseUrl === channel.url &&
-                          'bg-primary/5 border-primary/20 hover:bg-primary/10',
-                      )}
-                    >
-                      <div className="flex-shrink-0 w-9 h-9 rounded-full overflow-hidden bg-muted ring-1 ring-white/[0.08]">
-                        {channel.thumbnail ? (
-                          <img
-                            src={channel.thumbnail}
-                            alt=""
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50">
-                            <Tv className="w-3.5 h-3.5 text-muted-foreground/40" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-xs font-medium truncate">{channel.name}</p>
-                          {(channelNewCounts[channel.id] || 0) > 0 && (
-                            <span className="flex-shrink-0 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground leading-none">
-                              {channelNewCounts[channel.id] > 99
-                                ? '99+'
-                                : channelNewCounts[channel.id]}
-                            </span>
-                          )}
-                        </div>
-                        {channel.last_checked_at && (
-                          <p className="text-[10px] text-muted-foreground/70 truncate mt-0.5 flex items-center gap-1">
-                            <Clock className="w-2.5 h-2.5" />
-                            {new Date(channel.last_checked_at).toLocaleDateString()}
+                    <div key={channel.id} className="group relative">
+                      {confirmPanelUnfollowId === channel.id ? (
+                        <div className="flex items-center gap-1.5 p-2.5 rounded-xl bg-destructive/5 border border-destructive/20">
+                          <p className="flex-1 text-xs text-muted-foreground truncate">
+                            {t('confirmUnfollow')}
                           </p>
-                        )}
-                      </div>
-                    </button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="h-6 text-[10px] px-2"
+                            onClick={() => {
+                              unfollowChannel(channel.id);
+                              setConfirmPanelUnfollowId(null);
+                            }}
+                          >
+                            {t('unfollow')}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 text-[10px] px-2"
+                            onClick={() => setConfirmPanelUnfollowId(null)}
+                          >
+                            {t('cancel')}
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUrlInput(channel.url);
+                              setBrowseUrl(channel.url);
+                              fetchChannelVideos(channel.url);
+                            }}
+                            className={cn(
+                              'w-full flex items-center gap-2.5 p-2.5 rounded-xl transition-all duration-200',
+                              'hover:bg-accent/50 cursor-pointer text-left',
+                              'border border-transparent',
+                              browseUrl === channel.url &&
+                                'bg-primary/5 border-primary/20 hover:bg-primary/10',
+                            )}
+                          >
+                            <div className="flex-shrink-0 w-9 h-9 rounded-full overflow-hidden bg-muted ring-1 ring-white/[0.08]">
+                              {channel.thumbnail ? (
+                                <img
+                                  src={channel.thumbnail}
+                                  alt=""
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+                                  <Tv className="w-3.5 h-3.5 text-muted-foreground/40" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-xs font-medium truncate">{channel.name}</p>
+                                {(channelNewCounts[channel.id] || 0) > 0 && (
+                                  <span className="flex-shrink-0 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground leading-none">
+                                    {channelNewCounts[channel.id] > 99
+                                      ? '99+'
+                                      : channelNewCounts[channel.id]}
+                                  </span>
+                                )}
+                              </div>
+                              {channel.last_checked_at && (
+                                <p className="text-[10px] text-muted-foreground/70 truncate mt-0.5 flex items-center gap-1">
+                                  <Clock className="w-2.5 h-2.5" />
+                                  {new Date(channel.last_checked_at).toLocaleDateString()}
+                                </p>
+                              )}
+                            </div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfirmPanelUnfollowId(channel.id);
+                            }}
+                            className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-muted/80 hover:bg-destructive/20 hover:text-destructive"
+                            title={t('unfollow')}
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   ))}
                 </div>
               </>
