@@ -56,6 +56,8 @@ export interface UniversalSettings {
   outputPath: string;
   audioBitrate: AudioBitrate;
   concurrentDownloads: number;
+  // Live stream settings
+  liveFromStart: boolean;
   // Speed limit settings
   speedLimitEnabled: boolean;
   speedLimitValue: number;
@@ -174,6 +176,10 @@ function saveSettings(settings: UniversalSettings) {
         format: settings.format,
         audioBitrate: settings.audioBitrate,
         concurrentDownloads: settings.concurrentDownloads,
+        liveFromStart: settings.liveFromStart,
+        speedLimitEnabled: settings.speedLimitEnabled,
+        speedLimitValue: settings.speedLimitValue,
+        speedLimitUnit: settings.speedLimitUnit,
       }),
     );
   } catch (e) {
@@ -198,6 +204,7 @@ interface UniversalContextType {
   updateFormat: (format: Format) => void;
   updateAudioBitrate: (bitrate: AudioBitrate) => void;
   updateConcurrentDownloads: (concurrent: number) => void;
+  updateLiveFromStart: (enabled: boolean) => void;
   // Cookie error detection
   cookieError: { show: boolean; itemId?: string } | null;
   clearCookieError: () => void;
@@ -220,6 +227,8 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
       outputPath: saved.outputPath || '',
       audioBitrate: saved.audioBitrate || 'auto',
       concurrentDownloads: saved.concurrentDownloads || 1,
+      // Live stream settings
+      liveFromStart: saved.liveFromStart === true, // Default to false
       // Speed limit settings
       speedLimitEnabled: saved.speedLimitEnabled === true, // Default to false (unlimited)
       speedLimitValue: saved.speedLimitValue || 10,
@@ -555,6 +564,8 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
           // Post-processing settings (from main download settings)
           embedMetadata: embedSettings.embedMetadata,
           embedThumbnail: embedSettings.embedThumbnail,
+          // Live stream settings
+          liveFromStart: settings.liveFromStart,
           // Speed limit settings
           speedLimit: settings.speedLimitEnabled
             ? `${settings.speedLimitValue}${settings.speedLimitUnit}`
@@ -650,6 +661,14 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const updateLiveFromStart = useCallback((liveFromStart: boolean) => {
+    setSettings((s) => {
+      const newSettings = { ...s, liveFromStart };
+      saveSettings(newSettings);
+      return newSettings;
+    });
+  }, []);
+
   // Clear cookie error dialog
   const clearCookieError = useCallback(() => {
     setCookieError(null);
@@ -691,6 +710,7 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
     updateFormat,
     updateAudioBitrate,
     updateConcurrentDownloads,
+    updateLiveFromStart,
     // Cookie error detection
     cookieError,
     clearCookieError,
