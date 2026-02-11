@@ -7,6 +7,7 @@
     "download": "下载",
     "ai": "AI 功能",
     "network": "网络与认证",
+    "system": "系统",
     "about": "关于"
   },
   "search": {
@@ -223,5 +224,12 @@
     "by": "制作",
     "autoUpdate": "自动检查更新",
     "autoUpdateDesc": "应用启动时检查更新"
+  },
+  "system": {
+    "title": "系统",
+    "titleDesc": "平台相关设置",
+    "hideDockOnClose": "关闭时隐藏 Dock 图标",
+    "hideDockOnCloseDesc": "关闭窗口时从 Dock 中移除应用。使用系统托盘图标重新打开。",
+    "noSettingsForPlatform": "当前平台没有可用的系统设置。"
   }
 }

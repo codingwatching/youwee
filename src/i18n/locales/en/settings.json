@@ -7,6 +7,7 @@
     "download": "Download",
     "ai": "AI Features",
     "network": "Network & Auth",
+    "system": "System",
     "about": "About"
   },
   "search": {
@@ -223,5 +224,12 @@
     "by": "by",
     "autoUpdate": "Auto-check for updates",
     "autoUpdateDesc": "Check for updates when app opens"
+  },
+  "system": {
+    "title": "System",
+    "titleDesc": "Platform-specific settings",
+    "hideDockOnClose": "Hide Dock icon on close",
+    "hideDockOnCloseDesc": "Remove app from Dock when the window is closed. Use the system tray icon to reopen.",
+    "noSettingsForPlatform": "No system settings available for this platform."
   }
 }

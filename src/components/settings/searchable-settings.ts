@@ -4,6 +4,7 @@ export type SettingsSectionId =
   | 'download'
   | 'ai'
   | 'network'
+  | 'system'
   | 'about';
 
 export interface SearchableSetting {
@@ -242,6 +243,14 @@ export const SEARCHABLE_SETTINGS: SearchableSetting[] = [
     keywords: ['github', 'source', 'code', 'repository', 'open source'],
     section: 'about',
   },
+  // System Section
+  {
+    id: 'hide-dock',
+    label: 'Hide Dock Icon on Close',
+    description: 'Remove app from macOS Dock when window is closed',
+    keywords: ['dock', 'hide', 'close', 'tray', 'macos', 'taskbar', 'system'],
+    section: 'system',
+  },
 ];
 
 export function searchSettings(query: string): SearchableSetting[] {
@@ -265,5 +274,6 @@ export const SECTION_INFO: Record<SettingsSectionId, { label: string; icon: stri
   download: { label: 'Download', icon: 'ArrowDownToLine' },
   ai: { label: 'AI Features', icon: 'Sparkles' },
   network: { label: 'Network & Auth', icon: 'Globe' },
+  system: { label: 'System', icon: 'Monitor' },
   about: { label: 'About', icon: 'Info' },
 };

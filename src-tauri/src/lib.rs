@@ -18,6 +18,28 @@ pub mod commands;
 use tauri::Manager;
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
+use std::sync::atomic::{AtomicBool, Ordering};
+
+/// Whether to hide the dock icon when closing the window (macOS only)
+static HIDE_DOCK_ON_CLOSE: AtomicBool = AtomicBool::new(false);
+
+/// Show the main window and restore dock icon if needed
+fn show_main_window(app_handle: &tauri::AppHandle) {
+    if let Some(window) = app_handle.get_webview_window("main") {
+        #[cfg(target_os = "macos")]
+        {
+            let _ = app_handle.set_activation_policy(tauri::ActivationPolicy::Regular);
+        }
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
+/// Tauri command: set the hide-dock-on-close preference
+#[tauri::command]
+fn set_hide_dock_on_close(hide: bool) {
+    HIDE_DOCK_ON_CLOSE.store(hide, Ordering::SeqCst);
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -55,6 +77,12 @@ pub fn run() {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
                 let _ = window.hide();
+
+                // macOS: optionally hide the dock icon too
+                #[cfg(target_os = "macos")]
+                if HIDE_DOCK_ON_CLOSE.load(Ordering::SeqCst) {
+                    let _ = window.app_handle().set_activation_policy(tauri::ActivationPolicy::Accessory);
+                }
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -151,14 +179,27 @@ pub fn run() {
             commands::get_new_videos_count,
             commands::update_channel_last_checked,
             commands::update_channel_info,
+            // System commands
+            set_hide_dock_on_close,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {
-            if let tauri::RunEvent::ExitRequested { .. } = event {
-                // Stop polling on exit
-                services::polling::stop_polling();
-                let _ = app_handle;
+            match event {
+                // macOS: user clicked dock icon while window is hidden → reopen
+                // (On Windows/Linux this event doesn't fire — users use the system tray instead)
+                tauri::RunEvent::Reopen {
+                    has_visible_windows, ..
+                } => {
+                    if !has_visible_windows {
+                        show_main_window(app_handle);
+                    }
+                }
+                tauri::RunEvent::ExitRequested { .. } => {
+                    // Stop polling on exit
+                    services::polling::stop_polling();
+                }
+                _ => {}
             }
         });
 }
@@ -195,10 +236,7 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                     services::polling::start_polling(app_handle_menu.clone());
                 }
                 "show" => {
-                    if let Some(window) = app_handle_menu.get_webview_window("main") {
-                        let _ = window.show();
-                        let _ = window.set_focus();
-                    }
+                    show_main_window(&app_handle_menu);
                 }
                 "quit" => {
                     services::polling::stop_polling();
@@ -210,10 +248,7 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .on_tray_icon_event(move |_tray, event| {
             // Left-click tray icon -> show/focus window
             if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
-                if let Some(window) = app_handle.get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                }
+                show_main_window(&app_handle);
             }
         })
         .build(app)?;
