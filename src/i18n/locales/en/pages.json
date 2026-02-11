@@ -97,7 +97,9 @@
       "change": "Change",
       "noVideoLoaded": "No video loaded",
       "selectVideoHint": "Select a video to start editing",
-      "selectVideo": "Select Video"
+      "selectVideo": "Select Video",
+      "videoError": "Failed to load video",
+      "tryAnother": "Try another video"
     },
     "historyDialog": {
       "title": "Processing History",

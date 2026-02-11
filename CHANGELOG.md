@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Smarter platform detection** - Library now correctly identifies and tags all 1800+ sites supported by yt-dlp (Bilibili, Dailymotion, SoundCloud, etc.) instead of showing "Other". Added Bilibili as a dedicated filter tab
 
 ### Fixed
+- **Processing page freezes on video upload (Linux)** - Video files were read entirely into RAM via `readFile()`, causing OOM crashes and white screens. Now uses Tauri's asset protocol to stream videos directly without loading into memory. Also adds error boundary to prevent unrecoverable white screens, video error handling with codec-specific messages, blob URL cleanup to prevent memory leaks, and correct MIME type detection for non-MP4 formats
 - **Broken thumbnails in Library** - Fix thumbnails from sites like Bilibili that use HTTP URLs. Thumbnails now gracefully fall back to a placeholder icon if they fail to load
 - **Library not refreshing on page switch** - Library now automatically loads latest downloads when navigating to the page instead of requiring a manual refresh
 

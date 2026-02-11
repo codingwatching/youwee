@@ -97,7 +97,9 @@
       "change": "Thay đổi",
       "noVideoLoaded": "Chưa tải video",
       "selectVideoHint": "Chọn video để bắt đầu chỉnh sửa",
-      "selectVideo": "Chọn Video"
+      "selectVideo": "Chọn Video",
+      "videoError": "Không thể tải video",
+      "tryAnother": "Thử video khác"
     },
     "historyDialog": {
       "title": "Lịch sử xử lý",
