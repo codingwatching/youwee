@@ -7,6 +7,7 @@ import type { Page } from '@/components/layout';
 import { MainLayout } from '@/components/layout';
 import { UpdateDialog } from '@/components/UpdateDialog';
 import { AIProvider } from '@/contexts/AIContext';
+import { ChannelsProvider } from '@/contexts/ChannelsContext';
 import { DependenciesProvider, useDependencies } from '@/contexts/DependenciesContext';
 import { DownloadProvider, useDownload } from '@/contexts/DownloadContext';
 import { HistoryProvider } from '@/contexts/HistoryContext';
@@ -17,6 +18,7 @@ import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { UniversalProvider } from '@/contexts/UniversalContext';
 import { UpdaterProvider, useUpdater } from '@/contexts/UpdaterContext';
 import {
+  ChannelsPage,
   DownloadPage,
   HistoryPage,
   LogsPage,
@@ -85,6 +87,7 @@ function AppContent() {
         {currentPage === 'universal' && (
           <UniversalPage onNavigateToSettings={() => setCurrentPage('settings')} />
         )}
+        {currentPage === 'channels' && <ChannelsPage />}
         {currentPage === 'summary' && <SummaryPage />}
         {currentPage === 'processing' && (
           <ErrorBoundary
@@ -138,19 +141,21 @@ export function App() {
       <DependenciesProvider>
         <DownloadProvider>
           <UniversalProvider>
-            <LogProvider>
-              <HistoryProvider>
-                <AIProvider>
-                  <ProcessingProvider>
-                    <MetadataProvider>
-                      <UpdaterWrapper>
-                        <AppContent />
-                      </UpdaterWrapper>
-                    </MetadataProvider>
-                  </ProcessingProvider>
-                </AIProvider>
-              </HistoryProvider>
-            </LogProvider>
+            <ChannelsProvider>
+              <LogProvider>
+                <HistoryProvider>
+                  <AIProvider>
+                    <ProcessingProvider>
+                      <MetadataProvider>
+                        <UpdaterWrapper>
+                          <AppContent />
+                        </UpdaterWrapper>
+                      </MetadataProvider>
+                    </ProcessingProvider>
+                  </AIProvider>
+                </HistoryProvider>
+              </LogProvider>
+            </ChannelsProvider>
           </UniversalProvider>
         </DownloadProvider>
       </DependenciesProvider>
