@@ -81,6 +81,7 @@ interface ChannelsContextType {
   refreshChannels: () => Promise<void>;
   followChannel: (url: string, name: string, thumbnail?: string) => Promise<string>;
   unfollowChannel: (id: string) => Promise<void>;
+  refreshFollowedChannelInfo: () => Promise<void>;
 
   // Channel browsing
   browseUrl: string;
@@ -89,6 +90,7 @@ interface ChannelsContextType {
   browseLoading: boolean;
   browseError: string | null;
   browseChannelName: string | null;
+  browseChannelAvatar: string | null;
   fetchChannelVideos: (url: string, limit?: number) => Promise<void>;
   clearBrowse: () => void;
 
@@ -134,6 +136,7 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
   const [browseLoading, setBrowseLoading] = useState(false);
   const [browseError, setBrowseError] = useState<string | null>(null);
   const [browseChannelName, setBrowseChannelName] = useState<string | null>(null);
+  const [browseChannelAvatar, setBrowseChannelAvatar] = useState<string | null>(null);
 
   // Selection state
   const [selectedVideoIds, setSelectedVideoIds] = useState<Set<string>>(new Set());
@@ -284,6 +287,7 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
       setBrowseError(null);
       setBrowseVideos([]);
       setBrowseChannelName(null);
+      setBrowseChannelAvatar(null);
       setSelectedVideoIds(new Set());
       setVideoStates(new Map());
 
@@ -292,18 +296,34 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
       const proxyUrl = getProxyUrl();
 
       try {
-        const videos = await invoke<PlaylistVideoEntry[]>('get_channel_videos', {
-          url,
-          limit,
-          cookieMode,
-          cookieBrowser,
-          cookieBrowserProfile,
-          cookieFilePath,
-          proxyUrl,
-        });
+        // Fetch videos and channel info in parallel
+        const [videos, channelInfo] = await Promise.all([
+          invoke<PlaylistVideoEntry[]>('get_channel_videos', {
+            url,
+            limit,
+            cookieMode,
+            cookieBrowser,
+            cookieBrowserProfile,
+            cookieFilePath,
+            proxyUrl,
+          }),
+          invoke<{ name: string; avatar_url: string | null }>('get_channel_info', {
+            url,
+            cookieMode,
+            cookieBrowser,
+            cookieBrowserProfile,
+            cookieFilePath,
+            proxyUrl,
+          }).catch(() => null), // Don't fail if channel info fetch fails
+        ]);
+
         setBrowseVideos(videos);
-        // Extract channel name from first video, fallback to URL
-        if (videos.length > 0) {
+
+        // Use channel info from dedicated command, fallback to video metadata
+        if (channelInfo) {
+          setBrowseChannelName(channelInfo.name);
+          setBrowseChannelAvatar(channelInfo.avatar_url);
+        } else if (videos.length > 0) {
           const name = videos[0].channel || extractChannelFromUrl(url) || 'Channel';
           setBrowseChannelName(name);
         }
@@ -323,6 +343,7 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
     setBrowseVideos([]);
     setBrowseError(null);
     setBrowseChannelName(null);
+    setBrowseChannelAvatar(null);
     setSelectedVideoIds(new Set());
     setVideoStates(new Map());
   }, []);
@@ -591,11 +612,61 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Refresh followed channels' name and avatar from YouTube
+  const refreshFollowedChannelInfo = useCallback(async () => {
+    const { cookieMode, cookieBrowser, cookieBrowserProfile, cookieFilePath } = getCookieSettings();
+    const proxyUrl = getProxyUrl();
+
+    try {
+      const channels = await invoke<FollowedChannel[]>('get_followed_channels');
+      let updated = false;
+
+      for (const ch of channels) {
+        try {
+          const info = await invoke<{ name: string; avatar_url: string | null }>(
+            'get_channel_info',
+            {
+              url: ch.url,
+              cookieMode,
+              cookieBrowser,
+              cookieBrowserProfile,
+              cookieFilePath,
+              proxyUrl,
+            },
+          );
+
+          // Update if name or avatar changed
+          const avatarChanged = (info.avatar_url || null) !== (ch.thumbnail || null);
+          const nameChanged = info.name !== ch.name;
+
+          if (nameChanged || avatarChanged) {
+            await invoke('update_channel_info', {
+              id: ch.id,
+              name: info.name,
+              thumbnail: info.avatar_url || null,
+            });
+            updated = true;
+          }
+        } catch {
+          // Skip channels that fail
+        }
+      }
+
+      if (updated) {
+        await refreshChannels();
+      }
+    } catch {
+      // ignore
+    }
+  }, [getCookieSettings, getProxyUrl, refreshChannels]);
+
   // Load on mount
   useEffect(() => {
     refreshChannels();
     refreshChannelNewCounts();
-  }, [refreshChannels, refreshChannelNewCounts]);
+    // Refresh channel names/avatars in background (non-blocking)
+    refreshFollowedChannelInfo();
+  }, [refreshChannels, refreshChannelNewCounts, refreshFollowedChannelInfo]);
 
   // Listen for new videos events from backend polling
   useEffect(() => {
@@ -724,12 +795,14 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
         refreshChannels,
         followChannel,
         unfollowChannel,
+        refreshFollowedChannelInfo,
         browseUrl,
         setBrowseUrl,
         browseVideos,
         browseLoading,
         browseError,
         browseChannelName,
+        browseChannelAvatar,
         fetchChannelVideos,
         clearBrowse,
         selectedVideoIds,

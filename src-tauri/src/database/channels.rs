@@ -274,6 +274,21 @@ pub fn update_channel_video_status_db(id: String, status: String) -> Result<(), 
     Ok(())
 }
 
+/// Update channel name and thumbnail (avatar)
+pub fn update_channel_info_db(
+    id: String,
+    name: String,
+    thumbnail: Option<String>,
+) -> Result<(), String> {
+    let conn = get_db()?;
+    conn.execute(
+        "UPDATE followed_channels SET name = ?1, thumbnail = ?2 WHERE id = ?3",
+        params![name, thumbnail, id],
+    )
+    .map_err(|e| format!("Failed to update channel info: {}", e))?;
+    Ok(())
+}
+
 /// Get count of new videos for a channel
 pub fn get_new_videos_count_db(channel_id: Option<String>) -> Result<i64, String> {
     let conn = get_db()?;

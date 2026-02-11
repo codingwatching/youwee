@@ -491,6 +491,7 @@ export function ChannelsPage() {
     activeChannel,
     setActiveChannel,
     channelNewCounts,
+    browseChannelAvatar,
   } = useChannels();
 
   const { ffmpegStatus } = useDependencies();
@@ -588,14 +589,15 @@ export function ChannelsPage() {
     if (!browseChannelName || !browseUrl) return;
     setFollowingUrl(true);
     try {
-      const thumbnail = browseVideos.length > 0 ? browseVideos[0].thumbnail : undefined;
+      const thumbnail =
+        browseChannelAvatar || (browseVideos.length > 0 ? browseVideos[0].thumbnail : undefined);
       await followChannel(browseUrl, browseChannelName, thumbnail ?? undefined);
     } catch (error) {
       console.error('Follow failed:', error);
     } finally {
       setFollowingUrl(false);
     }
-  }, [browseUrl, browseChannelName, browseVideos, followChannel]);
+  }, [browseUrl, browseChannelName, browseChannelAvatar, browseVideos, followChannel]);
 
   const isAlreadyFollowing = followedChannels.some(
     (c) => c.url === browseUrl || c.url === urlInput.trim(),
@@ -709,8 +711,16 @@ export function ChannelsPage() {
             <div className="flex-shrink-0 px-4 sm:px-6 pt-3 pb-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center ring-2 ring-primary/20">
-                    <Tv className="w-5 h-5 text-primary" />
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center ring-2 ring-primary/20">
+                    {browseChannelAvatar ? (
+                      <img
+                        src={browseChannelAvatar}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Tv className="w-5 h-5 text-primary" />
+                    )}
                   </div>
                   <div>
                     <h2 className="font-semibold text-sm leading-tight">{browseChannelName}</h2>

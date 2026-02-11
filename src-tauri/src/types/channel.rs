@@ -1,5 +1,12 @@
 use serde::{Deserialize, Serialize};
 
+/// Channel metadata (name + avatar) extracted from yt-dlp -J
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct ChannelInfo {
+    pub name: String,
+    pub avatar_url: Option<String>,
+}
+
 /// A followed YouTube channel
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct FollowedChannel {

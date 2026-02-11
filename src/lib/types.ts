@@ -575,6 +575,11 @@ export interface YtdlpChannelUpdateInfo {
 // Channel Follow & Auto-Download Types
 // ============================================
 
+export interface ChannelInfo {
+  name: string;
+  avatar_url: string | null;
+}
+
 export interface FollowedChannel {
   id: string;
   url: string;

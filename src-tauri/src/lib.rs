@@ -139,6 +139,7 @@ pub fn run() {
             commands::cancel_metadata_fetch,
             // Channel commands
             commands::get_channel_videos,
+            commands::get_channel_info,
             commands::follow_channel,
             commands::unfollow_channel,
             commands::get_followed_channels,
@@ -148,6 +149,7 @@ pub fn run() {
             commands::update_channel_video_status,
             commands::get_new_videos_count,
             commands::update_channel_last_checked,
+            commands::update_channel_info,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
