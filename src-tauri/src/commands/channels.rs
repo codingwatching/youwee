@@ -345,6 +345,7 @@ pub async fn update_channel_settings(
     filter_include_keywords: Option<String>,
     filter_exclude_keywords: Option<String>,
     filter_max_videos: Option<i64>,
+    download_threads: Option<i64>,
 ) -> Result<(), String> {
     database::update_channel_settings_db(
         id,
@@ -357,6 +358,7 @@ pub async fn update_channel_settings(
         filter_include_keywords,
         filter_exclude_keywords,
         filter_max_videos,
+        download_threads.unwrap_or(1),
     )
 }
 

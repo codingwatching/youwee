@@ -32,6 +32,7 @@ pub struct AutoDownloadEvent {
     pub channel_name: String,
     pub quality: String,
     pub format: String,
+    pub download_threads: i64,
 }
 
 /// Start the background polling loop
@@ -112,6 +113,7 @@ pub fn start_polling(app: AppHandle) {
                                     channel_name: channel.name.clone(),
                                     quality: channel.download_quality.clone(),
                                     format: channel.download_format.clone(),
+                                    download_threads: channel.download_threads,
                                 });
                             }
                         } else {

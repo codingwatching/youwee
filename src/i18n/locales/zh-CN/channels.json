@@ -44,6 +44,7 @@
   "excludeKeywords": "排除关键词",
   "excludeKeywordsPlaceholder": "用逗号分隔的关键词",
   "maxVideosPerCheck": "每次检查最大视频数",
+  "downloadThreads": "线程数",
   "save": "保存",
   "cancel": "取消",
   "confirmUnfollow": "确定要取消关注此频道吗？",

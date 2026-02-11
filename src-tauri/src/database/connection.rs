@@ -150,7 +150,8 @@ pub fn init_database(app: &AppHandle) -> Result<(), String> {
             filter_max_duration INTEGER,
             filter_include_keywords TEXT,
             filter_exclude_keywords TEXT,
-            filter_max_videos INTEGER
+            filter_max_videos INTEGER,
+            download_threads INTEGER NOT NULL DEFAULT 1
         )",
         [],
     )
@@ -190,6 +191,13 @@ pub fn init_database(app: &AppHandle) -> Result<(), String> {
 
     conn.execute(
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_channel_videos_unique ON channel_videos(channel_id, video_id)",
+        [],
+    )
+    .ok();
+
+    // Migration: Add download_threads column if it doesn't exist
+    conn.execute(
+        "ALTER TABLE followed_channels ADD COLUMN download_threads INTEGER NOT NULL DEFAULT 1",
         [],
     )
     .ok();

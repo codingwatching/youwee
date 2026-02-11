@@ -28,6 +28,7 @@ pub struct FollowedChannel {
     pub filter_include_keywords: Option<String>, // comma-separated
     pub filter_exclude_keywords: Option<String>, // comma-separated
     pub filter_max_videos: Option<i64>,          // max videos per check
+    pub download_threads: i64,                   // concurrent download threads (default 1)
 }
 
 /// A video belonging to a followed channel

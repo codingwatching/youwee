@@ -37,6 +37,27 @@ function extractChannelFromUrl(url: string): string | null {
   return null;
 }
 
+/** Sanitize a channel name to be safe as a filesystem folder name.
+ *  Works across macOS, Windows, and Linux. */
+function sanitizeChannelFolderName(name: string): string {
+  // Remove characters that are invalid on any OS: / \ : * ? " < > |
+  let safe = name.replace(/[/\\:*?"<>|]/g, '');
+  // Remove control characters (U+0000–U+001F, U+007F)
+  safe = [...safe]
+    .filter((ch) => {
+      const code = ch.codePointAt(0) ?? 0;
+      return code > 0x1f && code !== 0x7f;
+    })
+    .join('');
+  // Trim leading/trailing dots and spaces (Windows restriction)
+  safe = safe.replace(/^[\s.]+|[\s.]+$/g, '');
+  // Collapse multiple spaces into one
+  safe = safe.replace(/\s+/g, ' ');
+  // Fallback if name is empty after sanitization
+  if (!safe) safe = 'Channel';
+  return safe;
+}
+
 /** Build SponsorBlock args from settings (same logic as DownloadContext) */
 function buildSponsorBlockArgs(settings: Partial<DownloadSettings>): {
   remove: string | null;
@@ -93,6 +114,7 @@ interface ChannelsContextType {
     filterIncludeKeywords?: string | null;
     filterExcludeKeywords?: string | null;
     filterMaxVideos?: number | null;
+    downloadThreads?: number;
   }) => Promise<void>;
 
   // Channel browsing
@@ -369,6 +391,7 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
       filterIncludeKeywords?: string | null;
       filterExcludeKeywords?: string | null;
       filterMaxVideos?: number | null;
+      downloadThreads?: number;
     }) => {
       await invoke('update_channel_settings', {
         id: settings.id,
@@ -381,6 +404,7 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
         filterIncludeKeywords: settings.filterIncludeKeywords ?? null,
         filterExcludeKeywords: settings.filterExcludeKeywords ?? null,
         filterMaxVideos: settings.filterMaxVideos ?? null,
+        downloadThreads: settings.downloadThreads ?? 1,
       });
       await refreshChannels();
     },
@@ -512,7 +536,7 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
     setSelectedVideoIds(new Set());
   }, []);
 
-  // Download selected videos
+  // Download selected videos (with concurrency pool + per-channel subfolder)
   const downloadSelectedVideos = useCallback(
     async (overrideQuality?: string, overrideFormat?: string, overrideVideoCodec?: string) => {
       const videosToDownload = browseVideos.filter((v) => selectedVideoIds.has(v.id));
@@ -568,12 +592,25 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
         throw new Error('No output path configured. Please set a download folder in Settings.');
       }
 
+      // Per-channel subfolder: append sanitized channel name
+      const channelName =
+        browseChannelName ||
+        followedChannelsRef.current.find((c) => c.url === browseUrl)?.name ||
+        null;
+      if (channelName) {
+        const folderName = sanitizeChannelFolderName(channelName);
+        currentOutputPath = `${currentOutputPath}/${folderName}`;
+      }
+
       const { cookieMode, cookieBrowser, cookieBrowserProfile, cookieFilePath } =
         getCookieSettings();
       const proxyUrl = getProxyUrl();
 
+      // Determine concurrency from followed channel settings
+      const followedCh = followedChannelsRef.current.find((c) => c.url === browseUrl);
+      const maxConcurrent = Math.max(1, followedCh?.download_threads ?? 1);
+
       setIsDownloading(true);
-      const newDownloadingIds = new Set(downloadingIds);
 
       // Mark all selected as pending
       setVideoStates((prev) => {
@@ -584,64 +621,82 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
         return next;
       });
 
-      try {
-        for (const video of videosToDownload) {
-          const downloadId = `channel-${video.id}-${Date.now()}`;
-          // Register mapping so progress listener can find the video and update DB
-          downloadIdMapRef.current.set(downloadId, { videoId: video.id, channelUrl: browseUrl });
+      const downloadOne = async (video: PlaylistVideoEntry) => {
+        const downloadId = `channel-${video.id}-${Date.now()}`;
+        downloadIdMapRef.current.set(downloadId, { videoId: video.id, channelUrl: browseUrl });
 
-          newDownloadingIds.add(video.id);
-          setDownloadingIds(new Set(newDownloadingIds));
+        setDownloadingIds((prev) => new Set([...prev, video.id]));
 
-          // Mark as downloading
+        // Mark as downloading
+        setVideoStates((prev) => {
+          const next = new Map(prev);
+          next.set(video.id, { status: 'downloading', progress: 0, speed: '' });
+          return next;
+        });
+
+        try {
+          await invoke('download_video', {
+            id: downloadId,
+            url: video.url,
+            outputPath: currentOutputPath,
+            quality,
+            format,
+            downloadPlaylist: false,
+            videoCodec,
+            audioBitrate,
+            playlistLimit: null,
+            subtitleMode,
+            subtitleLangs: subtitleLangs.join(','),
+            subtitleEmbed,
+            subtitleFormat,
+            logStderr,
+            useBunRuntime,
+            useActualPlayerJs,
+            cookieMode,
+            cookieBrowser,
+            cookieBrowserProfile,
+            cookieFilePath,
+            proxyUrl,
+            embedMetadata,
+            embedThumbnail,
+            liveFromStart,
+            speedLimit,
+            sponsorblockRemove: sponsorBlockArgs.remove,
+            sponsorblockMark: sponsorBlockArgs.mark,
+            historyId: null,
+            title: video.title || null,
+            thumbnail: video.thumbnail || null,
+            source: 'youtube',
+          });
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          console.error(`Failed to download ${video.title}:`, error);
           setVideoStates((prev) => {
             const next = new Map(prev);
-            next.set(video.id, { status: 'downloading', progress: 0, speed: '' });
+            next.set(video.id, { status: 'error', progress: 0, speed: '', error: msg });
             return next;
           });
+        }
+      };
 
-          try {
-            await invoke('download_video', {
-              id: downloadId,
-              url: video.url,
-              outputPath: currentOutputPath,
-              quality,
-              format,
-              downloadPlaylist: false,
-              videoCodec,
-              audioBitrate,
-              playlistLimit: null,
-              subtitleMode,
-              subtitleLangs: subtitleLangs.join(','),
-              subtitleEmbed,
-              subtitleFormat,
-              logStderr,
-              useBunRuntime,
-              useActualPlayerJs,
-              cookieMode,
-              cookieBrowser,
-              cookieBrowserProfile,
-              cookieFilePath,
-              proxyUrl,
-              embedMetadata,
-              embedThumbnail,
-              liveFromStart,
-              speedLimit,
-              sponsorblockRemove: sponsorBlockArgs.remove,
-              sponsorblockMark: sponsorBlockArgs.mark,
-              historyId: null,
-              title: video.title || null,
-              thumbnail: video.thumbnail || null,
-              source: 'youtube',
+      try {
+        // Concurrency pool: run up to maxConcurrent downloads at once
+        const queue = [...videosToDownload];
+        const running: Promise<void>[] = [];
+
+        while (queue.length > 0 || running.length > 0) {
+          // Fill up to maxConcurrent slots
+          while (running.length < maxConcurrent && queue.length > 0) {
+            const video = queue.shift();
+            if (!video) break;
+            const promise = downloadOne(video).then(() => {
+              running.splice(running.indexOf(promise), 1);
             });
-          } catch (error) {
-            const msg = error instanceof Error ? error.message : String(error);
-            console.error(`Failed to download ${video.title}:`, error);
-            setVideoStates((prev) => {
-              const next = new Map(prev);
-              next.set(video.id, { status: 'error', progress: 0, speed: '', error: msg });
-              return next;
-            });
+            running.push(promise);
+          }
+          // Wait for at least one to finish
+          if (running.length > 0) {
+            await Promise.race(running);
           }
         }
       } finally {
@@ -652,8 +707,8 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
     [
       browseUrl,
       browseVideos,
+      browseChannelName,
       selectedVideoIds,
-      downloadingIds,
       outputPath,
       getCookieSettings,
       getProxyUrl,
@@ -837,8 +892,9 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
       channel_name: string;
       quality: string;
       format: string;
+      download_threads: number;
     }>('channel-auto-download', async (event) => {
-      const { channel_id, quality, format } = event.payload;
+      const { channel_id, channel_name, quality, format, download_threads } = event.payload;
 
       try {
         const newVideos = await invoke<ChannelVideo[]>('get_saved_channel_videos', {
@@ -869,11 +925,17 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
 
         if (!autoOutputPath) return;
 
+        // Per-channel subfolder
+        const folderName = sanitizeChannelFolderName(channel_name);
+        autoOutputPath = `${autoOutputPath}/${folderName}`;
+
         const { cookieMode, cookieBrowser, cookieBrowserProfile, cookieFilePath } =
           getCookieSettings();
         const proxyUrl = getProxyUrl();
 
-        for (const video of newVideos) {
+        const maxConcurrent = Math.max(1, download_threads || 1);
+
+        const downloadOneAuto = async (video: ChannelVideo) => {
           const downloadId = `auto-${video.video_id}-${Date.now()}`;
 
           await invoke('update_channel_video_status', { id: video.id, status: 'downloading' });
@@ -907,6 +969,24 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
           } catch (error) {
             console.error(`Auto-download failed for ${video.title}:`, error);
             await invoke('update_channel_video_status', { id: video.id, status: 'new' });
+          }
+        };
+
+        // Concurrency pool for auto-download
+        const queue = [...newVideos];
+        const running: Promise<void>[] = [];
+
+        while (queue.length > 0 || running.length > 0) {
+          while (running.length < maxConcurrent && queue.length > 0) {
+            const video = queue.shift();
+            if (!video) break;
+            const promise = downloadOneAuto(video).then(() => {
+              running.splice(running.indexOf(promise), 1);
+            });
+            running.push(promise);
+          }
+          if (running.length > 0) {
+            await Promise.race(running);
           }
         }
 

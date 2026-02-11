@@ -44,6 +44,7 @@
   "excludeKeywords": "Từ khóa loại trừ",
   "excludeKeywordsPlaceholder": "từ khóa cách nhau bởi dấu phẩy",
   "maxVideosPerCheck": "Số video tối đa mỗi lần kiểm tra",
+  "downloadThreads": "Số luồng",
   "save": "Lưu",
   "cancel": "Hủy",
   "confirmUnfollow": "Bạn có chắc muốn bỏ theo dõi kênh này?",

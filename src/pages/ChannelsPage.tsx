@@ -1137,6 +1137,9 @@ function ChannelDetailView({ channel, onBack }: { channel: FollowedChannel; onBa
   const [settingsFilterMaxVideos, setSettingsFilterMaxVideos] = useState<string>(
     channel.filter_max_videos != null ? String(channel.filter_max_videos) : '20',
   );
+  const [settingsDownloadThreads, setSettingsDownloadThreads] = useState(
+    channel.download_threads || 1,
+  );
   const [savingSettings, setSavingSettings] = useState(false);
 
   // Reset settings form when channel changes
@@ -1154,6 +1157,7 @@ function ChannelDetailView({ channel, onBack }: { channel: FollowedChannel; onBa
     setSettingsFilterMaxVideos(
       channel.filter_max_videos != null ? String(channel.filter_max_videos) : '20',
     );
+    setSettingsDownloadThreads(channel.download_threads || 1);
   }, [channel]);
 
   const handleSaveSettings = useCallback(async () => {
@@ -1170,6 +1174,7 @@ function ChannelDetailView({ channel, onBack }: { channel: FollowedChannel; onBa
         filterIncludeKeywords: settingsFilterIncludeKeywords || null,
         filterExcludeKeywords: settingsFilterExcludeKeywords || null,
         filterMaxVideos: settingsFilterMaxVideos ? Number(settingsFilterMaxVideos) : null,
+        downloadThreads: Math.max(1, settingsDownloadThreads),
       });
       setShowSettings(false);
     } catch (error) {
@@ -1188,6 +1193,7 @@ function ChannelDetailView({ channel, onBack }: { channel: FollowedChannel; onBa
     settingsFilterIncludeKeywords,
     settingsFilterExcludeKeywords,
     settingsFilterMaxVideos,
+    settingsDownloadThreads,
     updateChannelSettings,
   ]);
 
@@ -1359,6 +1365,19 @@ function ChannelDetailView({ channel, onBack }: { channel: FollowedChannel; onBa
                   className="w-20 h-9 text-sm bg-background/50 border-border/50"
                 />
                 <span className="text-sm text-muted-foreground">{t('minutes')}</span>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Label className="text-sm text-muted-foreground">{t('downloadThreads')}</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={5}
+                  value={settingsDownloadThreads}
+                  onChange={(e) =>
+                    setSettingsDownloadThreads(Math.max(1, Math.min(5, Number(e.target.value))))
+                  }
+                  className="w-16 h-9 text-sm bg-background/50 border-border/50"
+                />
               </div>
             </div>
 

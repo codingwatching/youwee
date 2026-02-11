@@ -46,7 +46,7 @@ pub fn get_followed_channels_db() -> Result<Vec<FollowedChannel>, String> {
             "SELECT id, url, name, thumbnail, platform, last_checked_at, last_video_id,
                     check_interval, auto_download, download_quality, download_format, created_at,
                     filter_min_duration, filter_max_duration, filter_include_keywords,
-                    filter_exclude_keywords, filter_max_videos
+                    filter_exclude_keywords, filter_max_videos, download_threads
              FROM followed_channels ORDER BY created_at DESC",
         )
         .map_err(|e| format!("Failed to prepare query: {}", e))?;
@@ -71,6 +71,7 @@ pub fn get_followed_channels_db() -> Result<Vec<FollowedChannel>, String> {
                 filter_include_keywords: row.get(14)?,
                 filter_exclude_keywords: row.get(15)?,
                 filter_max_videos: row.get(16)?,
+                download_threads: row.get(17)?,
             })
         })
         .map_err(|e| format!("Query failed: {}", e))?
@@ -87,7 +88,7 @@ pub fn get_followed_channel_db(id: String) -> Result<FollowedChannel, String> {
         "SELECT id, url, name, thumbnail, platform, last_checked_at, last_video_id,
                 check_interval, auto_download, download_quality, download_format, created_at,
                 filter_min_duration, filter_max_duration, filter_include_keywords,
-                filter_exclude_keywords, filter_max_videos
+                filter_exclude_keywords, filter_max_videos, download_threads
          FROM followed_channels WHERE id = ?1",
         params![id],
         |row| {
@@ -109,6 +110,7 @@ pub fn get_followed_channel_db(id: String) -> Result<FollowedChannel, String> {
                 filter_include_keywords: row.get(14)?,
                 filter_exclude_keywords: row.get(15)?,
                 filter_max_videos: row.get(16)?,
+                download_threads: row.get(17)?,
             })
         },
     )
@@ -127,14 +129,16 @@ pub fn update_channel_settings_db(
     filter_include_keywords: Option<String>,
     filter_exclude_keywords: Option<String>,
     filter_max_videos: Option<i64>,
+    download_threads: i64,
 ) -> Result<(), String> {
     let conn = get_db()?;
     conn.execute(
         "UPDATE followed_channels SET
             check_interval = ?1, auto_download = ?2, download_quality = ?3,
             download_format = ?4, filter_min_duration = ?5, filter_max_duration = ?6,
-            filter_include_keywords = ?7, filter_exclude_keywords = ?8, filter_max_videos = ?9
-         WHERE id = ?10",
+            filter_include_keywords = ?7, filter_exclude_keywords = ?8, filter_max_videos = ?9,
+            download_threads = ?10
+         WHERE id = ?11",
         params![
             check_interval,
             auto_download as i64,
@@ -145,6 +149,7 @@ pub fn update_channel_settings_db(
             filter_include_keywords,
             filter_exclude_keywords,
             filter_max_videos,
+            download_threads,
             id,
         ],
     )

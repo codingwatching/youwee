@@ -599,6 +599,7 @@ export interface FollowedChannel {
   filter_include_keywords?: string; // comma-separated
   filter_exclude_keywords?: string; // comma-separated
   filter_max_videos?: number;
+  download_threads: number; // concurrent download threads (default 1)
 }
 
 export interface ChannelVideo {
