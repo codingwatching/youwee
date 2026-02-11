@@ -1,3 +1,4 @@
+import { listen } from '@tauri-apps/api/event';
 import { useEffect, useState } from 'react';
 import { DenoDialog } from '@/components/DenoDialog';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -77,6 +78,17 @@ function AppContent() {
       return () => clearTimeout(timer);
     }
   }, [denoStatus, denoSuccess, showDenoDialog]);
+
+  // Navigate to Channels page when a channel is clicked from the system tray
+  useEffect(() => {
+    const unlisten = listen<string>('tray-open-channel', () => {
+      setCurrentPage('channels');
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
 
   return (
     <>

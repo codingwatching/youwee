@@ -360,6 +360,9 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
         await refreshChannelNewCounts();
       }
 
+      // Update tray menu with new channel
+      invoke('rebuild_tray_menu_cmd').catch(() => {});
+
       return id;
     },
     [refreshChannels, browseVideos, syncVideosToDb, refreshChannelNewCounts],
@@ -374,6 +377,8 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
         setActiveChannel(null);
         setActiveChannelVideos([]);
       }
+      // Update tray menu
+      invoke('rebuild_tray_menu_cmd').catch(() => {});
     },
     [activeChannel],
   );
@@ -755,6 +760,9 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
           videoId,
           status: 'downloaded',
         }).catch((e) => console.error('Failed to update video status in DB:', e));
+
+        // Update tray menu (download completed = count changed)
+        invoke('rebuild_tray_menu_cmd').catch(() => {});
       } else if (progress.status === 'error') {
         setVideoStates((prev) => {
           const next = new Map(prev);
@@ -885,6 +893,21 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
     };
   }, [refreshChannels]);
 
+  // Listen for tray menu channel clicks — navigate to the clicked channel
+  useEffect(() => {
+    const unlisten = listen<string>('tray-open-channel', (event) => {
+      const channelId = event.payload;
+      const channel = followedChannelsRef.current.find((c) => c.id === channelId);
+      if (channel) {
+        setActiveChannel(channel);
+      }
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
+
   // Listen for auto-download events from backend polling
   useEffect(() => {
     const unlisten = listen<{
@@ -991,6 +1014,8 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
         }
 
         refreshChannelNewCounts();
+        // Update tray menu after auto-downloads
+        invoke('rebuild_tray_menu_cmd').catch(() => {});
       } catch (error) {
         console.error('Auto-download error:', error);
       }

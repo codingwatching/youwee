@@ -15,9 +15,9 @@ pub mod utils;
 pub mod services;
 pub mod commands;
 
-use tauri::Manager;
+use tauri::{Manager, Emitter};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::menu::{MenuBuilder, MenuItemBuilder};
+use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Whether to hide the dock icon when closing the window (macOS only)
@@ -39,6 +39,12 @@ fn show_main_window(app_handle: &tauri::AppHandle) {
 #[tauri::command]
 fn set_hide_dock_on_close(hide: bool) {
     HIDE_DOCK_ON_CLOSE.store(hide, Ordering::SeqCst);
+}
+
+/// Tauri command: rebuild the system tray menu with current channel info
+#[tauri::command]
+fn rebuild_tray_menu_cmd(app: tauri::AppHandle) {
+    rebuild_tray_menu(&app);
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -181,6 +187,7 @@ pub fn run() {
             commands::update_channel_info,
             // System commands
             set_hide_dock_on_close,
+            rebuild_tray_menu_cmd,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
@@ -206,13 +213,10 @@ pub fn run() {
 
 /// Setup system tray icon and menu
 fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    let check_now = MenuItemBuilder::with_id("check_now", "Check Now").build(app)?;
+    // Build a minimal initial menu (will be replaced by rebuild_tray_menu)
     let show = MenuItemBuilder::with_id("show", "Open Youwee").build(app)?;
     let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
-
     let menu = MenuBuilder::new(app)
-        .item(&check_now)
-        .separator()
         .item(&show)
         .separator()
         .item(&quit)
@@ -224,25 +228,31 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let app_handle = app.handle().clone();
     let app_handle_menu = app.handle().clone();
 
-    TrayIconBuilder::new()
+    TrayIconBuilder::with_id("main-tray")
         .icon(icon)
         .tooltip("Youwee")
         .menu(&menu)
         .on_menu_event(move |_tray, event| {
-            match event.id().as_ref() {
-                "check_now" => {
-                    // Trigger immediate check by restarting polling
-                    services::polling::stop_polling();
-                    services::polling::start_polling(app_handle_menu.clone());
+            let id = event.id().as_ref();
+            if let Some(channel_id) = id.strip_prefix("ch_") {
+                // Channel item clicked: open app and navigate to channel
+                show_main_window(&app_handle_menu);
+                let _ = app_handle_menu.emit("tray-open-channel", channel_id.to_string());
+            } else {
+                match id {
+                    "check_now" => {
+                        services::polling::stop_polling();
+                        services::polling::start_polling(app_handle_menu.clone());
+                    }
+                    "show" => {
+                        show_main_window(&app_handle_menu);
+                    }
+                    "quit" => {
+                        services::polling::stop_polling();
+                        std::process::exit(0);
+                    }
+                    _ => {}
                 }
-                "show" => {
-                    show_main_window(&app_handle_menu);
-                }
-                "quit" => {
-                    services::polling::stop_polling();
-                    std::process::exit(0);
-                }
-                _ => {}
             }
         })
         .on_tray_icon_event(move |_tray, event| {
@@ -252,6 +262,67 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             }
         })
         .build(app)?;
+
+    // Populate tray menu with channel info
+    rebuild_tray_menu(&app.handle());
+
+    Ok(())
+}
+
+/// Rebuild the system tray menu with current followed channels and new video counts.
+/// Called after follow/unfollow, polling finds new videos, or downloads complete.
+pub fn rebuild_tray_menu(app_handle: &tauri::AppHandle) {
+    if let Err(e) = rebuild_tray_menu_inner(app_handle) {
+        log::error!("Failed to rebuild tray menu: {}", e);
+    }
+}
+
+fn rebuild_tray_menu_inner(app_handle: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    let channels = database::get_followed_channels_db().unwrap_or_default();
+    let channel_count = channels.len();
+
+    // Build channel submenu
+    let submenu_label = format!("Followed Channels ({})", channel_count);
+    let mut submenu = SubmenuBuilder::new(app_handle, &submenu_label);
+
+    if channels.is_empty() {
+        let item = MenuItemBuilder::with_id("no_channels", "No channels followed")
+            .enabled(false)
+            .build(app_handle)?;
+        submenu = submenu.item(&item);
+    } else {
+        for ch in &channels {
+            let count = database::get_new_videos_count_db(Some(ch.id.clone())).unwrap_or(0);
+            let label = if count > 0 {
+                format!("{} ({} new)", ch.name, count)
+            } else {
+                ch.name.clone()
+            };
+            let item_id = format!("ch_{}", ch.id);
+            let item = MenuItemBuilder::with_id(item_id, &label).build(app_handle)?;
+            submenu = submenu.item(&item);
+        }
+    }
+
+    let built_submenu = submenu.build()?;
+
+    // Build full menu
+    let check_now = MenuItemBuilder::with_id("check_now", "Check All Now").build(app_handle)?;
+    let show = MenuItemBuilder::with_id("show", "Open Youwee").build(app_handle)?;
+    let quit = MenuItemBuilder::with_id("quit", "Quit").build(app_handle)?;
+
+    let menu = MenuBuilder::new(app_handle)
+        .item(&built_submenu)
+        .separator()
+        .item(&check_now)
+        .item(&show)
+        .separator()
+        .item(&quit)
+        .build()?;
+
+    if let Some(tray) = app_handle.tray_by_id("main-tray") {
+        tray.set_menu(Some(menu))?;
+    }
 
     Ok(())
 }

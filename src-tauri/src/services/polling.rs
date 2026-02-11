@@ -103,6 +103,9 @@ pub fn start_polling(app: AppHandle) {
                                 total_new,
                             });
 
+                            // Update tray menu with new counts
+                            crate::rebuild_tray_menu(&app);
+
                             // Send notification
                             send_notification(&app, &channel.name, new_count);
 
