@@ -167,6 +167,9 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
   // Per-channel new videos count
   const [channelNewCounts, setChannelNewCounts] = useState<Record<string, number>>({});
 
+  // Ref for followedChannels to avoid stale closures
+  const followedChannelsRef = useRef<FollowedChannel[]>([]);
+
   // Select output folder
   const selectOutputFolder = useCallback(async () => {
     try {
@@ -239,16 +242,70 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
     return null;
   }, []);
 
+  // Sync browse videos to channel_videos DB for a followed channel
+  const syncVideosToDb = useCallback(async (channelId: string, videos: PlaylistVideoEntry[]) => {
+    if (videos.length === 0) return;
+
+    const now = new Date().toISOString();
+    const channelVideos: ChannelVideo[] = videos.map((v) => ({
+      id: crypto.randomUUID(),
+      channel_id: channelId,
+      video_id: v.id,
+      title: v.title,
+      url: v.url,
+      thumbnail: v.thumbnail,
+      duration: v.duration,
+      upload_date: v.upload_date,
+      status: 'new',
+      created_at: now,
+    }));
+
+    try {
+      await invoke('save_channel_videos', {
+        channelId,
+        videos: channelVideos,
+      });
+
+      // Update last_video_id to the newest video
+      await invoke('update_channel_last_checked', {
+        id: channelId,
+        lastVideoId: videos[0].id,
+      });
+    } catch (error) {
+      console.error('Failed to sync videos to DB:', error);
+    }
+  }, []);
+
   // Refresh followed channels list
   const refreshChannels = useCallback(async () => {
     setLoadingChannels(true);
     try {
       const channels = await invoke<FollowedChannel[]>('get_followed_channels');
       setFollowedChannels(channels);
+      followedChannelsRef.current = channels;
     } catch (error) {
       console.error('Failed to fetch followed channels:', error);
     } finally {
       setLoadingChannels(false);
+    }
+  }, []);
+
+  // Refresh per-channel new videos counts
+  const refreshChannelNewCounts = useCallback(async () => {
+    try {
+      const channels = await invoke<FollowedChannel[]>('get_followed_channels');
+      const counts: Record<string, number> = {};
+      for (const ch of channels) {
+        try {
+          const count = await invoke<number>('get_new_videos_count', { channelId: ch.id });
+          if (count > 0) counts[ch.id] = count;
+        } catch {
+          // ignore per-channel errors
+        }
+      }
+      setChannelNewCounts(counts);
+    } catch (_error) {
+      // ignore
     }
   }, []);
 
@@ -262,9 +319,16 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
         platform: 'youtube',
       });
       await refreshChannels();
+
+      // Immediately sync current browseVideos to DB (no need to wait for polling)
+      if (browseVideos.length > 0) {
+        await syncVideosToDb(id, browseVideos);
+        await refreshChannelNewCounts();
+      }
+
       return id;
     },
-    [refreshChannels],
+    [refreshChannels, browseVideos, syncVideosToDb, refreshChannelNewCounts],
   );
 
   // Unfollow a channel
@@ -327,6 +391,13 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
           const name = videos[0].channel || extractChannelFromUrl(url) || 'Channel';
           setBrowseChannelName(name);
         }
+
+        // If this channel is already followed, sync videos to DB
+        const followedChannel = followedChannelsRef.current.find((c) => c.url === url);
+        if (followedChannel && videos.length > 0) {
+          await syncVideosToDb(followedChannel.id, videos);
+          await refreshChannelNewCounts();
+        }
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
         setBrowseError(msg);
@@ -334,7 +405,7 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
         setBrowseLoading(false);
       }
     },
-    [getCookieSettings, getProxyUrl],
+    [getCookieSettings, getProxyUrl, syncVideosToDb, refreshChannelNewCounts],
   );
 
   // Clear browse state
@@ -592,25 +663,6 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
       setLoadingActiveVideos(false);
     }
   }, [activeChannel]);
-
-  // Refresh per-channel new videos counts
-  const refreshChannelNewCounts = useCallback(async () => {
-    try {
-      const channels = await invoke<FollowedChannel[]>('get_followed_channels');
-      const counts: Record<string, number> = {};
-      for (const ch of channels) {
-        try {
-          const count = await invoke<number>('get_new_videos_count', { channelId: ch.id });
-          if (count > 0) counts[ch.id] = count;
-        } catch {
-          // ignore per-channel errors
-        }
-      }
-      setChannelNewCounts(counts);
-    } catch (_error) {
-      // ignore
-    }
-  }, []);
 
   // Refresh followed channels' name and avatar from YouTube
   const refreshFollowedChannelInfo = useCallback(async () => {
