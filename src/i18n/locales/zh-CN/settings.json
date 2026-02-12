@@ -24,7 +24,12 @@
     "storage": "存储",
     "storageDesc": "管理下载历史",
     "maxHistory": "最大历史记录数",
-    "currentlyStoring": "当前存储 {{count}} 个下载"
+    "currentlyStoring": "当前存储 {{count}} 个下载",
+    "processing": "视频处理",
+    "processingDesc": "视频处理和预览设置",
+    "previewThreshold": "预览大小阈值",
+    "previewThresholdDesc": "对大于此大小的文件生成预览前进行确认",
+    "previewAlways": "始终生成"
   },
   "download": {
     "postProcessing": "后处理",

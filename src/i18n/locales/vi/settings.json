@@ -24,7 +24,12 @@
     "storage": "Lưu trữ",
     "storageDesc": "Quản lý lịch sử tải xuống",
     "maxHistory": "Số lượng lịch sử tối đa",
-    "currentlyStoring": "Đang lưu {{count}} bản tải"
+    "currentlyStoring": "Đang lưu {{count}} bản tải",
+    "processing": "Xử lý video",
+    "processingDesc": "Cài đặt xử lý video và xem trước",
+    "previewThreshold": "Ngưỡng kích thước xem trước",
+    "previewThresholdDesc": "Hỏi trước khi tạo xem trước cho file lớn hơn kích thước này",
+    "previewAlways": "Luôn tạo"
   },
   "download": {
     "postProcessing": "Hậu xử lý",

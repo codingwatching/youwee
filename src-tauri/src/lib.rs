@@ -171,6 +171,8 @@ pub fn run() {
             commands::save_processing_preset,
             commands::delete_processing_preset,
             commands::generate_video_preview,
+            commands::generate_video_thumbnail,
+            commands::generate_audio_preview,
             commands::check_preview_exists,
             commands::cleanup_previews,
             // Whisper commands

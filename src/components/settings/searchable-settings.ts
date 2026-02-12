@@ -55,6 +55,13 @@ export const SEARCHABLE_SETTINGS: SearchableSetting[] = [
     keywords: ['history', 'storage', 'limit', 'entries', 'database'],
     section: 'general',
   },
+  {
+    id: 'preview-threshold',
+    label: 'Preview Size Threshold',
+    description: 'Ask before generating preview for large video files',
+    keywords: ['preview', 'threshold', 'size', 'large', 'file', 'processing', 'video', 'confirm'],
+    section: 'general',
+  },
 
   // Download Section
   {

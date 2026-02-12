@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { Check, Database, Moon, Palette, Sun } from 'lucide-react';
+import { Check, Database, Film, Moon, Palette, Sun } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   Select,
@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useHistory } from '@/contexts/HistoryContext';
+import { useProcessing } from '@/contexts/ProcessingContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { ThemeName } from '@/lib/themes';
 import { themes } from '@/lib/themes';
@@ -40,6 +41,7 @@ export function GeneralSection({ highlightId }: GeneralSectionProps) {
   const { t } = useTranslation('settings');
   const { theme, setTheme, mode, setMode } = useTheme();
   const { maxEntries, setMaxEntries, totalCount } = useHistory();
+  const { previewSizeThreshold, setPreviewSizeThreshold } = useProcessing();
 
   const handleLanguageChange = (langCode: string) => {
     i18n.changeLanguage(langCode);
@@ -185,6 +187,41 @@ export function GeneralSection({ highlightId }: GeneralSectionProps) {
               <SelectItem value="500">500</SelectItem>
               <SelectItem value="1000">1,000</SelectItem>
               <SelectItem value="2000">2,000</SelectItem>
+            </SelectContent>
+          </Select>
+        </SettingsRow>
+      </SettingsSection>
+
+      <SettingsDivider />
+
+      {/* Processing */}
+      <SettingsSection
+        title={t('general.processing')}
+        description={t('general.processingDesc')}
+        icon={<Film className="w-5 h-5 text-white" />}
+        iconClassName="bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/20"
+      >
+        <SettingsRow
+          id="preview-threshold"
+          label={t('general.previewThreshold')}
+          description={t('general.previewThresholdDesc')}
+          highlight={highlightId === 'preview-threshold'}
+        >
+          <Select
+            value={String(previewSizeThreshold)}
+            onValueChange={(v) => setPreviewSizeThreshold(Number.parseInt(v, 10))}
+          >
+            <SelectTrigger className="w-[120px] h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="0">{t('general.previewAlways')}</SelectItem>
+              <SelectItem value="100">100 MB</SelectItem>
+              <SelectItem value="200">200 MB</SelectItem>
+              <SelectItem value="300">300 MB</SelectItem>
+              <SelectItem value="500">500 MB</SelectItem>
+              <SelectItem value="1000">1 GB</SelectItem>
+              <SelectItem value="2000">2 GB</SelectItem>
             </SelectContent>
           </Select>
         </SettingsRow>
