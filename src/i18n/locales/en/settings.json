@@ -215,7 +215,7 @@
   "about": {
     "title": "About",
     "description": "Application information",
-    "appDesc": "Modern video downloader with AI summaries",
+    "appDesc": "All-in-one video toolkit — download, edit, follow channels & AI summarize",
     "checkingUpdates": "Checking for updates...",
     "versionAvailable": "v{{version}} available",
     "upToDate": "Up to date",
