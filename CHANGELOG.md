@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-02-13
+
 ### Added
 - **Time range download** - Download only a specific portion of a video by setting start and end times (e.g. 10:30 to 14:30). Available per-item on both YouTube and Universal queues via the scissors icon. Uses yt-dlp's `--download-sections` under the hood
+- **Auto-check FFmpeg updates on startup** - FFmpeg update check now runs automatically when the app starts (for bundled installs). If an update is available, it shows in Settings > Dependencies without needing to manually click the refresh button
 
 ## [0.9.1] - 2026-02-13
 
