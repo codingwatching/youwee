@@ -225,7 +225,7 @@ export function ChatPanel({
     // biome-ignore lint/a11y/useSemanticElements: drag-drop container needs event handlers
     <div
       role="region"
-      className="w-[30%] border-l border-border flex flex-col bg-gradient-to-b from-muted/30 to-background overflow-hidden relative"
+      className="w-[40%] border-l border-border flex flex-col bg-gradient-to-b from-muted/30 to-background overflow-hidden relative"
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}

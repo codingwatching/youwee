@@ -95,7 +95,7 @@ export function ProcessingPage() {
         {/* Main Content */}
         <div className="flex-1 flex overflow-hidden">
           {/* Left: Video + Controls */}
-          <div className="w-[70%] flex flex-col p-4 sm:p-6 gap-4 overflow-hidden">
+          <div className="w-[60%] flex flex-col p-4 sm:p-6 gap-4 overflow-hidden">
             {/* Video Player Container with Processing Overlay */}
             <div className="relative">
               {/* Memoized Video Player - no longer receives processing state */}
