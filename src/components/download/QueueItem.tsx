@@ -10,11 +10,12 @@ import {
   MonitorPlay,
   Play,
   RefreshCw,
+  Scissors,
   Sparkles,
   X,
   XCircle,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SimpleMarkdown } from '@/components/ui/simple-markdown';
 import { useAI } from '@/contexts/AIContext';
@@ -54,12 +55,22 @@ interface QueueItemProps {
   showPlaylistBadge?: boolean;
   disabled?: boolean;
   onRemove: (id: string) => void;
+  onUpdateTimeRange: (id: string, start?: string, end?: string) => void;
 }
 
-export function QueueItem({ item, showPlaylistBadge, disabled, onRemove }: QueueItemProps) {
+export function QueueItem({
+  item,
+  showPlaylistBadge,
+  disabled,
+  onRemove,
+  onUpdateTimeRange,
+}: QueueItemProps) {
   const { t } = useTranslation('download');
   const ai = useAI();
   const [showFullSummary, setShowFullSummary] = useState(false);
+  const [showTimeRange, setShowTimeRange] = useState(false);
+  const [timeStart, setTimeStart] = useState('');
+  const [timeEnd, setTimeEnd] = useState('');
 
   // Use background task for summary - taskId is based on item.id
   const taskId = `queue-${item.id}`;
@@ -111,6 +122,30 @@ export function QueueItem({ item, showPlaylistBadge, disabled, onRemove }: Queue
 
   // Get saved settings for pending items
   const itemSettings = item.settings as ItemDownloadSettings | undefined;
+
+  const hasTimeRange = !!(itemSettings?.timeRangeStart && itemSettings?.timeRangeEnd);
+
+  const handleApplyTimeRange = useCallback(() => {
+    if (timeStart && timeEnd) {
+      onUpdateTimeRange(item.id, timeStart, timeEnd);
+      setShowTimeRange(false);
+    }
+  }, [item.id, timeStart, timeEnd, onUpdateTimeRange]);
+
+  const handleClearTimeRange = useCallback(() => {
+    onUpdateTimeRange(item.id, undefined, undefined);
+    setTimeStart('');
+    setTimeEnd('');
+    setShowTimeRange(false);
+  }, [item.id, onUpdateTimeRange]);
+
+  const handleToggleTimeRange = useCallback(() => {
+    if (!showTimeRange && hasTimeRange) {
+      setTimeStart(itemSettings?.timeRangeStart || '');
+      setTimeEnd(itemSettings?.timeRangeEnd || '');
+    }
+    setShowTimeRange((v) => !v);
+  }, [showTimeRange, hasTimeRange, itemSettings?.timeRangeStart, itemSettings?.timeRangeEnd]);
 
   return (
     <div
@@ -268,7 +303,7 @@ export function QueueItem({ item, showPlaylistBadge, disabled, onRemove }: Queue
           {item.title}
         </p>
 
-        {/* Status Row */}
+        {/* Info Row — static badges */}
         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
           {/* Status Badge */}
           <span
@@ -306,6 +341,14 @@ export function QueueItem({ item, showPlaylistBadge, disabled, onRemove }: Queue
                 {itemSettings.format}
               </span>
             </>
+          )}
+
+          {/* Time range info badge (read-only, shown when time range is set and not pending) */}
+          {!isPending && hasTimeRange && itemSettings && (
+            <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium">
+              <Scissors className="w-3 h-3" />
+              {itemSettings.timeRangeStart}-{itemSettings.timeRangeEnd}
+            </span>
           )}
 
           {/* Completed Info: Resolution, Size, Format */}
@@ -346,19 +389,7 @@ export function QueueItem({ item, showPlaylistBadge, disabled, onRemove }: Queue
             </span>
           )}
 
-          {/* AI Summarize Button - Only show when AI enabled and not in error/active state */}
-          {aiEnabled && !isActive && !isError && !summary && !isGenerating && !summaryError && (
-            <button
-              type="button"
-              onClick={handleGenerateSummary}
-              className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20 transition-colors font-medium"
-            >
-              <Sparkles className="w-3 h-3" />
-              {t('queue.summarize')}
-            </button>
-          )}
-
-          {/* Generating Status */}
+          {/* Generating Status (inline with info badges) */}
           {isGenerating && (
             <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 font-medium">
               <Loader2 className="w-3 h-3 animate-spin" />
@@ -368,6 +399,42 @@ export function QueueItem({ item, showPlaylistBadge, disabled, onRemove }: Queue
             </span>
           )}
         </div>
+
+        {/* Actions Row — interactive buttons, visually distinct */}
+        {!isActive && !isError && (
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+            {/* Time Range button (only when pending) */}
+            {isPending && itemSettings && (
+              <button
+                type="button"
+                onClick={handleToggleTimeRange}
+                className={cn(
+                  'inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md border transition-colors font-medium',
+                  hasTimeRange
+                    ? 'border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20'
+                    : 'border-dashed border-muted-foreground/30 text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground hover:bg-muted/50',
+                )}
+              >
+                <Scissors className="w-3 h-3" />
+                {hasTimeRange
+                  ? `${itemSettings.timeRangeStart}-${itemSettings.timeRangeEnd}`
+                  : t('queue.timeRange.title')}
+              </button>
+            )}
+
+            {/* AI Summarize Button */}
+            {aiEnabled && !summary && !isGenerating && !summaryError && (
+              <button
+                type="button"
+                onClick={handleGenerateSummary}
+                className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md border border-dashed border-purple-500/30 text-purple-600 dark:text-purple-400 hover:border-purple-500/50 hover:bg-purple-500/10 transition-colors font-medium"
+              >
+                <Sparkles className="w-3 h-3" />
+                {t('queue.summarize')}
+              </button>
+            )}
+          </div>
+        )}
 
         {/* AI Summary Section */}
         {(summary || summaryError) && (
@@ -421,6 +488,45 @@ export function QueueItem({ item, showPlaylistBadge, disabled, onRemove }: Queue
                 <p className="text-xs text-destructive">{summaryError}</p>
               </div>
             ) : null}
+          </div>
+        )}
+
+        {/* Time Range Inline Panel */}
+        {showTimeRange && isPending && (
+          <div className="flex items-center gap-2 mt-2 p-2 rounded-lg bg-muted/30 border border-border/30">
+            <Scissors className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+            <input
+              type="text"
+              placeholder="00:00"
+              value={timeStart}
+              onChange={(e) => setTimeStart(e.target.value)}
+              className="w-16 text-xs px-2 py-1 rounded bg-background border border-border/50 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
+            />
+            <span className="text-xs text-muted-foreground">-</span>
+            <input
+              type="text"
+              placeholder="00:00"
+              value={timeEnd}
+              onChange={(e) => setTimeEnd(e.target.value)}
+              className="w-16 text-xs px-2 py-1 rounded bg-background border border-border/50 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
+            />
+            <button
+              type="button"
+              onClick={handleApplyTimeRange}
+              disabled={!timeStart || !timeEnd}
+              className="text-[11px] px-2 py-1 rounded bg-primary/10 text-primary font-medium hover:bg-primary/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {t('queue.timeRange.apply')}
+            </button>
+            {hasTimeRange && (
+              <button
+                type="button"
+                onClick={handleClearTimeRange}
+                className="text-[11px] px-2 py-1 rounded bg-red-500/10 text-red-500 font-medium hover:bg-red-500/20 transition-colors"
+              >
+                {t('queue.timeRange.clear')}
+              </button>
+            )}
           </div>
         )}
       </div>

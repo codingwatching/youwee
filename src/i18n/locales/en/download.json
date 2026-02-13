@@ -86,6 +86,11 @@
     "pending": "{{count}} pending",
     "clearDone": "Clear done",
     "remove": "Remove from queue",
+    "timeRange": {
+      "title": "Download time range",
+      "apply": "Apply",
+      "clear": "Clear"
+    },
     "regenerateSummary": "Regenerate summary",
     "empty": {
       "title": "No videos yet",

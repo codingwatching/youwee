@@ -58,6 +58,8 @@ export interface ItemDownloadSettings {
   subtitleLangs: string[];
   subtitleEmbed: boolean;
   subtitleFormat: SubtitleFormat;
+  timeRangeStart?: string;
+  timeRangeEnd?: string;
 }
 
 // Simplified settings snapshot for Universal page
@@ -66,6 +68,8 @@ export interface ItemUniversalSettings {
   format: Format;
   outputPath: string;
   audioBitrate: AudioBitrate;
+  timeRangeStart?: string;
+  timeRangeEnd?: string;
 }
 
 export interface DownloadItem {

@@ -86,6 +86,11 @@
     "pending": "{{count}} đang chờ",
     "clearDone": "Xóa đã xong",
     "remove": "Xóa khỏi hàng đợi",
+    "timeRange": {
+      "title": "Tải theo phân đoạn",
+      "apply": "Áp dụng",
+      "clear": "Xóa"
+    },
     "regenerateSummary": "Tạo lại tóm tắt",
     "empty": {
       "title": "Chưa có video",

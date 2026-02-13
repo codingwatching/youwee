@@ -209,6 +209,8 @@ interface UniversalContextType {
   cookieError: { show: boolean; itemId?: string } | null;
   clearCookieError: () => void;
   retryFailedDownload: (itemId: string) => void;
+  // Per-item time range
+  updateItemTimeRange: (id: string, start?: string, end?: string) => void;
 }
 
 const UniversalContext = createContext<UniversalContextType | null>(null);
@@ -486,6 +488,19 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
     setItems((items) => items.filter((item) => item.id !== id));
   }, []);
 
+  const updateItemTimeRange = useCallback((id: string, start?: string, end?: string) => {
+    setItems((items) =>
+      items.map((item) => {
+        if (item.id !== id || !item.settings) return item;
+        const settings = item.settings as ItemUniversalSettings;
+        return {
+          ...item,
+          settings: { ...settings, timeRangeStart: start, timeRangeEnd: end },
+        };
+      }),
+    );
+  }, []);
+
   const clearAll = useCallback(() => {
     setItems([]);
   }, []);
@@ -576,6 +591,11 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
           // SponsorBlock settings
           sponsorblockRemove: sponsorBlockArgs.remove,
           sponsorblockMark: sponsorBlockArgs.mark,
+          // Download sections (time range)
+          downloadSections:
+            itemSettings?.timeRangeStart && itemSettings?.timeRangeEnd
+              ? `*${itemSettings.timeRangeStart}-${itemSettings.timeRangeEnd}`
+              : null,
           // Title from video info fetch
           title: item.title || null,
           // Thumbnail from video info fetch (for non-YouTube sites)
@@ -718,6 +738,8 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
     cookieError,
     clearCookieError,
     retryFailedDownload,
+    // Per-item time range
+    updateItemTimeRange,
   };
 
   return <UniversalContext.Provider value={value}>{children}</UniversalContext.Provider>;

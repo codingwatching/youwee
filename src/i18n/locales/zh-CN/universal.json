@@ -63,6 +63,11 @@
     "clearDone": "清除已完成",
     "loadingInfo": "正在加载信息...",
     "remove": "从队列移除",
+    "timeRange": {
+      "title": "下载时间范围",
+      "apply": "应用",
+      "clear": "清除"
+    },
     "videosInQueue": "队列中 {{count}} 个视频",
     "videosInQueue_plural": "队列中 {{count}} 个视频",
     "clearCompleted": "清除 {{count}} 个已完成",

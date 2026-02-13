@@ -24,12 +24,12 @@ export function MainLayout({ children, currentPage, onPageChange }: MainLayoutPr
       />
 
       {/* Main container - unified floating panel */}
-      <div className="relative z-10 flex-1 flex p-3 gap-3">
+      <div className="relative z-10 flex-1 flex min-w-0 p-3 gap-3">
         {/* Sidebar */}
         <Sidebar currentPage={currentPage} onPageChange={onPageChange} />
 
         {/* Content area */}
-        <main className="flex-1 flex flex-col overflow-hidden rounded-2xl bg-card/30 backdrop-blur-xl border border-white/[0.08] dark:border-white/[0.05] shadow-[0_8px_40px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_40px_rgba(0,0,0,0.25)]">
+        <main className="flex-1 min-w-0 flex flex-col overflow-hidden rounded-2xl bg-card/30 backdrop-blur-xl border border-white/[0.08] dark:border-white/[0.05] shadow-[0_8px_40px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_40px_rgba(0,0,0,0.25)]">
           {children}
         </main>
       </div>

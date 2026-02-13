@@ -52,6 +52,7 @@ export function DownloadPage({ onNavigateToSettings }: DownloadPageProps) {
     cookieError,
     clearCookieError,
     retryFailedDownload,
+    updateItemTimeRange,
   } = useDownload();
 
   const { ffmpegStatus } = useDependencies();
@@ -152,6 +153,7 @@ export function DownloadPage({ onNavigateToSettings }: DownloadPageProps) {
             showPlaylistBadge={settings.downloadPlaylist}
             currentPlaylistInfo={currentPlaylistInfo}
             onRemove={removeItem}
+            onUpdateTimeRange={updateItemTimeRange}
             onClearCompleted={clearCompleted}
           />
         </div>

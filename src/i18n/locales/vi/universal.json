@@ -63,6 +63,11 @@
     "clearDone": "Xóa đã xong",
     "loadingInfo": "Đang tải thông tin...",
     "remove": "Xóa khỏi hàng đợi",
+    "timeRange": {
+      "title": "Tải theo phân đoạn",
+      "apply": "Áp dụng",
+      "clear": "Xóa"
+    },
     "videosInQueue": "{{count}} video trong hàng đợi",
     "videosInQueue_plural": "{{count}} video trong hàng đợi",
     "clearCompleted": "Xóa {{count}} đã xong",

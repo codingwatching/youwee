@@ -24,6 +24,7 @@ interface UniversalQueueListProps {
   items: DownloadItem[];
   isDownloading: boolean;
   onRemove: (id: string) => void;
+  onUpdateTimeRange: (id: string, start?: string, end?: string) => void;
   onClearCompleted: () => void;
 }
 
@@ -31,6 +32,7 @@ export function UniversalQueueList({
   items,
   isDownloading,
   onRemove,
+  onUpdateTimeRange,
   onClearCompleted,
 }: UniversalQueueListProps) {
   const { t } = useTranslation('universal');
@@ -114,6 +116,7 @@ export function UniversalQueueList({
               item={item}
               disabled={isDownloading}
               onRemove={onRemove}
+              onUpdateTimeRange={onUpdateTimeRange}
             />
           ))}
         </div>

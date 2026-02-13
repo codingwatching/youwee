@@ -146,30 +146,32 @@ export function LogToolbar() {
       </div>
 
       {/* Filter tabs and actions */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         {/* Filter tabs */}
-        <div className="inline-flex items-center rounded-lg bg-muted/50 p-1">
-          {filterOptions.map((option) => (
-            <button
-              type="button"
-              key={option.value}
-              onClick={() => setFilter(option.value)}
-              className={cn(
-                'px-3 py-1.5 text-xs font-medium rounded-md transition-all',
-                filter === option.value
-                  ? 'bg-background shadow-sm text-foreground'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {option.label}
-            </button>
-          ))}
+        <div className="overflow-x-auto -mx-1 px-1">
+          <div className="inline-flex items-center rounded-lg bg-muted/50 p-1">
+            {filterOptions.map((option) => (
+              <button
+                type="button"
+                key={option.value}
+                onClick={() => setFilter(option.value)}
+                className={cn(
+                  'px-3 py-1.5 text-xs font-medium rounded-md transition-all whitespace-nowrap',
+                  filter === option.value
+                    ? 'bg-background shadow-sm text-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0 overflow-x-auto">
           {/* Log detail toggle */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 whitespace-nowrap">
             <FileText className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">{t('logs.toolbar.logDetail')}</span>
             <Switch
@@ -184,7 +186,7 @@ export function LogToolbar() {
             onClick={() => refreshLogs()}
             disabled={loading}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium',
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap',
               'bg-muted/50 hover:bg-muted transition-colors',
               'text-muted-foreground hover:text-foreground',
               loading && 'opacity-50',
@@ -199,7 +201,7 @@ export function LogToolbar() {
             onClick={handleExport}
             disabled={exporting}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium',
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap',
               'bg-muted/50 hover:bg-muted transition-colors',
               'text-muted-foreground hover:text-foreground',
               exporting && 'opacity-50',
@@ -214,7 +216,7 @@ export function LogToolbar() {
             onClick={handleClear}
             disabled={clearing}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium',
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap',
               'bg-red-500/10 hover:bg-red-500/20 transition-colors',
               'text-red-400 hover:text-red-300',
               clearing && 'opacity-50',

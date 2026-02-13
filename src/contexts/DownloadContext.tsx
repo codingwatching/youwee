@@ -239,6 +239,8 @@ interface DownloadContextType {
   cookieError: { show: boolean; itemId?: string } | null;
   clearCookieError: () => void;
   retryFailedDownload: (itemId: string) => void;
+  // Per-item time range
+  updateItemTimeRange: (id: string, start?: string, end?: string) => void;
 }
 
 const DownloadContext = createContext<DownloadContextType | null>(null);
@@ -670,6 +672,19 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     setItems((items) => items.filter((item) => item.id !== id));
   }, []);
 
+  const updateItemTimeRange = useCallback((id: string, start?: string, end?: string) => {
+    setItems((items) =>
+      items.map((item) => {
+        if (item.id !== id || !item.settings) return item;
+        const settings = item.settings as ItemDownloadSettings;
+        return {
+          ...item,
+          settings: { ...settings, timeRangeStart: start, timeRangeEnd: end },
+        };
+      }),
+    );
+  }, []);
+
   const clearAll = useCallback(() => {
     setItems([]);
     setCurrentPlaylistInfo(null);
@@ -767,6 +782,11 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
           // SponsorBlock settings
           sponsorblockRemove: sponsorBlockArgs.remove,
           sponsorblockMark: sponsorBlockArgs.mark,
+          // Download sections (time range)
+          downloadSections:
+            itemSettings?.timeRangeStart && itemSettings?.timeRangeEnd
+              ? `*${itemSettings.timeRangeStart}-${itemSettings.timeRangeEnd}`
+              : null,
           // No history_id for new downloads
           historyId: null,
           // Title from video info fetch
@@ -1115,6 +1135,8 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     cookieError,
     clearCookieError,
     retryFailedDownload,
+    // Per-item time range
+    updateItemTimeRange,
   };
 
   return <DownloadContext.Provider value={value}>{children}</DownloadContext.Provider>;

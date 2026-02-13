@@ -16,6 +16,7 @@ interface QueueListProps {
     title: string;
   } | null;
   onRemove: (id: string) => void;
+  onUpdateTimeRange: (id: string, start?: string, end?: string) => void;
   onClearCompleted: () => void;
 }
 
@@ -25,6 +26,7 @@ export function QueueList({
   showPlaylistBadge,
   currentPlaylistInfo,
   onRemove,
+  onUpdateTimeRange,
   onClearCompleted,
 }: QueueListProps) {
   const { t } = useTranslation('download');
@@ -101,6 +103,7 @@ export function QueueList({
                 showPlaylistBadge={showPlaylistBadge}
                 disabled={isDownloading}
                 onRemove={onRemove}
+                onUpdateTimeRange={onUpdateTimeRange}
               />
             ))}
           </div>

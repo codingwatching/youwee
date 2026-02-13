@@ -63,6 +63,11 @@
     "clearDone": "Clear done",
     "loadingInfo": "Loading info...",
     "remove": "Remove from queue",
+    "timeRange": {
+      "title": "Download time range",
+      "apply": "Apply",
+      "clear": "Clear"
+    },
     "videosInQueue": "{{count}} video in queue",
     "videosInQueue_plural": "{{count}} videos in queue",
     "clearCompleted": "Clear {{count}} completed",

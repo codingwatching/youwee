@@ -10,7 +10,7 @@ export function LogsPage() {
   const { logs, loading } = useLogs();
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden min-w-0">
       {/* Header */}
       <header className="flex-shrink-0 flex items-center justify-between h-12 sm:h-14 px-4 sm:px-6">
         <h1 className="text-base sm:text-lg font-semibold">{t('logs.title')}</h1>
@@ -21,7 +21,7 @@ export function LogsPage() {
       <div className="mx-4 sm:mx-6 h-px bg-gradient-to-r from-transparent via-border/50 to-transparent" />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Toolbar */}
         <div className="flex-shrink-0 p-4 sm:p-6">
           <LogToolbar />
@@ -32,7 +32,7 @@ export function LogsPage() {
 
         {/* Log list */}
         <div className="flex-1 flex flex-col overflow-hidden px-4 sm:px-6 pt-3">
-          <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden">
             {loading && logs.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <div className="animate-pulse text-muted-foreground">{t('logs.loading')}</div>

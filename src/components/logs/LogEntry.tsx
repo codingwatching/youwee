@@ -178,7 +178,7 @@ export function LogEntry({ log }: LogEntryProps) {
   return (
     <div
       className={cn(
-        'group relative rounded-xl border p-4 transition-all duration-200',
+        'group relative rounded-xl border p-4 transition-all duration-200 min-w-0 overflow-hidden',
         'bg-card/50 hover:bg-card/80',
         'border-white/[0.08] dark:border-white/[0.05]',
       )}
@@ -222,10 +222,10 @@ export function LogEntry({ log }: LogEntryProps) {
       </div>
 
       {/* Message */}
-      <div className="space-y-1.5">
+      <div className="space-y-1.5 min-w-0">
         <p
           className={cn(
-            'text-sm font-mono break-all',
+            'text-sm font-mono break-words whitespace-pre-wrap',
             log.log_type === 'command' && 'text-blue-400',
             log.log_type === 'error' && 'text-red-400',
             log.log_type === 'stderr' && 'text-yellow-400',
@@ -234,7 +234,11 @@ export function LogEntry({ log }: LogEntryProps) {
           {log.message}
         </p>
 
-        {log.details && <p className="text-xs text-muted-foreground">{log.details}</p>}
+        {log.details && (
+          <p className="text-xs text-muted-foreground break-words whitespace-pre-wrap">
+            {log.details}
+          </p>
+        )}
 
         {log.url && (
           <p className="text-xs text-muted-foreground truncate">

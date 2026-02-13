@@ -86,6 +86,8 @@ pub async fn download_video(
     // SponsorBlock settings
     sponsorblock_remove: Option<String>,  // comma-separated categories to remove
     sponsorblock_mark: Option<String>,    // comma-separated categories to mark as chapters
+    // Download sections (time range)
+    download_sections: Option<String>,    // e.g. "*10:30-14:30" for partial download
     // Title (optional, passed from frontend for display purposes)
     title: Option<String>,
     // Thumbnail URL (optional, passed from frontend for non-YouTube sites)
@@ -263,6 +265,14 @@ pub async fn download_video(
         if !mark_cats.is_empty() {
             args.push("--sponsorblock-mark".to_string());
             args.push(mark_cats.clone());
+        }
+    }
+    
+    // Download sections (time range)
+    if let Some(ref sections) = download_sections {
+        if !sections.is_empty() {
+            args.push("--download-sections".to_string());
+            args.push(sections.clone());
         }
     }
     

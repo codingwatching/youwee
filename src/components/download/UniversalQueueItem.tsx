@@ -10,6 +10,7 @@ import {
   MonitorPlay,
   Play,
   RefreshCw,
+  Scissors,
   Sparkles,
   X,
   XCircle,
@@ -54,13 +55,22 @@ interface UniversalQueueItemProps {
   item: DownloadItem;
   disabled?: boolean;
   onRemove: (id: string) => void;
+  onUpdateTimeRange: (id: string, start?: string, end?: string) => void;
 }
 
-export function UniversalQueueItem({ item, disabled, onRemove }: UniversalQueueItemProps) {
+export function UniversalQueueItem({
+  item,
+  disabled,
+  onRemove,
+  onUpdateTimeRange,
+}: UniversalQueueItemProps) {
   const { t } = useTranslation('universal');
   const ai = useAI();
   const [showFullSummary, setShowFullSummary] = useState(false);
   const [thumbError, setThumbError] = useState(false);
+  const [showTimeRange, setShowTimeRange] = useState(false);
+  const [timeStart, setTimeStart] = useState('');
+  const [timeEnd, setTimeEnd] = useState('');
 
   const handleThumbError = useCallback(() => {
     setThumbError(true);
@@ -88,6 +98,30 @@ export function UniversalQueueItem({ item, disabled, onRemove }: UniversalQueueI
 
   // Get saved settings for pending items
   const itemSettings = item.settings as ItemUniversalSettings | undefined;
+
+  const hasTimeRange = !!(itemSettings?.timeRangeStart && itemSettings?.timeRangeEnd);
+
+  const handleApplyTimeRange = useCallback(() => {
+    if (timeStart && timeEnd) {
+      onUpdateTimeRange(item.id, timeStart, timeEnd);
+      setShowTimeRange(false);
+    }
+  }, [item.id, timeStart, timeEnd, onUpdateTimeRange]);
+
+  const handleClearTimeRange = useCallback(() => {
+    onUpdateTimeRange(item.id, undefined, undefined);
+    setTimeStart('');
+    setTimeEnd('');
+    setShowTimeRange(false);
+  }, [item.id, onUpdateTimeRange]);
+
+  const handleToggleTimeRange = useCallback(() => {
+    if (!showTimeRange && hasTimeRange) {
+      setTimeStart(itemSettings?.timeRangeStart || '');
+      setTimeEnd(itemSettings?.timeRangeEnd || '');
+    }
+    setShowTimeRange((v) => !v);
+  }, [showTimeRange, hasTimeRange, itemSettings?.timeRangeStart, itemSettings?.timeRangeEnd]);
 
   const handleGenerateSummary = () => {
     if (isGenerating) return;
@@ -258,7 +292,7 @@ export function UniversalQueueItem({ item, disabled, onRemove }: UniversalQueueI
           </p>
         )}
 
-        {/* Status Row */}
+        {/* Info Row — static badges */}
         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
           {/* Source Badge */}
           <SourceBadge extractor={item.extractor} />
@@ -301,6 +335,14 @@ export function UniversalQueueItem({ item, disabled, onRemove }: UniversalQueueI
             </>
           )}
 
+          {/* Time range info badge (read-only, shown when time range is set and not pending) */}
+          {!isPending && hasTimeRange && itemSettings && (
+            <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium">
+              <Scissors className="w-3 h-3" />
+              {itemSettings.timeRangeStart}-{itemSettings.timeRangeEnd}
+            </span>
+          )}
+
           {/* Completed Info: Resolution, Size, Format */}
           {isCompleted && (
             <>
@@ -339,19 +381,7 @@ export function UniversalQueueItem({ item, disabled, onRemove }: UniversalQueueI
             </span>
           )}
 
-          {/* AI Summarize Button - Only show when AI enabled and not in error/active state */}
-          {aiEnabled && !isActive && !isError && !summary && !isGenerating && !summaryError && (
-            <button
-              type="button"
-              onClick={handleGenerateSummary}
-              className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20 transition-colors font-medium"
-            >
-              <Sparkles className="w-3 h-3" />
-              {t('queue.summarize')}
-            </button>
-          )}
-
-          {/* Generating Status */}
+          {/* Generating Status (inline with info badges) */}
           {isGenerating && (
             <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 font-medium">
               <Loader2 className="w-3 h-3 animate-spin" />
@@ -361,6 +391,42 @@ export function UniversalQueueItem({ item, disabled, onRemove }: UniversalQueueI
             </span>
           )}
         </div>
+
+        {/* Actions Row — interactive buttons, visually distinct */}
+        {!isActive && !isError && (
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+            {/* Time Range button (only when pending) */}
+            {isPending && itemSettings && (
+              <button
+                type="button"
+                onClick={handleToggleTimeRange}
+                className={cn(
+                  'inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md border transition-colors font-medium',
+                  hasTimeRange
+                    ? 'border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20'
+                    : 'border-dashed border-muted-foreground/30 text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground hover:bg-muted/50',
+                )}
+              >
+                <Scissors className="w-3 h-3" />
+                {hasTimeRange
+                  ? `${itemSettings.timeRangeStart}-${itemSettings.timeRangeEnd}`
+                  : t('queue.timeRange.title')}
+              </button>
+            )}
+
+            {/* AI Summarize Button */}
+            {aiEnabled && !summary && !isGenerating && !summaryError && (
+              <button
+                type="button"
+                onClick={handleGenerateSummary}
+                className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md border border-dashed border-purple-500/30 text-purple-600 dark:text-purple-400 hover:border-purple-500/50 hover:bg-purple-500/10 transition-colors font-medium"
+              >
+                <Sparkles className="w-3 h-3" />
+                {t('queue.summarize')}
+              </button>
+            )}
+          </div>
+        )}
 
         {/* AI Summary Section */}
         {(summary || summaryError) && (
@@ -414,6 +480,45 @@ export function UniversalQueueItem({ item, disabled, onRemove }: UniversalQueueI
                 <p className="text-xs text-destructive">{summaryError}</p>
               </div>
             ) : null}
+          </div>
+        )}
+
+        {/* Time Range Inline Panel */}
+        {showTimeRange && isPending && (
+          <div className="flex items-center gap-2 mt-2 p-2 rounded-lg bg-muted/30 border border-border/30">
+            <Scissors className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+            <input
+              type="text"
+              placeholder="00:00"
+              value={timeStart}
+              onChange={(e) => setTimeStart(e.target.value)}
+              className="w-16 text-xs px-2 py-1 rounded bg-background border border-border/50 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
+            />
+            <span className="text-xs text-muted-foreground">-</span>
+            <input
+              type="text"
+              placeholder="00:00"
+              value={timeEnd}
+              onChange={(e) => setTimeEnd(e.target.value)}
+              className="w-16 text-xs px-2 py-1 rounded bg-background border border-border/50 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
+            />
+            <button
+              type="button"
+              onClick={handleApplyTimeRange}
+              disabled={!timeStart || !timeEnd}
+              className="text-[11px] px-2 py-1 rounded bg-primary/10 text-primary font-medium hover:bg-primary/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {t('queue.timeRange.apply')}
+            </button>
+            {hasTimeRange && (
+              <button
+                type="button"
+                onClick={handleClearTimeRange}
+                className="text-[11px] px-2 py-1 rounded bg-red-500/10 text-red-500 font-medium hover:bg-red-500/20 transition-colors"
+              >
+                {t('queue.timeRange.clear')}
+              </button>
+            )}
           </div>
         )}
       </div>
