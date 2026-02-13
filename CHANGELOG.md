@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **App crash on macOS without Homebrew** - Fixed startup crash caused by missing `liblzma` dynamic library. The `xz2` crate now uses static linking, making the app fully self-contained without requiring Homebrew or system libraries
+
 ## [0.9.0] - 2026-02-12
 
 ### Added
