@@ -61,6 +61,7 @@
     "title": "Hàng đợi",
     "pending": "{{count}} đang chờ",
     "clearDone": "Xóa đã xong",
+    "loadingInfo": "Đang tải thông tin...",
     "remove": "Xóa khỏi hàng đợi",
     "videosInQueue": "{{count}} video trong hàng đợi",
     "videosInQueue_plural": "{{count}} video trong hàng đợi",

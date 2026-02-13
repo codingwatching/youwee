@@ -384,7 +384,10 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
           );
         })
         .catch(() => {
-          // Silently ignore - item will keep URL as title and Globe placeholder
+          // Mark extractor so isFetchingMeta becomes false and item exits loading state
+          setItems((current) =>
+            current.map((i) => (i.id === item.id ? { ...i, extractor: 'direct' } : i)),
+          );
         });
     }
   }, []);

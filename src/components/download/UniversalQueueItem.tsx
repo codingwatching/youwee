@@ -84,7 +84,7 @@ export function UniversalQueueItem({ item, disabled, onRemove }: UniversalQueueI
   const isCompleted = item.status === 'completed';
   const isError = item.status === 'error';
   const isPending = item.status === 'pending';
-  const isFetchingMeta = isPending && !item.thumbnail && item.title === item.url;
+  const isFetchingMeta = isPending && !item.thumbnail && item.title === item.url && !item.extractor;
 
   // Get saved settings for pending items
   const itemSettings = item.settings as ItemUniversalSettings | undefined;
@@ -130,7 +130,9 @@ export function UniversalQueueItem({ item, disabled, onRemove }: UniversalQueueI
             referrerPolicy="no-referrer"
           />
         ) : isFetchingMeta ? (
-          <div className="w-full h-full bg-muted animate-pulse" />
+          <div className="w-full h-full flex items-center justify-center bg-muted">
+            <Globe className="w-8 h-8 text-muted-foreground/30" />
+          </div>
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-muted">
             <Globe className="w-8 h-8 text-muted-foreground/30" />
@@ -232,9 +234,17 @@ export function UniversalQueueItem({ item, disabled, onRemove }: UniversalQueueI
       <div className="flex-1 min-w-0 flex flex-col justify-center py-0.5">
         {/* Title */}
         {isFetchingMeta ? (
-          <div className="space-y-1.5">
-            <div className="h-3.5 w-3/4 bg-muted animate-pulse rounded" />
-            <div className="h-3.5 w-1/2 bg-muted animate-pulse rounded" />
+          <div className="space-y-1">
+            <p
+              className="text-sm font-medium leading-snug line-clamp-2 text-muted-foreground"
+              title={item.title}
+            >
+              {item.title}
+            </p>
+            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground/70">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              {t('universal:queue.loadingInfo')}
+            </span>
           </div>
         ) : (
           <p

@@ -61,6 +61,7 @@
     "title": "队列",
     "pending": "{{count}} 个待处理",
     "clearDone": "清除已完成",
+    "loadingInfo": "正在加载信息...",
     "remove": "从队列移除",
     "videosInQueue": "队列中 {{count}} 个视频",
     "videosInQueue_plural": "队列中 {{count}} 个视频",
