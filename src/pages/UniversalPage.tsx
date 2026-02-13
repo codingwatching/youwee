@@ -71,6 +71,7 @@ export function UniversalPage({ onNavigateToSettings }: UniversalPageProps) {
     onStart: startDownload,
     onStop: stopDownload,
     isDownloading,
+    sourceLabel: 'Universal',
   });
 
   const pendingCount = items.filter((i) => i.status !== 'completed').length;

@@ -95,6 +95,12 @@ function AppContent() {
   useEffect(() => {
     const lang = localStorage.getItem('i18nextLng') || 'en';
     invoke('rebuild_tray_menu_cmd', { lang }).catch(() => {});
+
+    // Sync hideDockOnClose preference to Rust on startup
+    const hideDock = localStorage.getItem('youwee_hide_dock_on_close') === 'true';
+    if (hideDock) {
+      invoke('set_hide_dock_on_close', { hide: true }).catch(() => {});
+    }
   }, []);
 
   return (

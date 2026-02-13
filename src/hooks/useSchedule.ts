@@ -1,3 +1,9 @@
+import { invoke } from '@tauri-apps/api/core';
+import {
+  isPermissionGranted,
+  requestPermission,
+  sendNotification,
+} from '@tauri-apps/plugin-notification';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface ScheduleConfig {
@@ -10,6 +16,8 @@ interface UseScheduleOptions {
   onStart: () => void;
   onStop: () => void;
   isDownloading: boolean;
+  /** Label shown in notifications (e.g. "YouTube" or "Universal") */
+  sourceLabel?: string;
 }
 
 function loadSchedule(key: string): ScheduleConfig | null {
@@ -59,7 +67,29 @@ export function formatTime(timestamp: number): string {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-export function useSchedule({ storageKey, onStart, onStop, isDownloading }: UseScheduleOptions) {
+/** Send a desktop notification (fire-and-forget, never throws) */
+async function notify(title: string, body: string) {
+  try {
+    let granted = await isPermissionGranted();
+    if (!granted) {
+      const permission = await requestPermission();
+      granted = permission === 'granted';
+    }
+    if (granted) {
+      sendNotification({ title, body });
+    }
+  } catch {
+    // Silently ignore — notifications are best-effort
+  }
+}
+
+export function useSchedule({
+  storageKey,
+  onStart,
+  onStop,
+  isDownloading,
+  sourceLabel = '',
+}: UseScheduleOptions) {
   const [schedule, setScheduleState] = useState<ScheduleConfig | null>(() =>
     loadSchedule(storageKey),
   );
@@ -74,15 +104,17 @@ export function useSchedule({ storageKey, onStart, onStop, isDownloading }: UseS
     onStopRef.current = onStop;
   }, [onStart, onStop]);
 
-  // When download completes and there's no more pending, clear schedule
+  // When download completes after a scheduled start, notify and clear schedule
   useEffect(() => {
     if (schedule && startTriggeredRef.current && !isDownloading) {
-      // Download finished after schedule triggered - clear schedule
+      // Download finished after schedule triggered
+      const label = sourceLabel ? ` (${sourceLabel})` : '';
+      notify('Youwee', `Scheduled download completed${label}`);
       setScheduleState(null);
       saveSchedule(storageKey, null);
       startTriggeredRef.current = false;
     }
-  }, [isDownloading, schedule, storageKey]);
+  }, [isDownloading, schedule, storageKey, sourceLabel]);
 
   // Timer: check schedule every second
   useEffect(() => {
@@ -97,6 +129,8 @@ export function useSchedule({ storageKey, onStart, onStop, isDownloading }: UseS
       // Check stop time first
       if (schedule.stopAt && now >= schedule.stopAt && isDownloading) {
         onStopRef.current();
+        const label = sourceLabel ? ` (${sourceLabel})` : '';
+        notify('Youwee', `Scheduled download stopped${label}`);
         setScheduleState(null);
         saveSchedule(storageKey, null);
         startTriggeredRef.current = false;
@@ -107,6 +141,8 @@ export function useSchedule({ storageKey, onStart, onStop, isDownloading }: UseS
       if (now >= schedule.startAt && !startTriggeredRef.current && !isDownloading) {
         startTriggeredRef.current = true;
         onStartRef.current();
+        const label = sourceLabel ? ` (${sourceLabel})` : '';
+        notify('Youwee', `Scheduled download started${label}`);
         // If there's a stopAt, keep the schedule for stop monitoring
         if (!schedule.stopAt) {
           setScheduleState(null);
@@ -130,17 +166,25 @@ export function useSchedule({ storageKey, onStart, onStop, isDownloading }: UseS
     tick(); // run immediately
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [schedule, isDownloading, storageKey]);
+  }, [schedule, isDownloading, storageKey, sourceLabel]);
 
-  // beforeunload warning
+  // Sync schedule status to system tray menu
   useEffect(() => {
-    if (!schedule) return;
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-    };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
-  }, [schedule]);
+    let status = '';
+    if (schedule && sourceLabel) {
+      const now = Date.now();
+      if (now < schedule.startAt) {
+        const time = formatTime(schedule.startAt);
+        status = `⏱ ${sourceLabel}: ${time}`;
+      } else if (isDownloading && schedule.stopAt && now < schedule.stopAt) {
+        const time = formatTime(schedule.stopAt);
+        status = `⬇ ${sourceLabel} → ${time}`;
+      } else if (isDownloading) {
+        status = `⬇ ${sourceLabel}`;
+      }
+    }
+    invoke('update_tray_schedule', { status }).catch(() => {});
+  }, [schedule, isDownloading, sourceLabel]);
 
   const setSchedule = useCallback(
     (config: ScheduleConfig) => {

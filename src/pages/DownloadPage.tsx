@@ -63,6 +63,7 @@ export function DownloadPage({ onNavigateToSettings }: DownloadPageProps) {
     onStart: startDownload,
     onStop: stopDownload,
     isDownloading,
+    sourceLabel: 'YouTube',
   });
 
   const pendingCount = items.filter((i) => i.status !== 'completed').length;

@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Auto-download ignores user settings** - Channel auto-download now respects per-channel download preferences (Video/Audio mode, quality, format, codec, bitrate) instead of using hardcoded values. Each channel has its own download settings configurable in the channel settings panel
 - **Security hardening** - FFmpeg commands now use structured argument arrays instead of shell string parsing, preventing command injection. Added URL scheme validation and `--` separator for all yt-dlp calls to block option injection. Enabled Content Security Policy, removed overly broad shell permissions, and added `isSafeUrl` validation for rendered links
 - **Video preview fails for MKV/AVI/FLV/TS containers** - Preview detection now checks both container format and codec. Videos in unsupported containers (MKV, AVI, FLV, WMV, TS, WebM, OGG) are correctly transcoded to H.264 preview. HEVC in MP4/MOV no longer unnecessarily transcoded on macOS
+- **Scheduled downloads not visible in tray mode** - Desktop notifications now fire when a scheduled download starts, stops, or completes while the app is minimized to system tray. Tray menu shows active schedule status (e.g. "YouTube: 23:00"). Schedule works on both YouTube and Universal pages
+- **Quit from tray kills active downloads** - Tray "Quit" now uses graceful shutdown instead of force-killing the process, allowing active downloads to finish cleanup and preventing corrupted files
+- **Dock icon setting lost on restart (macOS)** - The "Hide Dock icon on close" preference is now synced to the native layer on app startup, not only when visiting the Settings page
 
 ## [0.9.0] - 2026-02-12
 

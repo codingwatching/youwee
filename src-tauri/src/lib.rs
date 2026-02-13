@@ -27,6 +27,9 @@ static HIDE_DOCK_ON_CLOSE: AtomicBool = AtomicBool::new(false);
 /// Current UI language for tray menu translations (default: "en")
 static TRAY_LANG: Mutex<String> = Mutex::new(String::new());
 
+/// Schedule status text for tray menu (empty = no schedule active)
+static TRAY_SCHEDULE_STATUS: Mutex<String> = Mutex::new(String::new());
+
 /// Show the main window and restore dock icon if needed
 fn show_main_window(app_handle: &tauri::AppHandle) {
     if let Some(window) = app_handle.get_webview_window("main") {
@@ -52,6 +55,15 @@ fn rebuild_tray_menu_cmd(app: tauri::AppHandle, lang: Option<String>) {
         if let Ok(mut stored) = TRAY_LANG.lock() {
             *stored = l;
         }
+    }
+    rebuild_tray_menu(&app);
+}
+
+/// Tauri command: update the schedule status shown in the tray menu
+#[tauri::command]
+fn update_tray_schedule(app: tauri::AppHandle, status: String) {
+    if let Ok(mut stored) = TRAY_SCHEDULE_STATUS.lock() {
+        *stored = status;
     }
     rebuild_tray_menu(&app);
 }
@@ -200,6 +212,7 @@ pub fn run() {
             // System commands
             set_hide_dock_on_close,
             rebuild_tray_menu_cmd,
+            update_tray_schedule,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
@@ -262,7 +275,7 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                     }
                     "quit" => {
                         services::polling::stop_polling();
-                        std::process::exit(0);
+                        app_handle_menu.exit(0);
                     }
                     _ => {}
                 }
@@ -360,9 +373,21 @@ fn rebuild_tray_menu_inner(app_handle: &tauri::AppHandle) -> Result<(), Box<dyn 
     let show = MenuItemBuilder::with_id("show", tray_text("open")).build(app_handle)?;
     let quit = MenuItemBuilder::with_id("quit", tray_text("quit")).build(app_handle)?;
 
-    let menu = MenuBuilder::new(app_handle)
+    let mut menu = MenuBuilder::new(app_handle)
         .item(&built_submenu)
-        .separator()
+        .separator();
+
+    // Show schedule status if active
+    let schedule_status = TRAY_SCHEDULE_STATUS.lock().map(|s| s.clone()).unwrap_or_default();
+    if !schedule_status.is_empty() {
+        let schedule_item = MenuItemBuilder::with_id("schedule_info", &schedule_status)
+            .enabled(false)
+            .build(app_handle)?;
+        menu = menu.item(&schedule_item);
+        menu = menu.separator();
+    }
+
+    let menu = menu
         .item(&check_now)
         .item(&show)
         .separator()
