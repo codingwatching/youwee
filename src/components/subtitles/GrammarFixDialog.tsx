@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { Loader2, Sparkles, X } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSubtitle } from '@/contexts/SubtitleContext';
 import { cn } from '@/lib/utils';
@@ -11,15 +11,28 @@ interface GrammarFixDialogProps {
 }
 
 type StyleOption = 'original' | 'formal' | 'casual';
+const GRAMMAR_CANCELLED_ERROR = '__GRAMMAR_CANCELLED__';
 
 export function GrammarFixDialog({ open, onClose }: GrammarFixDialogProps) {
   const { t } = useTranslation('subtitles');
   const subtitle = useSubtitle();
+  const activeRunIdRef = useRef(0);
 
   const [style, setStyle] = useState<StyleOption>('original');
   const [isFixing, setIsFixing] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [error, setError] = useState<string | null>(null);
+
+  const cancelFix = useCallback(() => {
+    activeRunIdRef.current += 1;
+    setIsFixing(false);
+    setProgress({ current: 0, total: 0 });
+  }, []);
+
+  const handleClose = useCallback(() => {
+    cancelFix();
+    onClose();
+  }, [cancelFix, onClose]);
 
   const handleFix = useCallback(async () => {
     const entriesToFix =
@@ -32,6 +45,9 @@ export function GrammarFixDialog({ open, onClose }: GrammarFixDialogProps) {
     setIsFixing(true);
     setError(null);
     setProgress({ current: 0, total: entriesToFix.length });
+    const runId = activeRunIdRef.current + 1;
+    activeRunIdRef.current = runId;
+    const isCancelled = () => activeRunIdRef.current !== runId;
 
     try {
       const BATCH_SIZE = 20;
@@ -45,6 +61,9 @@ export function GrammarFixDialog({ open, onClose }: GrammarFixDialogProps) {
             : 'Maintain the original style.';
 
       for (let i = 0; i < entriesToFix.length; i += BATCH_SIZE) {
+        if (isCancelled()) {
+          throw new Error(GRAMMAR_CANCELLED_ERROR);
+        }
         const batch = entriesToFix.slice(i, i + BATCH_SIZE);
         const textsToFix = batch.map((e) => e.text).join('\n---SEPARATOR---\n');
 
@@ -53,6 +72,9 @@ export function GrammarFixDialog({ open, onClose }: GrammarFixDialogProps) {
         const response = await invoke<string>('generate_ai_response', {
           prompt,
         });
+        if (isCancelled()) {
+          throw new Error(GRAMMAR_CANCELLED_ERROR);
+        }
 
         const fixedTexts = response.split('---SEPARATOR---').map((s) => s.trim());
 
@@ -70,14 +92,22 @@ export function GrammarFixDialog({ open, onClose }: GrammarFixDialogProps) {
         });
       }
 
+      if (isCancelled()) {
+        throw new Error(GRAMMAR_CANCELLED_ERROR);
+      }
       subtitle.updateEntries(updates);
-      onClose();
+      handleClose();
     } catch (err) {
+      if (String(err).includes(GRAMMAR_CANCELLED_ERROR)) {
+        return;
+      }
       setError(String(err));
     } finally {
-      setIsFixing(false);
+      if (activeRunIdRef.current === runId) {
+        setIsFixing(false);
+      }
     }
-  }, [subtitle, style, onClose]);
+  }, [subtitle, style, handleClose]);
 
   if (!open) return null;
 
@@ -92,7 +122,7 @@ export function GrammarFixDialog({ open, onClose }: GrammarFixDialogProps) {
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1.5 rounded-lg hover:bg-accent transition-colors"
           >
             <X className="w-4 h-4" />
@@ -165,7 +195,7 @@ export function GrammarFixDialog({ open, onClose }: GrammarFixDialogProps) {
         <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-border/50">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="px-4 py-2 text-sm rounded-lg hover:bg-accent transition-colors"
           >
             {t('timing.cancel')}

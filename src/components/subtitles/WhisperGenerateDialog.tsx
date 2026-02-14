@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { Loader2, Mic, X } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Select,
@@ -39,12 +39,23 @@ export function WhisperGenerateDialog({ open: isOpen, onClose }: WhisperGenerate
   const { t } = useTranslation('subtitles');
   const subtitle = useSubtitle();
   const ai = useAI();
+  const activeRunIdRef = useRef(0);
 
   const [filePath, setFilePath] = useState('');
   const [language, setLanguage] = useState('');
   const [outputFormat, setOutputFormat] = useState<SubtitleFormat>('srt');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const cancelGenerate = useCallback(() => {
+    activeRunIdRef.current += 1;
+    setIsGenerating(false);
+  }, []);
+
+  const handleClose = useCallback(() => {
+    cancelGenerate();
+    onClose();
+  }, [cancelGenerate, onClose]);
 
   const handleSelectFile = useCallback(async () => {
     try {
@@ -79,6 +90,9 @@ export function WhisperGenerateDialog({ open: isOpen, onClose }: WhisperGenerate
 
     setIsGenerating(true);
     setError(null);
+    const runId = activeRunIdRef.current + 1;
+    activeRunIdRef.current = runId;
+    const isCancelled = () => activeRunIdRef.current !== runId;
 
     try {
       const content = await invoke<string>('generate_subtitles_with_whisper', {
@@ -89,18 +103,26 @@ export function WhisperGenerateDialog({ open: isOpen, onClose }: WhisperGenerate
         endpointUrl: ai.config.whisper_endpoint_url || undefined,
         model: ai.config.whisper_model || 'whisper-1',
       });
+      if (isCancelled()) {
+        return;
+      }
 
       // Parse and load into editor
       const _result = parseSubtitles(content, outputFormat);
       const fileName = `whisper_${language || 'auto'}.${outputFormat}`;
       subtitle.loadFromContent(content, fileName, outputFormat);
-      onClose();
+      handleClose();
     } catch (err) {
+      if (isCancelled()) {
+        return;
+      }
       setError(String(err));
     } finally {
-      setIsGenerating(false);
+      if (activeRunIdRef.current === runId) {
+        setIsGenerating(false);
+      }
     }
-  }, [filePath, language, outputFormat, ai.config, subtitle, onClose, t]);
+  }, [filePath, language, outputFormat, ai.config, subtitle, handleClose, t]);
 
   if (!isOpen) return null;
 
@@ -115,7 +137,7 @@ export function WhisperGenerateDialog({ open: isOpen, onClose }: WhisperGenerate
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1.5 rounded-lg hover:bg-accent transition-colors"
           >
             <X className="w-4 h-4" />
@@ -210,7 +232,7 @@ export function WhisperGenerateDialog({ open: isOpen, onClose }: WhisperGenerate
         <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-border/50">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="px-4 py-2 text-sm rounded-lg hover:bg-accent transition-colors"
           >
             {t('timing.cancel')}
