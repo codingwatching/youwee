@@ -3,6 +3,13 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { Loader2, Mic, X } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useAI } from '@/contexts/AIContext';
 import { useSubtitle } from '@/contexts/SubtitleContext';
 import { parseSubtitles } from '@/lib/subtitle-parser';
@@ -13,6 +20,20 @@ interface WhisperGenerateDialogProps {
   open: boolean;
   onClose: () => void;
 }
+
+const WHISPER_LANGUAGE_OPTIONS = [
+  { value: 'auto', label: 'whisper.autoDetect' },
+  { value: 'en', label: 'English' },
+  { value: 'vi', label: 'Vietnamese' },
+  { value: 'ja', label: 'Japanese' },
+  { value: 'ko', label: 'Korean' },
+  { value: 'zh', label: 'Chinese' },
+  { value: 'fr', label: 'French' },
+  { value: 'de', label: 'German' },
+  { value: 'es', label: 'Spanish' },
+  { value: 'pt', label: 'Portuguese' },
+  { value: 'ru', label: 'Russian' },
+] as const;
 
 export function WhisperGenerateDialog({ open: isOpen, onClose }: WhisperGenerateDialogProps) {
   const { t } = useTranslation('subtitles');
@@ -135,24 +156,24 @@ export function WhisperGenerateDialog({ open: isOpen, onClose }: WhisperGenerate
             <label htmlFor="whisper-lang" className="text-sm font-medium">
               {t('whisper.language')}
             </label>
-            <select
-              id="whisper-lang"
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg outline-none"
+            <Select
+              value={language || 'auto'}
+              onValueChange={(value) => setLanguage(value === 'auto' ? '' : value)}
             >
-              <option value="">{t('whisper.autoDetect')}</option>
-              <option value="en">English</option>
-              <option value="vi">Vietnamese</option>
-              <option value="ja">Japanese</option>
-              <option value="ko">Korean</option>
-              <option value="zh">Chinese</option>
-              <option value="fr">French</option>
-              <option value="de">German</option>
-              <option value="es">Spanish</option>
-              <option value="pt">Portuguese</option>
-              <option value="ru">Russian</option>
-            </select>
+              <SelectTrigger
+                id="whisper-lang"
+                className="h-10 rounded-lg border-border/60 bg-background/80 shadow-none focus:ring-2 focus:ring-primary/30"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-lg border-border/60">
+                {WHISPER_LANGUAGE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label === 'whisper.autoDetect' ? t(option.label) : option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Output Format */}
@@ -160,15 +181,21 @@ export function WhisperGenerateDialog({ open: isOpen, onClose }: WhisperGenerate
             <label htmlFor="whisper-format" className="text-sm font-medium">
               {t('whisper.outputFormat')}
             </label>
-            <select
-              id="whisper-format"
+            <Select
               value={outputFormat}
-              onChange={(e) => setOutputFormat(e.target.value as SubtitleFormat)}
-              className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg outline-none"
+              onValueChange={(value) => setOutputFormat(value as SubtitleFormat)}
             >
-              <option value="srt">{t('formats.srt')}</option>
-              <option value="vtt">{t('formats.vtt')}</option>
-            </select>
+              <SelectTrigger
+                id="whisper-format"
+                className="h-10 rounded-lg border-border/60 bg-background/80 shadow-none focus:ring-2 focus:ring-primary/30"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-lg border-border/60">
+                <SelectItem value="srt">{t('formats.srt')}</SelectItem>
+                <SelectItem value="vtt">{t('formats.vtt')}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Error */}

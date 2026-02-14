@@ -2,6 +2,13 @@ import { invoke } from '@tauri-apps/api/core';
 import { Languages, Loader2, X } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useSubtitle } from '@/contexts/SubtitleContext';
 import { LANGUAGE_OPTIONS } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -104,18 +111,21 @@ export function TranslateDialog({ open, onClose }: TranslateDialogProps) {
             <label htmlFor="translate-target" className="text-sm font-medium">
               {t('translate.targetLang')}
             </label>
-            <select
-              id="translate-target"
-              value={targetLang}
-              onChange={(e) => setTargetLang(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg outline-none"
-            >
-              {LANGUAGE_OPTIONS.map((lang) => (
-                <option key={lang.code} value={lang.code}>
-                  {lang.name}
-                </option>
-              ))}
-            </select>
+            <Select value={targetLang} onValueChange={setTargetLang}>
+              <SelectTrigger
+                id="translate-target"
+                className="h-10 rounded-lg border-border/60 bg-background/80 shadow-none focus:ring-2 focus:ring-primary/30"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-lg border-border/60">
+                {LANGUAGE_OPTIONS.map((lang) => (
+                  <SelectItem key={lang.code} value={lang.code}>
+                    {lang.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Scope */}

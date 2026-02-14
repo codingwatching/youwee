@@ -142,7 +142,7 @@ export function SubtitleToolbar({
   const selectedCount = subtitle.selectedIds.size;
 
   return (
-    <div className="flex items-center gap-1 px-3 py-2 border-b border-border/50 bg-card/30 flex-shrink-0 flex-wrap">
+    <div className="flex items-center gap-1 px-1 py-1 flex-shrink-0 flex-wrap">
       {/* File group */}
       <div className="flex items-center gap-0.5">
         <ToolbarButton
@@ -318,7 +318,7 @@ export function SubtitleToolbar({
 // ---- Sub-components ----
 
 function Divider() {
-  return <div className="w-px h-5 bg-border/50 mx-1" />;
+  return <div className="w-px h-5 bg-border/50 mx-1.5" />;
 }
 
 interface ToolbarButtonProps {
@@ -352,8 +352,8 @@ function ToolbarButton({
         'disabled:opacity-40 disabled:pointer-events-none',
         destructive
           ? 'hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400'
-          : 'hover:bg-accent',
-        'text-muted-foreground hover:text-foreground',
+          : 'hover:bg-accent/70',
+        'text-muted-foreground hover:text-foreground border border-transparent hover:border-border/60',
       )}
     >
       {icon}

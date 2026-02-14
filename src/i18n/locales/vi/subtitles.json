@@ -6,7 +6,34 @@
     "description": "Mở file phụ đề hoặc tải phụ đề từ URL để bắt đầu",
     "openFile": "Mở File Phụ Đề",
     "downloadFromUrl": "Tải từ URL",
-    "createNew": "Tạo Mới"
+    "createNew": "Tạo Mới",
+    "hint": "Gợi ý: Nếu bạn đã có phụ đề, hãy bắt đầu với file SRT/VTT/ASS."
+  },
+  "quickActions": {
+    "title": "Thao tác nhanh",
+    "description": "Chọn cách bắt đầu hoặc tiếp tục chỉnh sửa.",
+    "openHint": "Mở file phụ đề có sẵn (.srt, .vtt, .ass, .ssa).",
+    "downloadHint": "Lấy phụ đề có sẵn từ URL video.",
+    "createHint": "Tạo timeline phụ đề trống để nhập mới.",
+    "whisperHint": "Tạo phụ đề từ video/âm thanh bằng Whisper."
+  },
+  "workspace": {
+    "file": "Tệp",
+    "newFile": "Phụ đề mới",
+    "entries": "Dòng",
+    "selected": "Đã chọn",
+    "format": "Định dạng",
+    "saved": "Đã lưu",
+    "unsaved": "Chưa lưu"
+  },
+  "hints": {
+    "title": "Cách sử dụng",
+    "description": "Quy trình đơn giản giúp tránh lỗi thời gian và lỗi xuất file.",
+    "step1": "Mở file phụ đề có sẵn, tải từ URL hoặc tạo file trống.",
+    "step2": "Chỉnh nội dung và timestamp trong bảng, sau đó dùng Timing/Fix Errors để tinh chỉnh.",
+    "step3": "Tải video preview và kiểm tra đồng bộ phụ đề trước khi xuất.",
+    "step4": "Dùng AI (Whisper, Dịch, Sửa ngữ pháp) khi cần xử lý nhanh.",
+    "shortcuts": "Gợi ý: Ctrl/Cmd+S để lưu, Ctrl/Cmd+F để tìm & thay thế."
   },
   "toolbar": {
     "open": "Mở",
@@ -55,6 +82,13 @@
     "noVideo": "Chưa tải video",
     "loadVideo": "Tải Video",
     "preview": "Xem trước",
+    "loading": "Đang tải video...",
+    "generatingPreview": "Đang tạo bản xem trước tương thích...",
+    "previewMode": "Chế độ xem trước",
+    "previewHint": "Đang dùng bản xem trước tương thích để phát",
+    "previewPlaybackFailed": "Phát video thất bại",
+    "codecNotSupported": "Codec video chưa được player hỗ trợ",
+    "formatNotSupported": "Định dạng video chưa được player hỗ trợ",
     "currentSubtitle": "Phụ đề hiện tại",
     "playPause": "Phát/Tạm dừng",
     "seekTo": "Chuyển đến phụ đề",

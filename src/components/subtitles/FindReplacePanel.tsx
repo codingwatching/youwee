@@ -123,9 +123,11 @@ export function FindReplacePanel({ open, onClose }: FindReplacePanelProps) {
   if (!open) return null;
 
   return (
-    <div className="border-b border-border/50 bg-card/50 px-3 py-2 flex-shrink-0">
+    <div className="rounded-xl border border-border/60 bg-gradient-to-b from-background to-muted/20 px-3 py-2.5 flex-shrink-0">
       <div className="flex items-start gap-3">
-        <Search className="w-4 h-4 mt-2 text-muted-foreground flex-shrink-0" />
+        <div className="mt-1.5 rounded-lg bg-primary/10 p-1.5 text-primary flex-shrink-0">
+          <Search className="w-3.5 h-3.5" />
+        </div>
 
         <div className="flex-1 space-y-2">
           {/* Find row */}
@@ -135,7 +137,7 @@ export function FindReplacePanel({ open, onClose }: FindReplacePanelProps) {
               value={findText}
               onChange={(e) => setFindText(e.target.value)}
               placeholder={t('findReplace.find')}
-              className="flex-1 px-2.5 py-1.5 text-sm bg-background border border-border rounded-md outline-none focus:ring-2 focus:ring-primary/50"
+              className="flex-1 px-2.5 py-1.5 text-sm bg-background/80 border border-border rounded-md outline-none focus:ring-2 focus:ring-primary/30"
             />
             <span className="text-xs text-muted-foreground tabular-nums min-w-[80px]">
               {findText ? t('findReplace.results', { count: matches.length }) : ''}
@@ -149,13 +151,13 @@ export function FindReplacePanel({ open, onClose }: FindReplacePanelProps) {
               value={replaceText}
               onChange={(e) => setReplaceText(e.target.value)}
               placeholder={t('findReplace.replaceWith')}
-              className="flex-1 px-2.5 py-1.5 text-sm bg-background border border-border rounded-md outline-none focus:ring-2 focus:ring-primary/50"
+              className="flex-1 px-2.5 py-1.5 text-sm bg-background/80 border border-border rounded-md outline-none focus:ring-2 focus:ring-primary/30"
             />
             <button
               type="button"
               onClick={handleReplaceOne}
               disabled={matches.length === 0}
-              className="px-3 py-1.5 text-xs font-medium rounded-md hover:bg-accent disabled:opacity-40 transition-colors"
+              className="px-3 py-1.5 text-xs font-medium rounded-md border border-border/70 hover:bg-accent disabled:opacity-40 transition-colors"
             >
               {t('findReplace.replaceOne')}
             </button>
@@ -163,7 +165,7 @@ export function FindReplacePanel({ open, onClose }: FindReplacePanelProps) {
               type="button"
               onClick={handleReplaceAll}
               disabled={matches.length === 0}
-              className="px-3 py-1.5 text-xs font-medium rounded-md hover:bg-accent disabled:opacity-40 transition-colors"
+              className="px-3 py-1.5 text-xs font-medium rounded-md border border-dashed border-border/70 hover:bg-accent disabled:opacity-40 transition-colors"
             >
               {t('findReplace.replaceAll')}
             </button>
@@ -204,7 +206,7 @@ export function FindReplacePanel({ open, onClose }: FindReplacePanelProps) {
         <button
           type="button"
           onClick={onClose}
-          className="p-1 rounded hover:bg-accent transition-colors mt-1"
+          className="p-1.5 rounded-md hover:bg-accent transition-colors mt-1 text-muted-foreground hover:text-foreground"
         >
           <X className="w-3.5 h-3.5" />
         </button>

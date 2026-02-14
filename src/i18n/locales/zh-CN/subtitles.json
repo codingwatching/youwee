@@ -6,7 +6,34 @@
     "description": "打开字幕文件或从URL下载字幕以开始",
     "openFile": "打开字幕文件",
     "downloadFromUrl": "从URL下载",
-    "createNew": "新建"
+    "createNew": "新建",
+    "hint": "提示：如果你已有字幕文件，建议先导入 SRT/VTT/ASS。"
+  },
+  "quickActions": {
+    "title": "快捷操作",
+    "description": "选择你要开始或继续编辑的方式。",
+    "openHint": "加载已有字幕文件（.srt、.vtt、.ass、.ssa）。",
+    "downloadHint": "从视频 URL 获取可用字幕。",
+    "createHint": "从空白时间轴开始新建字幕。",
+    "whisperHint": "使用 Whisper 从视频/音频生成字幕。"
+  },
+  "workspace": {
+    "file": "文件",
+    "newFile": "新字幕",
+    "entries": "条目",
+    "selected": "已选",
+    "format": "格式",
+    "saved": "已保存",
+    "unsaved": "未保存"
+  },
+  "hints": {
+    "title": "使用指南",
+    "description": "按这个流程操作，更不容易出现时间轴和导出错误。",
+    "step1": "打开字幕文件、从 URL 下载字幕，或新建空白字幕文件。",
+    "step2": "在表格中编辑文本和时间戳，再用 Timing/Fix Errors 做整理。",
+    "step3": "加载视频预览并确认字幕同步后再导出。",
+    "step4": "需要加速时可使用 AI 工具（Whisper、翻译、语法修复）。",
+    "shortcuts": "提示：Ctrl/Cmd+S 保存，Ctrl/Cmd+F 查找替换。"
   },
   "toolbar": {
     "open": "打开",
@@ -55,6 +82,13 @@
     "noVideo": "未加载视频",
     "loadVideo": "加载视频",
     "preview": "预览",
+    "loading": "正在加载视频...",
+    "generatingPreview": "正在生成兼容预览...",
+    "previewMode": "预览模式",
+    "previewHint": "正在使用兼容预览进行播放",
+    "previewPlaybackFailed": "视频播放失败",
+    "codecNotSupported": "播放器不支持此视频编码",
+    "formatNotSupported": "播放器不支持此视频格式",
     "currentSubtitle": "当前字幕",
     "playPause": "播放/暂停",
     "seekTo": "跳转到字幕",

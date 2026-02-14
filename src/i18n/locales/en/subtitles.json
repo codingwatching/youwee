@@ -6,7 +6,34 @@
     "description": "Open a subtitle file or download subtitles from a URL to get started",
     "openFile": "Open Subtitle File",
     "downloadFromUrl": "Download from URL",
-    "createNew": "Create New"
+    "createNew": "Create New",
+    "hint": "Tip: If you already have subtitles, start with SRT/VTT/ASS file."
+  },
+  "quickActions": {
+    "title": "Quick Actions",
+    "description": "Choose how you want to start or continue editing.",
+    "openHint": "Load existing subtitle files (.srt, .vtt, .ass, .ssa).",
+    "downloadHint": "Fetch available subtitles from a video URL.",
+    "createHint": "Start from a blank subtitle timeline.",
+    "whisperHint": "Generate subtitles from video/audio using Whisper."
+  },
+  "workspace": {
+    "file": "File",
+    "newFile": "New subtitle",
+    "entries": "Entries",
+    "selected": "Selected",
+    "format": "Format",
+    "saved": "Saved",
+    "unsaved": "Unsaved"
+  },
+  "hints": {
+    "title": "How To Use",
+    "description": "A simple workflow to avoid timing and export mistakes.",
+    "step1": "Open an existing subtitle file, download from URL, or create a blank file.",
+    "step2": "Edit text and timestamps in the table, then use Timing/Fix Errors for cleanup.",
+    "step3": "Load video preview and verify subtitle sync before exporting.",
+    "step4": "Use AI tools (Whisper, Translate, Grammar) when you need faster editing.",
+    "shortcuts": "Tip: Ctrl/Cmd+S to save, Ctrl/Cmd+F to find/replace."
   },
   "toolbar": {
     "open": "Open",
@@ -55,6 +82,13 @@
     "noVideo": "No video loaded",
     "loadVideo": "Load Video",
     "preview": "Preview",
+    "loading": "Loading video...",
+    "generatingPreview": "Generating compatible preview...",
+    "previewMode": "Preview Mode",
+    "previewHint": "Using compatible preview for playback",
+    "previewPlaybackFailed": "Video playback failed",
+    "codecNotSupported": "Video codec is not supported by the player",
+    "formatNotSupported": "Video format is not supported by the player",
     "currentSubtitle": "Current subtitle",
     "playPause": "Play/Pause",
     "seekTo": "Seek to subtitle",
