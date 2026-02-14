@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Subtitle download in Metadata** - New subtitle toggle in the Metadata settings bar to download subtitles (manual + auto-generated) alongside metadata. Includes a popover to select languages and format (SRT/VTT/ASS)
+
 ## [0.9.2] - 2026-02-13
 
 ### Added
