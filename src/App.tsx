@@ -16,6 +16,7 @@ import { HistoryProvider } from '@/contexts/HistoryContext';
 import { LogProvider } from '@/contexts/LogContext';
 import { MetadataProvider } from '@/contexts/MetadataContext';
 import { ProcessingProvider } from '@/contexts/ProcessingContext';
+import { SubtitleProvider } from '@/contexts/SubtitleContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { UniversalProvider } from '@/contexts/UniversalContext';
 import { UpdaterProvider, useUpdater } from '@/contexts/UpdaterContext';
@@ -27,6 +28,7 @@ import {
   MetadataPage,
   ProcessingPage,
   SettingsPage,
+  SubtitlesPage,
   SummaryPage,
   UniversalPage,
 } from '@/pages';
@@ -123,6 +125,7 @@ function AppContent() {
           </ErrorBoundary>
         )}
         {currentPage === 'metadata' && <MetadataPage />}
+        {currentPage === 'subtitles' && <SubtitlesPage />}
         {currentPage === 'library' && <HistoryPage />}
         {currentPage === 'logs' && <LogsPage />}
         {currentPage === 'settings' && <SettingsPage />}
@@ -171,11 +174,13 @@ export function App() {
                 <HistoryProvider>
                   <AIProvider>
                     <ProcessingProvider>
-                      <MetadataProvider>
-                        <UpdaterWrapper>
-                          <AppContent />
-                        </UpdaterWrapper>
-                      </MetadataProvider>
+                      <SubtitleProvider>
+                        <MetadataProvider>
+                          <UpdaterWrapper>
+                            <AppContent />
+                          </UpdaterWrapper>
+                        </MetadataProvider>
+                      </SubtitleProvider>
                     </ProcessingProvider>
                   </AIProvider>
                 </HistoryProvider>

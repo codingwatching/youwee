@@ -165,6 +165,7 @@ pub fn run() {
             commands::test_ai_connection,
             commands::generate_video_summary,
             commands::generate_summary_with_options,
+            commands::generate_ai_response,
             commands::get_ai_models,
             commands::get_summary_languages,
             // Processing commands
