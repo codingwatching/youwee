@@ -31,8 +31,10 @@ export function ProcessingPage() {
     progress,
     messages,
     isGenerating,
+    outputDirectory,
     history,
     selectVideo,
+    selectOutputDirectory,
     setVideoError,
     sendMessage,
     cancelProcessing,
@@ -185,8 +187,10 @@ export function ProcessingPage() {
             isProcessing={isProcessing}
             progress={progress}
             hasVideo={!!metadata && !!videoPath}
+            outputDirectory={outputDirectory}
             attachedImages={attachedImages}
             onSendMessage={sendMessage}
+            onSelectOutputDirectory={selectOutputDirectory}
             onCancelProcessing={cancelProcessing}
             onAttachImages={attachImages}
             onRemoveAttachment={removeAttachment}

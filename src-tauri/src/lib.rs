@@ -170,6 +170,7 @@ pub fn run() {
             // Processing commands
             commands::get_video_metadata,
             commands::get_image_metadata,
+            commands::get_processing_attachment_info,
             commands::generate_processing_command,
             commands::generate_quick_action_command,
             commands::execute_ffmpeg_command,
