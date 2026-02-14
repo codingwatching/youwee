@@ -9,15 +9,34 @@ interface SubtitlesUsageGuideProps {
 
 export function SubtitlesUsageGuide({ compact = false, className }: SubtitlesUsageGuideProps) {
   const { t } = useTranslation('subtitles');
-  const steps = compact
-    ? [t('hints.step2'), t('hints.step4')]
-    : [t('hints.step1'), t('hints.step2'), t('hints.step3'), t('hints.step4')];
+  const steps = [
+    t('hints.steps.openOrCreate'),
+    t('hints.steps.editAndSync'),
+    t('hints.steps.qcAndFix'),
+    t('hints.steps.waveformAndShot'),
+    t('hints.steps.aiAndTranslate'),
+    t('hints.steps.exportAndBatch'),
+  ];
+  const features = [
+    t('hints.features.fileOps'),
+    t('hints.features.editor'),
+    t('hints.features.findReplace'),
+    t('hints.features.timing'),
+    t('hints.features.waveform'),
+    t('hints.features.qc'),
+    t('hints.features.fixErrors'),
+    t('hints.features.splitMerge'),
+    t('hints.features.styleProfiles'),
+    t('hints.features.translateMode'),
+    t('hints.features.aiTools'),
+    t('hints.features.batchProject'),
+  ];
 
   return (
     <div
       className={cn(
         'rounded-2xl border border-border/60 bg-gradient-to-b from-background to-muted/20',
-        compact ? 'p-3' : 'p-4',
+        compact ? 'p-3.5' : 'p-4',
         className,
       )}
     >
@@ -31,9 +50,17 @@ export function SubtitlesUsageGuide({ compact = false, className }: SubtitlesUsa
         </div>
       </div>
 
-      <ul className="mt-3 space-y-1.5 text-xs text-muted-foreground list-disc pl-4">
+      <p className="mt-3 text-xs font-medium text-foreground/90">{t('hints.workflowTitle')}</p>
+      <ul className="mt-1.5 space-y-1.5 text-xs text-muted-foreground list-disc pl-4">
         {steps.map((step) => (
           <li key={step}>{step}</li>
+        ))}
+      </ul>
+
+      <p className="mt-4 text-xs font-medium text-foreground/90">{t('hints.featuresTitle')}</p>
+      <ul className="mt-1.5 grid gap-1.5 text-xs text-muted-foreground list-disc pl-4 sm:grid-cols-2">
+        {features.map((feature) => (
+          <li key={feature}>{feature}</li>
         ))}
       </ul>
 

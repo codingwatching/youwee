@@ -170,6 +170,7 @@ pub fn run() {
             commands::get_summary_languages,
             // Processing commands
             commands::get_video_metadata,
+            commands::detect_shot_changes,
             commands::get_image_metadata,
             commands::get_processing_attachment_info,
             commands::generate_processing_command,

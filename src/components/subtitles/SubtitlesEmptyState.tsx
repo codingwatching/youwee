@@ -1,7 +1,6 @@
 import { Subtitles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { SubtitlesQuickActions } from './SubtitlesQuickActions';
-import { SubtitlesUsageGuide } from './SubtitlesUsageGuide';
 
 interface SubtitlesEmptyStateProps {
   onOpenFile: () => void;
@@ -38,8 +37,6 @@ export function SubtitlesEmptyState({
             onCreateNew={onCreateNew}
             onGenerateWithWhisper={onGenerateWithWhisper}
           />
-
-          <SubtitlesUsageGuide />
         </div>
       </div>
     </div>

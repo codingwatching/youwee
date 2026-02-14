@@ -8,8 +8,10 @@ import { FindReplacePanel } from '@/components/subtitles/FindReplacePanel';
 import { FixErrorsDialog } from '@/components/subtitles/FixErrorsDialog';
 import { GrammarFixDialog } from '@/components/subtitles/GrammarFixDialog';
 import { SplitMergeDialog } from '@/components/subtitles/SplitMergeDialog';
+import { SubtitleBatchProjectDialog } from '@/components/subtitles/SubtitleBatchProjectDialog';
 import { SubtitleDownloadDialog } from '@/components/subtitles/SubtitleDownloadDialog';
 import { SubtitleEditor } from '@/components/subtitles/SubtitleEditor';
+import { SubtitleStyleProfileDialog } from '@/components/subtitles/SubtitleStyleProfileDialog';
 import { SubtitlesEmptyState } from '@/components/subtitles/SubtitlesEmptyState';
 import { SubtitlesUsageGuide } from '@/components/subtitles/SubtitlesUsageGuide';
 import { SubtitlesWorkspaceStatus } from '@/components/subtitles/SubtitlesWorkspaceStatus';
@@ -29,6 +31,8 @@ export function SubtitlesPage() {
   const [showFindReplace, setShowFindReplace] = useState(false);
   const [showFixErrors, setShowFixErrors] = useState(false);
   const [showSplitMerge, setShowSplitMerge] = useState(false);
+  const [showBatchProject, setShowBatchProject] = useState(false);
+  const [showStyleProfiles, setShowStyleProfiles] = useState(false);
   const [showWhisper, setShowWhisper] = useState(false);
   const [showTranslate, setShowTranslate] = useState(false);
   const [showGrammarFix, setShowGrammarFix] = useState(false);
@@ -131,6 +135,8 @@ export function SubtitlesPage() {
           onCreateNew={handleCreateNew}
           onCloseFile={handleCloseFile}
           onShowDownloadDialog={() => setShowDownloadDialog(true)}
+          onShowBatchProject={() => setShowBatchProject(true)}
+          onShowStyleProfiles={() => setShowStyleProfiles(true)}
           onShowTimingDialog={() => setShowTimingDialog(true)}
           onShowFindReplace={() => setShowFindReplace((v) => !v)}
           onShowFixErrors={() => setShowFixErrors(true)}
@@ -167,6 +173,14 @@ export function SubtitlesPage() {
       <TimingDialog open={showTimingDialog} onClose={() => setShowTimingDialog(false)} />
       <FixErrorsDialog open={showFixErrors} onClose={() => setShowFixErrors(false)} />
       <SplitMergeDialog open={showSplitMerge} onClose={() => setShowSplitMerge(false)} />
+      <SubtitleBatchProjectDialog
+        open={showBatchProject}
+        onClose={() => setShowBatchProject(false)}
+      />
+      <SubtitleStyleProfileDialog
+        open={showStyleProfiles}
+        onClose={() => setShowStyleProfiles(false)}
+      />
       <WhisperGenerateDialog open={showWhisper} onClose={() => setShowWhisper(false)} />
       <TranslateDialog open={showTranslate} onClose={() => setShowTranslate(false)} />
       <GrammarFixDialog open={showGrammarFix} onClose={() => setShowGrammarFix(false)} />

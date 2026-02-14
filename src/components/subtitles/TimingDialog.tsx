@@ -1,4 +1,5 @@
-import { ArrowDown, ArrowUp, Timer } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
+import { ArrowDown, ArrowUp, Clapperboard, Loader2, Timer } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSubtitle } from '@/contexts/SubtitleContext';
@@ -9,7 +10,13 @@ interface TimingDialogProps {
   onClose: () => void;
 }
 
-type TimingTab = 'shift' | 'scale' | 'twopoint';
+type TimingTab = 'shift' | 'scale' | 'twopoint' | 'shot';
+
+interface ShotDetectionResult {
+  shot_times_ms: number[];
+  threshold: number;
+  min_interval_ms: number;
+}
 
 export function TimingDialog({ open, onClose }: TimingDialogProps) {
   const { t } = useTranslation('subtitles');
@@ -28,6 +35,15 @@ export function TimingDialog({ open, onClose }: TimingDialogProps) {
   const [point1Desired, setPoint1Desired] = useState(0);
   const [point2Original, setPoint2Original] = useState(0);
   const [point2Desired, setPoint2Desired] = useState(0);
+
+  // Shot sync state
+  const [shotThreshold, setShotThreshold] = useState(0.35);
+  const [snapWindowMs, setSnapWindowMs] = useState(140);
+  const [snapScope, setSnapScope] = useState<'all' | 'selected'>('all');
+  const [shotTimes, setShotTimes] = useState<number[]>([]);
+  const [isDetectingShots, setIsDetectingShots] = useState(false);
+  const [shotError, setShotError] = useState<string | null>(null);
+  const [lastSnapCount, setLastSnapCount] = useState(0);
 
   const handleShift = useCallback(() => {
     if (shiftMs === 0) return;
@@ -83,6 +99,90 @@ export function TimingDialog({ open, onClose }: TimingDialogProps) {
     onClose();
   }, [point1Original, point1Desired, point2Original, point2Desired, subtitle, onClose]);
 
+  const handleDetectShots = useCallback(async () => {
+    if (!subtitle.videoPath) {
+      setShotError(t('timing.shotNeedVideo'));
+      return;
+    }
+    setShotError(null);
+    setIsDetectingShots(true);
+    setLastSnapCount(0);
+    try {
+      const result = await invoke<ShotDetectionResult>('detect_shot_changes', {
+        path: subtitle.videoPath,
+        threshold: shotThreshold,
+        minIntervalMs: 250,
+      });
+      setShotTimes(result.shot_times_ms);
+    } catch (err) {
+      setShotError(String(err));
+    } finally {
+      setIsDetectingShots(false);
+    }
+  }, [subtitle.videoPath, shotThreshold, t]);
+
+  const handleSnapToShots = useCallback(() => {
+    if (shotTimes.length === 0) {
+      setShotError(t('timing.shotDetectFirst'));
+      return;
+    }
+
+    const entriesToUpdate =
+      snapScope === 'selected' && subtitle.selectedIds.size > 0
+        ? subtitle.entries.filter((entry) => subtitle.selectedIds.has(entry.id))
+        : subtitle.entries;
+
+    const nearestWithinWindow = (timeMs: number) => {
+      let nearest: number | null = null;
+      let bestDist = Number.POSITIVE_INFINITY;
+      for (const shotMs of shotTimes) {
+        const dist = Math.abs(shotMs - timeMs);
+        if (dist < bestDist) {
+          bestDist = dist;
+          nearest = shotMs;
+        }
+      }
+      if (nearest === null || bestDist > snapWindowMs) return null;
+      return nearest;
+    };
+
+    const updates = entriesToUpdate
+      .map((entry) => {
+        const snappedStart = nearestWithinWindow(entry.startTime);
+        const snappedEnd = nearestWithinWindow(entry.endTime);
+        const start = snappedStart ?? entry.startTime;
+        let end = snappedEnd ?? entry.endTime;
+
+        if (end <= start + 100) {
+          end = start + 100;
+        }
+
+        if (start !== entry.startTime || end !== entry.endTime) {
+          return {
+            id: entry.id,
+            changes: {
+              startTime: start,
+              endTime: end,
+            },
+          };
+        }
+        return null;
+      })
+      .filter(
+        (item): item is { id: string; changes: { startTime: number; endTime: number } } => !!item,
+      );
+
+    if (updates.length === 0) {
+      setLastSnapCount(0);
+      setShotError(t('timing.shotNoChange'));
+      return;
+    }
+
+    subtitle.updateEntries(updates);
+    setLastSnapCount(updates.length);
+    setShotError(null);
+  }, [shotTimes, snapScope, subtitle, snapWindowMs, t]);
+
   if (!open) return null;
 
   return (
@@ -96,7 +196,7 @@ export function TimingDialog({ open, onClose }: TimingDialogProps) {
 
         {/* Tabs */}
         <div className="flex border-b border-border/50">
-          {(['shift', 'scale', 'twopoint'] as TimingTab[]).map((tabId) => (
+          {(['shift', 'scale', 'twopoint', 'shot'] as TimingTab[]).map((tabId) => (
             <button
               key={tabId}
               type="button"
@@ -111,6 +211,7 @@ export function TimingDialog({ open, onClose }: TimingDialogProps) {
               {tabId === 'shift' && t('timing.shiftAll')}
               {tabId === 'scale' && t('timing.scale')}
               {tabId === 'twopoint' && t('timing.twoPointSync')}
+              {tabId === 'shot' && t('timing.shotSync')}
             </button>
           ))}
         </div>
@@ -274,6 +375,124 @@ export function TimingDialog({ open, onClose }: TimingDialogProps) {
               </div>
             </div>
           )}
+
+          {/* Shot Sync Tab */}
+          {tab === 'shot' && (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-border/60 bg-background/70 p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{t('timing.shotDetect')}</span>
+                  <button
+                    type="button"
+                    onClick={() => void handleDetectShots()}
+                    disabled={isDetectingShots}
+                    className={cn(
+                      'h-8 px-3 rounded-md text-xs font-medium border border-dashed border-border/70',
+                      'hover:bg-accent transition-colors',
+                      'disabled:opacity-50 disabled:pointer-events-none',
+                    )}
+                  >
+                    {isDetectingShots ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        {t('timing.detecting')}
+                      </span>
+                    ) : (
+                      t('timing.detect')
+                    )}
+                  </button>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="shot-threshold" className="text-xs text-muted-foreground">
+                    {t('timing.shotThreshold')}
+                  </label>
+                  <input
+                    id="shot-threshold"
+                    type="number"
+                    value={shotThreshold}
+                    onChange={(e) => setShotThreshold(Number(e.target.value))}
+                    min={0.05}
+                    max={0.95}
+                    step={0.01}
+                    className="w-full h-9 px-3 rounded-md text-sm bg-background border border-border/60 outline-none"
+                  />
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  {t('timing.shotFound', { count: shotTimes.length })}
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-border/60 bg-background/70 p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{t('timing.shotSnap')}</span>
+                  <button
+                    type="button"
+                    onClick={handleSnapToShots}
+                    className={cn(
+                      'h-8 px-3 rounded-md text-xs font-medium border border-dashed border-border/70 inline-flex items-center gap-1.5',
+                      'hover:bg-accent transition-colors',
+                    )}
+                  >
+                    <Clapperboard className="w-3.5 h-3.5" />
+                    {t('timing.shotApply')}
+                  </button>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="shot-window" className="text-xs text-muted-foreground">
+                    {t('timing.shotWindowMs')}
+                  </label>
+                  <input
+                    id="shot-window"
+                    type="number"
+                    value={snapWindowMs}
+                    onChange={(e) => setSnapWindowMs(Number(e.target.value))}
+                    min={20}
+                    max={500}
+                    step={10}
+                    className="w-full h-9 px-3 rounded-md text-sm bg-background border border-border/60 outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSnapScope('all')}
+                    className={cn(
+                      'h-8 rounded-md text-xs border transition-colors',
+                      snapScope === 'all'
+                        ? 'border-primary/50 bg-primary/10 text-primary'
+                        : 'border-border/60 hover:bg-accent',
+                    )}
+                  >
+                    {t('timing.shiftAll')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSnapScope('selected')}
+                    disabled={subtitle.selectedIds.size === 0}
+                    className={cn(
+                      'h-8 rounded-md text-xs border transition-colors disabled:opacity-50',
+                      snapScope === 'selected'
+                        ? 'border-primary/50 bg-primary/10 text-primary'
+                        : 'border-border/60 hover:bg-accent',
+                    )}
+                  >
+                    {t('timing.shiftSelected')}
+                  </button>
+                </div>
+              </div>
+
+              {lastSnapCount > 0 && (
+                <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                  {t('timing.shotApplied', { count: lastSnapCount })}
+                </p>
+              )}
+              {shotError && <p className="text-xs text-red-500">{shotError}</p>}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -290,7 +509,8 @@ export function TimingDialog({ open, onClose }: TimingDialogProps) {
             onClick={() => {
               if (tab === 'shift') handleShift();
               else if (tab === 'scale') handleScale();
-              else handleTwoPointSync();
+              else if (tab === 'twopoint') handleTwoPointSync();
+              else handleSnapToShots();
             }}
             className={cn(
               'px-4 py-2 rounded-lg text-sm font-medium',

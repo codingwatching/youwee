@@ -8,8 +8,10 @@ import {
   fixDuplicates,
   fixEmptyEntries,
   fixFormattingTags,
+  fixGaps,
   fixHearingImpaired,
   fixLineBreaking,
+  fixLongDuration,
   fixOverlappingTimestamps,
   fixShortDuration,
   type SubtitleError,
@@ -40,6 +42,15 @@ export function FixErrorsDialog({ open, onClose }: FixErrorsDialogProps) {
   const [errors, setErrors] = useState<SubtitleError[]>([]);
   const [scanned, setScanned] = useState(false);
   const [fixedCount, setFixedCount] = useState(0);
+  const fixOptions = useMemo(
+    () => ({
+      maxCharsPerLine: subtitle.qcThresholds.maxCpl,
+      minDurationMs: subtitle.qcThresholds.minDurationMs,
+      maxDurationMs: subtitle.qcThresholds.maxDurationMs,
+      minGapMs: subtitle.qcThresholds.minGapMs,
+    }),
+    [subtitle.qcThresholds],
+  );
 
   // Group errors by type
   const errorGroups = useMemo(() => {
@@ -53,20 +64,20 @@ export function FixErrorsDialog({ open, onClose }: FixErrorsDialogProps) {
   }, [errors]);
 
   const handleScan = useCallback(() => {
-    const found = detectAllErrors(subtitle.entries);
+    const found = detectAllErrors(subtitle.entries, fixOptions);
     setErrors(found);
     setScanned(true);
     setFixedCount(0);
-  }, [subtitle.entries]);
+  }, [subtitle.entries, fixOptions]);
 
   const handleFixAll = useCallback(() => {
-    const fixed = fixAllErrors(subtitle.entries);
+    const fixed = fixAllErrors(subtitle.entries, fixOptions);
     subtitle.replaceAllEntries(fixed, 'Fix all errors');
     // Re-scan to show remaining issues
-    const remaining = detectAllErrors(fixed);
+    const remaining = detectAllErrors(fixed, fixOptions);
     setFixedCount(errors.length - remaining.length);
     setErrors(remaining);
-  }, [subtitle, errors.length]);
+  }, [subtitle, errors.length, fixOptions]);
 
   const handleFixType = useCallback(
     (type: SubtitleErrorType) => {
@@ -83,7 +94,7 @@ export function FixErrorsDialog({ open, onClose }: FixErrorsDialogProps) {
           result = fixHearingImpaired(result);
           break;
         case 'long_line':
-          result = fixLineBreaking(result);
+          result = fixLineBreaking(result, fixOptions.maxCharsPerLine);
           break;
         case 'duplicate':
           result = fixDuplicates(result);
@@ -92,7 +103,13 @@ export function FixErrorsDialog({ open, onClose }: FixErrorsDialogProps) {
           result = fixFormattingTags(result);
           break;
         case 'short_duration':
-          result = fixShortDuration(result);
+          result = fixShortDuration(result, fixOptions.minDurationMs);
+          break;
+        case 'long_duration':
+          result = fixLongDuration(result, fixOptions.maxDurationMs);
+          break;
+        case 'gap':
+          result = fixGaps(result, fixOptions.minGapMs, fixOptions.minDurationMs);
           break;
         default:
           return;
@@ -100,13 +117,13 @@ export function FixErrorsDialog({ open, onClose }: FixErrorsDialogProps) {
 
       subtitle.replaceAllEntries(result, `Fix ${type} errors`);
       // Re-scan
-      const remaining = detectAllErrors(result);
+      const remaining = detectAllErrors(result, fixOptions);
       const typeErrors = errors.filter((e) => e.type === type).length;
       const remainingTypeErrors = remaining.filter((e) => e.type === type).length;
       setFixedCount((prev) => prev + (typeErrors - remainingTypeErrors));
       setErrors(remaining);
     },
-    [subtitle, errors],
+    [subtitle, errors, fixOptions],
   );
 
   if (!open) return null;
@@ -183,9 +200,9 @@ export function FixErrorsDialog({ open, onClose }: FixErrorsDialogProps) {
                       <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
                       <span className="text-sm">
                         {t(ERROR_TYPE_LABELS[type] || type, {
-                          maxChars: 42,
-                          minMs: 500,
-                          maxMs: 10000,
+                          maxChars: subtitle.qcThresholds.maxCpl,
+                          minMs: subtitle.qcThresholds.minDurationMs,
+                          maxMs: subtitle.qcThresholds.maxDurationMs,
                         })}
                       </span>
                       <span className="text-xs text-muted-foreground tabular-nums">

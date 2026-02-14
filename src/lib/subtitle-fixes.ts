@@ -25,6 +25,20 @@ export interface SubtitleError {
   description: string;
 }
 
+export interface SubtitleFixOptions {
+  maxCharsPerLine?: number;
+  minDurationMs?: number;
+  maxDurationMs?: number;
+  minGapMs?: number;
+}
+
+const DEFAULT_FIX_OPTIONS: Required<SubtitleFixOptions> = {
+  maxCharsPerLine: 42,
+  minDurationMs: 500,
+  maxDurationMs: 10000,
+  minGapMs: 80,
+};
+
 // ---- Detection Functions ----
 
 /**
@@ -168,6 +182,28 @@ export function findLongDuration(entries: SubtitleEntry[], maxDurationMs = 10000
     }));
 }
 
+/**
+ * Find entries where gap to next subtitle is too short
+ */
+export function findShortGaps(entries: SubtitleEntry[], minGapMs = 80): SubtitleError[] {
+  const errors: SubtitleError[] = [];
+  const sorted = [...entries].sort((a, b) => a.startTime - b.startTime);
+
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const gap = sorted[i + 1].startTime - sorted[i].endTime;
+    if (gap >= 0 && gap < minGapMs) {
+      errors.push({
+        type: 'gap',
+        entryId: sorted[i].id,
+        index: sorted[i].index,
+        description: `Entry #${sorted[i].index} has short gap (${gap}ms) to #${sorted[i + 1].index}`,
+      });
+    }
+  }
+
+  return errors;
+}
+
 // ---- Fix Functions ----
 
 /**
@@ -302,31 +338,83 @@ export function fixShortDuration(entries: SubtitleEntry[], minDurationMs = 500):
 }
 
 /**
+ * Fix long duration entries by shortening end time
+ */
+export function fixLongDuration(entries: SubtitleEntry[], maxDurationMs = 10000): SubtitleEntry[] {
+  return entries.map((entry) => {
+    const duration = entry.endTime - entry.startTime;
+    if (duration > maxDurationMs) {
+      return { ...entry, endTime: entry.startTime + maxDurationMs };
+    }
+    return entry;
+  });
+}
+
+/**
+ * Fix short gaps by preserving the next subtitle start and pulling previous end earlier.
+ */
+export function fixGaps(
+  entries: SubtitleEntry[],
+  minGapMs = 80,
+  minDurationMs = 300,
+): SubtitleEntry[] {
+  const sorted = [...entries].sort((a, b) => a.startTime - b.startTime);
+
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const current = sorted[i];
+    const next = sorted[i + 1];
+    const gap = next.startTime - current.endTime;
+    if (gap >= 0 && gap < minGapMs) {
+      const desiredEnd = next.startTime - minGapMs;
+      const minEnd = current.startTime + minDurationMs;
+      sorted[i] = {
+        ...current,
+        endTime: Math.max(minEnd, desiredEnd),
+      };
+    }
+  }
+
+  return reindexEntries(sorted);
+}
+
+/**
  * Run all detections and return combined errors
  */
-export function detectAllErrors(entries: SubtitleEntry[]): SubtitleError[] {
+export function detectAllErrors(
+  entries: SubtitleEntry[],
+  options: SubtitleFixOptions = {},
+): SubtitleError[] {
+  const cfg = { ...DEFAULT_FIX_OPTIONS, ...options };
   return [
     ...findEmptyEntries(entries),
     ...findOverlappingTimestamps(entries),
     ...findHearingImpairedText(entries),
-    ...findLongLines(entries),
+    ...findLongLines(entries, cfg.maxCharsPerLine),
     ...findDuplicates(entries),
     ...findFormattingTags(entries),
-    ...findShortDuration(entries),
+    ...findShortDuration(entries, cfg.minDurationMs),
+    ...findLongDuration(entries, cfg.maxDurationMs),
+    ...findShortGaps(entries, cfg.minGapMs),
   ];
 }
 
 /**
  * Apply all fixes
  */
-export function fixAllErrors(entries: SubtitleEntry[]): SubtitleEntry[] {
+export function fixAllErrors(
+  entries: SubtitleEntry[],
+  options: SubtitleFixOptions = {},
+): SubtitleEntry[] {
+  const cfg = { ...DEFAULT_FIX_OPTIONS, ...options };
   let result = [...entries];
   result = fixEmptyEntries(result);
   result = fixDuplicates(result);
   result = fixFormattingTags(result);
   result = fixHearingImpaired(result);
   result = fixOverlappingTimestamps(result);
-  result = fixShortDuration(result);
-  result = fixLineBreaking(result);
+  result = fixShortDuration(result, cfg.minDurationMs);
+  result = fixLongDuration(result, cfg.maxDurationMs);
+  result = fixGaps(result, cfg.minGapMs, cfg.minDurationMs);
+  result = fixLineBreaking(result, cfg.maxCharsPerLine);
   return result;
 }

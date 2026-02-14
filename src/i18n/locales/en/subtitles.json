@@ -28,11 +28,31 @@
   },
   "hints": {
     "title": "How To Use",
-    "description": "A simple workflow to avoid timing and export mistakes.",
-    "step1": "Open an existing subtitle file, download from URL, or create a blank file.",
-    "step2": "Edit text and timestamps in the table, then use Timing/Fix Errors for cleanup.",
-    "step3": "Load video preview and verify subtitle sync before exporting.",
-    "step4": "Use AI tools (Whisper, Translate, Grammar) when you need faster editing.",
+    "description": "Complete guide for editing, syncing, QC, AI workflows, and export.",
+    "workflowTitle": "Recommended workflow",
+    "featuresTitle": "Feature checklist",
+    "steps": {
+      "openOrCreate": "Open subtitle file, download subtitles from URL, or create a new file.",
+      "editAndSync": "Edit text/time in the table and sync with video preview.",
+      "qcAndFix": "Review realtime QC indicators (CPS/WPM/CPL, duration, gap, overlap).",
+      "waveformAndShot": "Use waveform/spectrogram timeline and shot-sync to tighten timing.",
+      "aiAndTranslate": "Use Whisper, AI Translate, Grammar Fix, and Translator Mode when needed.",
+      "exportAndBatch": "Save/export current file, or run batch convert and project append tools."
+    },
+    "features": {
+      "fileOps": "Open / New / Close / Save / Export formats (SRT, VTT, ASS)",
+      "editor": "Row editor with inline edit, selection, undo/redo, multi-select",
+      "findReplace": "Find & Replace with case/word/regex options",
+      "timing": "Timing tools: shift, scale, 2-point sync, shot-change sync",
+      "waveform": "Waveform + spectrogram timeline with drag timing handles",
+      "qc": "Realtime QC panel with profile-based thresholds",
+      "fixErrors": "Auto-fix for common subtitle issues",
+      "splitMerge": "Split & Merge tools for long lines and selected blocks",
+      "styleProfiles": "Style profiles: YouTube, Netflix-like, Broadcast, Short-form",
+      "translateMode": "Translator mode with side-by-side source and target text",
+      "aiTools": "AI tools: Whisper generation, translation, grammar/style fix",
+      "batchProject": "Batch/project tools: multi-file convert and append"
+    },
     "shortcuts": "Tip: Ctrl/Cmd+S to save, Ctrl/Cmd+F to find/replace."
   },
   "toolbar": {
@@ -60,6 +80,7 @@
     "whisper": "Generate (Whisper)",
     "translate": "AI Translate",
     "grammar": "AI Grammar Fix",
+    "styleProfiles": "Style Profiles",
     "waveform": "Waveform",
     "batchConvert": "Batch Convert",
     "format": "Format",
@@ -129,6 +150,49 @@
     "invalidMaxChars": "Max chars must be at least 10.",
     "noLongLines": "No subtitle lines exceed this max char setting."
   },
+  "styleProfiles": {
+    "title": "Style Profiles",
+    "description": "Choose a subtitle profile for realtime QC and optional quick normalization.",
+    "affects": "Profile affects QC/Fix thresholds (CPS, WPM, CPL, duration, gap).",
+    "useForQcOnly": "Use for QC only",
+    "applyNow": "Apply profile rules now",
+    "appliedResult": "Updated {{count}} subtitle lines with selected profile.",
+    "youtube": {
+      "label": "YouTube Standard",
+      "description": "Balanced profile for general online content."
+    },
+    "netflix": {
+      "label": "OTT / Netflix-like",
+      "description": "Stricter reading pace and cleaner timing gaps."
+    },
+    "broadcast": {
+      "label": "Broadcast TV",
+      "description": "Conservative pacing for traditional TV readability."
+    },
+    "shortform": {
+      "label": "Short-form / Social",
+      "description": "Faster pacing for reels, shorts and clips."
+    }
+  },
+  "batchProject": {
+    "title": "Batch & Project Tools",
+    "sourceFiles": "Source subtitle files",
+    "pickFiles": "Pick Files",
+    "pickFilesFirst": "Please pick subtitle files first.",
+    "noFiles": "No files selected",
+    "filesSelected": "{{count}} files selected",
+    "batchConvert": "Batch Convert",
+    "pickFolder": "Pick Output Folder",
+    "changeFolder": "Change Folder",
+    "runConvert": "Run Convert",
+    "appendToProject": "Append Files To Current Project",
+    "gapMs": "Gap (ms)",
+    "runAppend": "Append Files",
+    "invalidGap": "Gap must be zero or greater.",
+    "running": "Running operation...",
+    "convertDone": "Converted {{count}} files successfully.",
+    "appendDone": "Appended {{count}} files. Current project has {{total}} entries."
+  },
   "waveform": {
     "needVideo": "Load a video to use waveform timeline editing.",
     "waveform": "Waveform",
@@ -170,6 +234,19 @@
     "scaleTo": "To time",
     "scaleRatio": "Scale ratio",
     "twoPointSync": "2-Point Sync",
+    "shotSync": "Shot Sync",
+    "shotDetect": "Detect Shot Changes",
+    "shotSnap": "Snap to Shot Changes",
+    "shotThreshold": "Scene threshold",
+    "shotWindowMs": "Snap window (ms)",
+    "shotNeedVideo": "Load a video before detecting shot changes.",
+    "shotDetectFirst": "Detect shot changes first.",
+    "shotNoChange": "No subtitle timing matched current snap window.",
+    "shotFound": "{{count}} shot markers detected",
+    "shotApplied": "Snapped timing for {{count}} subtitle lines",
+    "shotApply": "Apply Shot Snap",
+    "detect": "Detect",
+    "detecting": "Detecting...",
     "point1": "Point 1",
     "point2": "Point 2",
     "originalTime": "Original time",

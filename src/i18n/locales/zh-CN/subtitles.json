@@ -28,11 +28,31 @@
   },
   "hints": {
     "title": "使用指南",
-    "description": "按这个流程操作，更不容易出现时间轴和导出错误。",
-    "step1": "打开字幕文件、从 URL 下载字幕，或新建空白字幕文件。",
-    "step2": "在表格中编辑文本和时间戳，再用 Timing/Fix Errors 做整理。",
-    "step3": "加载视频预览并确认字幕同步后再导出。",
-    "step4": "需要加速时可使用 AI 工具（Whisper、翻译、语法修复）。",
+    "description": "完整覆盖编辑、同步、质检、AI 与导出的操作说明。",
+    "workflowTitle": "推荐流程",
+    "featuresTitle": "功能清单",
+    "steps": {
+      "openOrCreate": "打开字幕文件、从 URL 下载字幕，或新建字幕文件。",
+      "editAndSync": "在表格编辑文本/时间，并结合视频预览做同步。",
+      "qcAndFix": "查看实时质检指标（CPS/WPM/CPL、时长、间隔、重叠）。",
+      "waveformAndShot": "使用波形/频谱时间轴与镜头切换同步提升校时精度。",
+      "aiAndTranslate": "按需使用 Whisper、AI 翻译、语法修复与双栏翻译模式。",
+      "exportAndBatch": "保存/导出当前字幕，或使用批处理转换与项目追加工具。"
+    },
+    "features": {
+      "fileOps": "Open / New / Close / Save / Export（SRT、VTT、ASS）",
+      "editor": "行编辑器：内联编辑、选择、多选、撤销/重做",
+      "findReplace": "查找替换（大小写、整词、正则）",
+      "timing": "时间工具：偏移、缩放、两点同步、镜头切换同步",
+      "waveform": "波形 + 频谱时间轴，支持拖拽调整时间点",
+      "qc": "基于风格预设阈值的实时质检面板",
+      "fixErrors": "常见字幕问题自动修复",
+      "splitMerge": "拆分与合并工具（长行/选中块）",
+      "styleProfiles": "风格预设：YouTube、Netflix-like、Broadcast、Short-form",
+      "translateMode": "翻译模式：原文与译文并排编辑",
+      "aiTools": "AI 工具：Whisper 生成、翻译、语法/风格修复",
+      "batchProject": "批处理/项目工具：多文件转换与追加"
+    },
     "shortcuts": "提示：Ctrl/Cmd+S 保存，Ctrl/Cmd+F 查找替换。"
   },
   "toolbar": {
@@ -60,6 +80,7 @@
     "whisper": "生成 (Whisper)",
     "translate": "AI翻译",
     "grammar": "AI语法修复",
+    "styleProfiles": "风格预设",
     "waveform": "波形",
     "batchConvert": "批量转换",
     "format": "格式",
@@ -129,6 +150,49 @@
     "invalidMaxChars": "最大字符数必须至少为 10。",
     "noLongLines": "没有字幕行超过该字符限制。"
   },
+  "styleProfiles": {
+    "title": "字幕风格预设",
+    "description": "选择预设以驱动实时质检阈值，并可一键按预设规范化字幕。",
+    "affects": "预设会影响 QC/Fix 阈值（CPS、WPM、CPL、时长、间隔）。",
+    "useForQcOnly": "仅用于质检",
+    "applyNow": "立即应用预设规则",
+    "appliedResult": "已按所选预设更新 {{count}} 行字幕。",
+    "youtube": {
+      "label": "YouTube 标准",
+      "description": "适合通用网络视频的平衡预设。"
+    },
+    "netflix": {
+      "label": "OTT / Netflix 风格",
+      "description": "阅读节奏更严格，时间间隔更干净。"
+    },
+    "broadcast": {
+      "label": "电视播出",
+      "description": "更保守的阅读节奏，适合传统电视。"
+    },
+    "shortform": {
+      "label": "短视频 / 社交",
+      "description": "更快节奏，适合 reels、shorts、clip。"
+    }
+  },
+  "batchProject": {
+    "title": "批处理与项目工具",
+    "sourceFiles": "源字幕文件",
+    "pickFiles": "选择文件",
+    "pickFilesFirst": "请先选择字幕文件。",
+    "noFiles": "未选择文件",
+    "filesSelected": "已选择 {{count}} 个文件",
+    "batchConvert": "批量转换",
+    "pickFolder": "选择输出目录",
+    "changeFolder": "更改目录",
+    "runConvert": "开始转换",
+    "appendToProject": "追加到当前项目",
+    "gapMs": "间隔 (ms)",
+    "runAppend": "追加文件",
+    "invalidGap": "间隔必须大于或等于 0。",
+    "running": "操作执行中...",
+    "convertDone": "成功转换 {{count}} 个文件。",
+    "appendDone": "已追加 {{count}} 个文件。当前项目共 {{total}} 条字幕。"
+  },
   "waveform": {
     "needVideo": "请先加载视频后再使用波形时间轴编辑。",
     "waveform": "波形",
@@ -170,6 +234,19 @@
     "scaleTo": "结束时间",
     "scaleRatio": "缩放比例",
     "twoPointSync": "两点同步",
+    "shotSync": "镜头切换同步",
+    "shotDetect": "检测镜头切换",
+    "shotSnap": "吸附到镜头切换点",
+    "shotThreshold": "场景阈值",
+    "shotWindowMs": "吸附窗口 (ms)",
+    "shotNeedVideo": "请先加载视频再检测镜头切换。",
+    "shotDetectFirst": "请先检测镜头切换。",
+    "shotNoChange": "当前吸附窗口下没有字幕时间被调整。",
+    "shotFound": "已检测到 {{count}} 个镜头切换点",
+    "shotApplied": "已为 {{count}} 行字幕应用镜头吸附",
+    "shotApply": "应用镜头吸附",
+    "detect": "检测",
+    "detecting": "检测中...",
     "point1": "点1",
     "point2": "点2",
     "originalTime": "原始时间",

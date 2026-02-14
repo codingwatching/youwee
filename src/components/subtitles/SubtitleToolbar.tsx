@@ -9,6 +9,7 @@ import {
   Languages,
   Merge,
   Mic,
+  Palette,
   Plus,
   Redo2,
   Save,
@@ -42,6 +43,8 @@ interface SubtitleToolbarProps {
   onCreateNew: () => void;
   onCloseFile: () => void;
   onShowDownloadDialog: () => void;
+  onShowBatchProject?: () => void;
+  onShowStyleProfiles?: () => void;
   onShowTimingDialog?: () => void;
   onShowFindReplace?: () => void;
   onShowFixErrors?: () => void;
@@ -56,6 +59,8 @@ export function SubtitleToolbar({
   onCreateNew,
   onCloseFile,
   onShowDownloadDialog,
+  onShowBatchProject,
+  onShowStyleProfiles,
   onShowTimingDialog,
   onShowFindReplace,
   onShowFixErrors,
@@ -191,15 +196,6 @@ export function SubtitleToolbar({
   const handleInsertAfter = useCallback(() => {
     const activeId = subtitle.activeEntryId;
     subtitle.insertEntry(activeId);
-  }, [subtitle]);
-
-  const _handleInsertBefore = useCallback(() => {
-    const activeId = subtitle.activeEntryId;
-    if (activeId) {
-      subtitle.insertEntryBefore(activeId);
-    } else {
-      subtitle.insertEntry(null);
-    }
   }, [subtitle]);
 
   const handleDeleteSelected = useCallback(() => {
@@ -358,6 +354,16 @@ export function SubtitleToolbar({
           icon={<Globe className="w-3.5 h-3.5" />}
           label={t('toolbar.download')}
           onClick={onShowDownloadDialog}
+        />
+        <ToolbarButton
+          icon={<ArrowDownToLine className="w-3.5 h-3.5" />}
+          label={t('toolbar.batchConvert')}
+          onClick={() => onShowBatchProject?.()}
+        />
+        <ToolbarButton
+          icon={<Palette className="w-3.5 h-3.5" />}
+          label={t('toolbar.styleProfiles')}
+          onClick={() => onShowStyleProfiles?.()}
         />
 
         <Divider />

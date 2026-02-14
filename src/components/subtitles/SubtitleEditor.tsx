@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { useSubtitle } from '@/contexts/SubtitleContext';
 import type { SubtitleEntry } from '@/lib/subtitle-parser';
 import { formatTimeDisplay, parseTimeDisplay } from '@/lib/subtitle-parser';
-import { DEFAULT_SUBTITLE_QC_THRESHOLDS, evaluateSubtitleQc } from '@/lib/subtitle-qc';
+import { evaluateSubtitleQc } from '@/lib/subtitle-qc';
+import { getSubtitleStyleProfile } from '@/lib/subtitle-style-profiles';
 import { cn } from '@/lib/utils';
 
 const ROW_HEIGHT = 36; // px per row
@@ -45,6 +46,7 @@ export function SubtitleEditor() {
   );
   const offsetY = startIdx * ROW_HEIGHT;
   const hasTranslationSource = Boolean(subtitle.translationSourceMap);
+  const styleProfile = getSubtitleStyleProfile(subtitle.styleProfileId);
 
   const qcSummary = useMemo(() => {
     const issueCounts: Record<string, number> = {};
@@ -53,7 +55,7 @@ export function SubtitleEditor() {
     for (let i = 0; i < subtitle.entries.length; i++) {
       const entry = subtitle.entries[i];
       const next = i < subtitle.entries.length - 1 ? subtitle.entries[i + 1] : null;
-      const result = evaluateSubtitleQc(entry, next, DEFAULT_SUBTITLE_QC_THRESHOLDS);
+      const result = evaluateSubtitleQc(entry, next, subtitle.qcThresholds);
       results.set(entry.id, result);
 
       for (const issue of result.issues) {
@@ -67,7 +69,7 @@ export function SubtitleEditor() {
       issueCounts,
       issueEntries,
     };
-  }, [subtitle.entries]);
+  }, [subtitle.entries, subtitle.qcThresholds]);
 
   // Update container height on resize
   useEffect(() => {
@@ -242,10 +244,13 @@ export function SubtitleEditor() {
           </span>
           <span className="text-muted-foreground/80">
             {t('qc.thresholds', {
-              cps: DEFAULT_SUBTITLE_QC_THRESHOLDS.maxCps,
-              wpm: DEFAULT_SUBTITLE_QC_THRESHOLDS.maxWpm,
-              cpl: DEFAULT_SUBTITLE_QC_THRESHOLDS.maxCpl,
+              cps: subtitle.qcThresholds.maxCps,
+              wpm: subtitle.qcThresholds.maxWpm,
+              cpl: subtitle.qcThresholds.maxCpl,
             })}
+          </span>
+          <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px]">
+            {t(styleProfile.labelKey)}
           </span>
         </div>
         {hasTranslationSource && (
@@ -426,9 +431,9 @@ export function SubtitleEditor() {
                   <div
                     className={cn(
                       'w-[45px] px-1 text-center text-xs tabular-nums',
-                      cps > DEFAULT_SUBTITLE_QC_THRESHOLDS.maxCps
+                      cps > subtitle.qcThresholds.maxCps
                         ? 'text-red-500'
-                        : cps > DEFAULT_SUBTITLE_QC_THRESHOLDS.maxCps - 2
+                        : cps > subtitle.qcThresholds.maxCps - 2
                           ? 'text-amber-500'
                           : 'text-muted-foreground',
                     )}
@@ -440,9 +445,9 @@ export function SubtitleEditor() {
                   <div
                     className={cn(
                       'w-[45px] px-1 text-center text-xs tabular-nums',
-                      wpm > DEFAULT_SUBTITLE_QC_THRESHOLDS.maxWpm
+                      wpm > subtitle.qcThresholds.maxWpm
                         ? 'text-red-500'
-                        : wpm > DEFAULT_SUBTITLE_QC_THRESHOLDS.maxWpm - 20
+                        : wpm > subtitle.qcThresholds.maxWpm - 20
                           ? 'text-amber-500'
                           : 'text-muted-foreground',
                     )}
@@ -454,9 +459,9 @@ export function SubtitleEditor() {
                   <div
                     className={cn(
                       'w-[45px] px-1 text-center text-xs tabular-nums',
-                      cpl > DEFAULT_SUBTITLE_QC_THRESHOLDS.maxCpl
+                      cpl > subtitle.qcThresholds.maxCpl
                         ? 'text-red-500'
-                        : cpl > DEFAULT_SUBTITLE_QC_THRESHOLDS.maxCpl - 2
+                        : cpl > subtitle.qcThresholds.maxCpl - 2
                           ? 'text-amber-500'
                           : 'text-muted-foreground',
                     )}

@@ -1,4 +1,12 @@
-import { createContext, type ReactNode, useCallback, useContext, useRef, useState } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   createEmptyEntry,
   generateEntryId,
@@ -8,6 +16,12 @@ import {
   serializeSubtitles,
   sortEntries,
 } from '@/lib/subtitle-parser';
+import type { SubtitleQcThresholds } from '@/lib/subtitle-qc';
+import {
+  DEFAULT_SUBTITLE_STYLE_PROFILE_ID,
+  getSubtitleStyleProfile,
+  type SubtitleStyleProfileId,
+} from '@/lib/subtitle-style-profiles';
 import type { SubtitleFormat } from '@/lib/types';
 
 // ---- Undo/Redo ----
@@ -32,6 +46,8 @@ interface SubtitleContextValue {
   isDirty: boolean;
   selectedIds: Set<string>;
   activeEntryId: string | null;
+  styleProfileId: SubtitleStyleProfileId;
+  qcThresholds: SubtitleQcThresholds;
 
   // Video sync
   videoPath: string | null;
@@ -63,6 +79,7 @@ interface SubtitleContextValue {
   setFormat: (format: SubtitleFormat) => void;
   setFilePath: (path: string | null) => void;
   markSaved: () => void;
+  setStyleProfile: (profileId: SubtitleStyleProfileId) => void;
 
   // Entry operations
   updateEntry: (id: string, updates: Partial<SubtitleEntry>) => void;
@@ -111,6 +128,13 @@ export function SubtitleProvider({ children }: { children: ReactNode }) {
   const [isDirty, setIsDirty] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
+  const [styleProfileId, setStyleProfileIdState] = useState<SubtitleStyleProfileId>(() => {
+    if (typeof window === 'undefined') return DEFAULT_SUBTITLE_STYLE_PROFILE_ID;
+    const stored = window.localStorage.getItem('subtitle_style_profile');
+    if (!stored) return DEFAULT_SUBTITLE_STYLE_PROFILE_ID;
+    const profile = getSubtitleStyleProfile(stored as SubtitleStyleProfileId);
+    return profile.id;
+  });
 
   // Video state
   const [videoPath, setVideoPath] = useState<string | null>(null);
@@ -122,6 +146,10 @@ export function SubtitleProvider({ children }: { children: ReactNode }) {
   const [isTranslatorMode, setIsTranslatorMode] = useState(false);
   const [translationSourceMap, setTranslationSourceMap] = useState<Record<string, string> | null>(
     null,
+  );
+  const qcThresholds = useMemo(
+    () => getSubtitleStyleProfile(styleProfileId).thresholds,
+    [styleProfileId],
   );
 
   // Undo/Redo
@@ -269,6 +297,14 @@ export function SubtitleProvider({ children }: { children: ReactNode }) {
 
   const markSaved = useCallback(() => {
     setIsDirty(false);
+  }, []);
+
+  const setStyleProfile = useCallback((profileId: SubtitleStyleProfileId) => {
+    const profile = getSubtitleStyleProfile(profileId);
+    setStyleProfileIdState(profile.id);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('subtitle_style_profile', profile.id);
+    }
   }, []);
 
   // Entry operations
@@ -563,6 +599,8 @@ export function SubtitleProvider({ children }: { children: ReactNode }) {
     isDirty,
     selectedIds,
     activeEntryId,
+    styleProfileId,
+    qcThresholds,
     videoPath,
     videoCurrentTime,
     videoDurationMs,
@@ -581,6 +619,7 @@ export function SubtitleProvider({ children }: { children: ReactNode }) {
     setFormat,
     setFilePath,
     markSaved,
+    setStyleProfile,
     updateEntry,
     updateEntries,
     insertEntry,
