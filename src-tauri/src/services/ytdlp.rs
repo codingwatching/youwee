@@ -593,6 +593,23 @@ pub fn build_proxy_args(proxy_url: Option<&str>) -> Vec<String> {
     args
 }
 
+/// Merge extra yt-dlp arguments while preserving `-- <url>` ordering.
+/// If `base_args` contains `--`, all extra options must be inserted before it.
+fn merge_ytdlp_args(base_args: &[&str], extra_args: &[String]) -> Vec<String> {
+    let mut merged: Vec<String> = base_args.iter().map(|s| s.to_string()).collect();
+    if extra_args.is_empty() {
+        return merged;
+    }
+
+    if let Some(separator_index) = merged.iter().position(|arg| arg == "--") {
+        merged.splice(separator_index..separator_index, extra_args.iter().cloned());
+    } else {
+        merged.extend(extra_args.iter().cloned());
+    }
+
+    merged
+}
+
 /// Helper to run yt-dlp command with cookie and proxy support and get JSON output
 pub async fn run_ytdlp_json_with_cookies(
     app: &AppHandle,
@@ -606,9 +623,10 @@ pub async fn run_ytdlp_json_with_cookies(
     // Build full args with cookies and proxy
     let cookie_args = build_cookie_args(cookie_mode, cookie_browser, cookie_browser_profile, cookie_file_path);
     let proxy_args = build_proxy_args(proxy_url);
-    let mut args: Vec<String> = base_args.iter().map(|s| s.to_string()).collect();
-    args.extend(cookie_args);
-    args.extend(proxy_args);
+    let mut extra_args = Vec::new();
+    extra_args.extend(cookie_args);
+    extra_args.extend(proxy_args);
+    let args = merge_ytdlp_args(base_args, &extra_args);
     
     let args_ref: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
     
@@ -628,9 +646,10 @@ pub async fn run_ytdlp_with_stderr_and_cookies(
     // Build full args with cookies and proxy
     let cookie_args = build_cookie_args(cookie_mode, cookie_browser, cookie_browser_profile, cookie_file_path);
     let proxy_args = build_proxy_args(proxy_url);
-    let mut args: Vec<String> = base_args.iter().map(|s| s.to_string()).collect();
-    args.extend(cookie_args);
-    args.extend(proxy_args);
+    let mut extra_args = Vec::new();
+    extra_args.extend(cookie_args);
+    extra_args.extend(proxy_args);
+    let args = merge_ytdlp_args(base_args, &extra_args);
     
     let args_ref: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
     
