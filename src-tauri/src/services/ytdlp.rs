@@ -62,6 +62,23 @@ fn get_channel_binary_path(app: &AppHandle, channel: &YtdlpChannel) -> Option<Pa
     app.path().app_data_dir().ok().map(|p| p.join("bin").join(get_channel_binary_name(channel)))
 }
 
+/// Legacy user-updated binary location in app_data_dir/bin/yt-dlp
+fn get_legacy_ytdlp_path(app: &AppHandle) -> Option<PathBuf> {
+    #[cfg(windows)]
+    let binary_name = "yt-dlp.exe";
+    #[cfg(not(windows))]
+    let binary_name = "yt-dlp";
+
+    app.path().app_data_dir().ok().and_then(|app_data_dir| {
+        let legacy_binary = app_data_dir.join("bin").join(binary_name);
+        if legacy_binary.exists() {
+            Some(legacy_binary)
+        } else {
+            None
+        }
+    })
+}
+
 /// Get the bundled yt-dlp path
 fn get_bundled_ytdlp_path() -> Option<PathBuf> {
     #[cfg(windows)]
@@ -174,6 +191,10 @@ pub async fn get_ytdlp_path(app: &AppHandle) -> Option<(PathBuf, bool)> {
     
     match channel {
         YtdlpChannel::Bundled => {
+            // Prefer user-updated legacy binary so bundled update actually takes effect.
+            if let Some(legacy_binary) = get_legacy_ytdlp_path(app) {
+                return Some((legacy_binary, false));
+            }
             // Use bundled version
             if let Some(bundled) = get_bundled_ytdlp_path() {
                 return Some((bundled, true));
@@ -194,16 +215,8 @@ pub async fn get_ytdlp_path(app: &AppHandle) -> Option<(PathBuf, bool)> {
     }
     
     // Final fallback: check app_data_dir/bin/yt-dlp (legacy location)
-    #[cfg(windows)]
-    let binary_name = "yt-dlp.exe";
-    #[cfg(not(windows))]
-    let binary_name = "yt-dlp";
-    
-    if let Ok(app_data_dir) = app.path().app_data_dir() {
-        let legacy_binary = app_data_dir.join("bin").join(binary_name);
-        if legacy_binary.exists() {
-            return Some((legacy_binary, false));
-        }
+    if let Some(legacy_binary) = get_legacy_ytdlp_path(app) {
+        return Some((legacy_binary, false));
     }
     
     None
