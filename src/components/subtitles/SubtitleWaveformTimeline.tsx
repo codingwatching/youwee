@@ -386,8 +386,8 @@ export function SubtitleWaveformTimeline() {
 
   return (
     <div className="border-b border-border/50 bg-background/40">
-      <div className="flex items-center justify-between px-3 py-2">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-3 px-3 py-2 flex-wrap">
+        <div className="ml-1 flex items-center gap-2">
           <button
             type="button"
             onClick={() => setViewMode('waveform')}
