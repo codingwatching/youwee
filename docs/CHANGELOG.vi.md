@@ -8,6 +8,8 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Thêm mới
+- **Thiết lập font ASS** - Thêm tùy chỉnh font và cỡ chữ phụ đề cho xuất ASS và preview
+- **Luồng xuống dòng phụ đề** - Thêm thao tác auto xuống dòng nhanh và hỗ trợ Shift+Enter khi chỉnh nội dung
 
 ### Thay đổi
 
