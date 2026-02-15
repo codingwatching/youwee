@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **ASS font settings** - Added configurable subtitle font family/size for ASS export and subtitle preview
+- **Line-break workflow** - Added quick auto line-break action and Shift+Enter newline support while editing subtitle text
 
 ### Changed
 
