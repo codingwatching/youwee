@@ -61,9 +61,16 @@
     "subtitlesNotAvailable": "Phụ đề không khả dụng cho âm thanh",
     "videoQuality": "Chất lượng video",
     "outputFormat": "Định dạng xuất",
-    "totalFileSize": "Tổng dung lượng"
+    "totalFileSize": "Tổng dung lượng",
+    "autoRetry": "Tự động thử lại",
+    "retryAttempts": "Số lần",
+    "retryDelaySeconds": "Độ trễ (giây)"
   },
   "quality": {
+    "360": "Thấp 360p",
+    "480": "SD 480p",
+    "720": "HD 720p",
+    "1080": "Full HD 1080p",
     "best": "Tốt nhất",
     "bestShort": "Tốt nhất",
     "8k": "8K Ultra HD",
@@ -72,13 +79,9 @@
     "4kShort": "4K",
     "2k": "2K Quad HD",
     "2kShort": "2K",
-    "1080": "Full HD 1080p",
     "1080Short": "1080p",
-    "720": "HD 720p",
     "720Short": "720p",
-    "480": "SD 480p",
     "480Short": "480p",
-    "360": "Thấp 360p",
     "360Short": "360p"
   },
   "queue": {
@@ -103,7 +106,8 @@
       "downloading": "Đang tải",
       "completed": "Hoàn thành",
       "failed": "Thất bại",
-      "failedHint": "Xem trang Logs để biết chi tiết"
+      "failedHint": "Xem trang Logs để biết chi tiết",
+      "retrying": "Thử lại {{current}}/{{total}} sau {{seconds}}s"
     },
     "summarize": "Tóm tắt",
     "fetchingTranscript": "Đang lấy phụ đề...",
