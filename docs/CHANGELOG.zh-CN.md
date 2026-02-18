@@ -10,10 +10,15 @@ Youwee 的所有重要更改都将记录在此文件中。
 ### 新增
 - **浏览器扩展一键下载（Chromium + Firefox）** - 现在你可以把浏览器当前视频页面直接发送到 Youwee，并选择 `Download now` 或 `Add to queue`
 - **设置中新增 Extension 安装入口** - 在 设置 → Extension 新增专属区域，提供直接下载按钮和简单安装步骤（Chromium / Firefox）
+- **依赖来源切换（yt-dlp/FFmpeg）** - 在 设置 → 依赖 中新增来源选择，可在“应用管理”和“系统管理”之间切换
+- **切换到系统来源前的安全确认** - 切换 yt-dlp/FFmpeg 到系统来源时新增确认弹窗，避免误操作
 
 ### 变更
+- **系统来源标签按操作系统显示** - 系统来源标签会按平台显示（macOS 显示 `Homebrew`，Windows 显示 `PATH`，Linux 显示包管理器）
 
 ### 修复
+- **依赖解析在各功能中保持一致** - 统一 download、metadata、channels 与后台 polling 的 yt-dlp/FFmpeg 来源解析，确保始终遵循已选来源
+- **系统模式缺失二进制时明确失败** - 选择系统来源但缺少二进制时，应用会明确报错，不再静默回退
 
 ## [0.10.1] - 2026-02-15
 

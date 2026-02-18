@@ -1,15 +1,10 @@
-use std::process::Stdio;
 use std::time::Duration;
 use tauri::AppHandle;
-use tauri_plugin_shell::ShellExt;
-use tauri_plugin_shell::process::CommandEvent;
-use tokio::process::Command;
 use tokio::time::timeout;
 use uuid::Uuid;
 use crate::types::{VideoInfo, FormatOption, VideoInfoResponse, PlaylistVideoEntry, SubtitleInfo};
-use crate::services::{parse_ytdlp_error, run_ytdlp_json_with_cookies, run_ytdlp_with_stderr_and_cookies, build_cookie_args, get_deno_path};
+use crate::services::{parse_ytdlp_error, run_ytdlp_json_with_cookies, run_ytdlp_with_stderr_and_cookies, run_ytdlp_with_stderr, build_cookie_args, get_deno_path};
 use crate::utils::validate_url;
-use crate::utils::CommandExt;
 use crate::database::add_log_internal;
 
 /// Get video transcript/subtitles for AI summarization
@@ -602,50 +597,12 @@ pub async fn get_playlist_entries(
     args.push(url.clone());
     
     let args_ref: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-    
-    let sidecar_result = app.shell().sidecar("yt-dlp");
-    
-    let output = match sidecar_result {
-        Ok(sidecar) => {
-            let (mut rx, _child) = sidecar
-                .args(&args_ref)
-                .spawn()
-                .map_err(|e| format!("Failed to start yt-dlp: {}", e))?;
-            
-            let mut output = String::new();
-            
-            while let Some(event) = rx.recv().await {
-                match event {
-                    CommandEvent::Stdout(bytes) => {
-                        output.push_str(&String::from_utf8_lossy(&bytes));
-                    }
-                    CommandEvent::Stderr(_) => {}
-                    CommandEvent::Error(err) => {
-                        return Err(format!("Process error: {}", err));
-                    }
-                    CommandEvent::Terminated(status) => {
-                        if status.code != Some(0) && output.is_empty() {
-                            return Err("Failed to fetch playlist info".to_string());
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            
-            output
-        }
-        Err(_) => {
-            let mut cmd = Command::new("yt-dlp");
-            cmd.args(&args)
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped());
-            cmd.hide_window();
-            let result = cmd.output().await
-                .map_err(|e| format!("Failed to run yt-dlp: {}", e))?;
-            
-            String::from_utf8_lossy(&result.stdout).to_string()
-        }
-    };
+
+    let output_result = run_ytdlp_with_stderr(&app, &args_ref).await?;
+    if !output_result.success && output_result.stdout.trim().is_empty() {
+        return Err("Failed to fetch playlist info".to_string());
+    }
+    let output = output_result.stdout;
     
     let mut entries: Vec<PlaylistVideoEntry> = Vec::new();
     

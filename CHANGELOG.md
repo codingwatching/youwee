@@ -10,10 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Browser Extension for one-click download (Chromium + Firefox)** - You can now send the current video page from browser to Youwee and choose `Download now` or `Add to queue`
 - **Extension setup in Settings** - Added a new Settings → Extension section with direct download buttons and easy install steps for Chromium and Firefox
+- **Dependency source selector (yt-dlp/FFmpeg)** - Added source switching in Settings → Dependencies so users can choose between app-managed binaries and system-managed binaries
+- **Safety confirmation before switching to system source** - Added a confirmation dialog when switching yt-dlp/FFmpeg to system source to prevent accidental changes
 
 ### Changed
+- **OS-aware system source label** - System source label now adapts by platform (`Homebrew` on macOS, `PATH` on Windows, package manager on Linux)
 
 ### Fixed
+- **Consistent dependency resolution across features** - Unified yt-dlp/FFmpeg source handling in download, metadata, channels, and background polling so selected source is applied consistently
+- **Strict system-mode behavior** - When system source is selected and binary is missing, app now fails with a clear error instead of silently falling back
 
 ## [0.10.1] - 2026-02-15
 
