@@ -73,7 +73,7 @@ export function DownloadPage({ onNavigateToSettings }: DownloadPageProps) {
 
   // Check if FFmpeg is required for current quality setting
   const ffmpegRequired =
-    FFMPEG_REQUIRED_QUALITIES.includes(settings.quality) && !ffmpegStatus?.installed;
+    FFMPEG_REQUIRED_QUALITIES.includes(settings.quality) && ffmpegStatus?.installed === false;
 
   // Handle start download with FFmpeg check
   const handleStartDownload = () => {
@@ -126,7 +126,7 @@ export function DownloadPage({ onNavigateToSettings }: DownloadPageProps) {
             settings={settings}
             disabled={isDownloading}
             totalFileSize={totalFileSize > 0 ? totalFileSize : undefined}
-            ffmpegInstalled={ffmpegStatus?.installed ?? false}
+            ffmpegInstalled={ffmpegStatus?.installed ?? true}
             onQualityChange={updateQuality}
             onFormatChange={updateFormat}
             onVideoCodecChange={updateVideoCodec}

@@ -150,7 +150,7 @@ export function DependenciesProvider({ children }: { children: ReactNode }) {
   // FFmpeg state
   const [ffmpegSource, setFfmpegSourceState] = useState<DependencySource>('auto');
   const [ffmpegStatus, setFfmpegStatus] = useState<FfmpegStatus | null>(null);
-  const [ffmpegLoading, setFfmpegLoading] = useState(false);
+  const [ffmpegLoading, setFfmpegLoading] = useState(true);
   const [ffmpegDownloading, setFfmpegDownloading] = useState(false);
   const [ffmpegError, setFfmpegError] = useState<string | null>(null);
   const [ffmpegSuccess, setFfmpegSuccess] = useState(false);
@@ -439,9 +439,7 @@ export function DependenciesProvider({ children }: { children: ReactNode }) {
         setYtdlpSourceState(ySource);
         setFfmpegSourceState(fSource);
 
-        await refreshYtdlpVersion();
-
-        await checkFfmpeg();
+        await Promise.all([refreshYtdlpVersion(), checkFfmpeg()]);
         if (fSource !== 'system') {
           checkFfmpegUpdate().catch(() => {
             // Silently fail - update check is non-critical

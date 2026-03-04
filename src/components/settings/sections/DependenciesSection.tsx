@@ -486,6 +486,7 @@ export function DependenciesSection({ highlightId }: DependenciesSectionProps) {
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{t('dependencies.ffmpeg')}</span>
                     {!ffmpegLoading &&
+                      ffmpegStatus &&
                       (ffmpegStatus?.installed ? (
                         <Badge variant="secondary" className="font-mono text-xs">
                           {ffmpegStatus.version || t('dependencies.installed')}
@@ -531,7 +532,7 @@ export function DependenciesSection({ highlightId }: DependenciesSectionProps) {
                       </span>
                     ) : ffmpegUpdateInfo && !ffmpegUpdateInfo.has_update ? (
                       <span className="text-emerald-500">{t('dependencies.upToDate')}</span>
-                    ) : !ffmpegStatus?.installed ? (
+                    ) : ffmpegStatus?.installed === false ? (
                       <span className="text-amber-500">
                         {ffmpegSource === 'system'
                           ? t('dependencies.systemFfmpegNotFound')
@@ -557,15 +558,17 @@ export function DependenciesSection({ highlightId }: DependenciesSectionProps) {
                       )}
                     </Button>
                   )}
-                {!ffmpegStatus?.installed && !ffmpegLoading && ffmpegSource !== 'system' && (
-                  <Button size="sm" onClick={downloadFfmpeg} disabled={ffmpegDownloading}>
-                    {ffmpegDownloading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      t('dependencies.install')
-                    )}
-                  </Button>
-                )}
+                {ffmpegStatus?.installed === false &&
+                  !ffmpegLoading &&
+                  ffmpegSource !== 'system' && (
+                    <Button size="sm" onClick={downloadFfmpeg} disabled={ffmpegDownloading}>
+                      {ffmpegDownloading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        t('dependencies.install')
+                      )}
+                    </Button>
+                  )}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -574,7 +577,7 @@ export function DependenciesSection({ highlightId }: DependenciesSectionProps) {
                     ffmpegLoading ||
                     ffmpegDownloading ||
                     ffmpegCheckingUpdate ||
-                    !ffmpegStatus?.installed
+                    ffmpegStatus?.installed !== true
                   }
                   title={t('dependencies.checkForUpdates')}
                 >

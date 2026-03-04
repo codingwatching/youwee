@@ -568,7 +568,7 @@ export function ChannelsPage() {
   // Quality change with FFmpeg check (matching SettingsPanel behavior)
   const handleQualityChange = useCallback(
     (q: Quality) => {
-      if (FFMPEG_REQUIRED_QUALITIES.includes(q) && !ffmpegStatus?.installed) {
+      if (FFMPEG_REQUIRED_QUALITIES.includes(q) && ffmpegStatus?.installed === false) {
         setPendingQuality(q);
         setShowFfmpegDialog(true);
         return;
@@ -611,7 +611,8 @@ export function ChannelsPage() {
   );
 
   // Check if FFmpeg is required for current quality (for download button)
-  const ffmpegRequired = FFMPEG_REQUIRED_QUALITIES.includes(quality) && !ffmpegStatus?.installed;
+  const ffmpegRequired =
+    FFMPEG_REQUIRED_QUALITIES.includes(quality) && ffmpegStatus?.installed === false;
 
   const handleStartDownload = useCallback(async () => {
     if (ffmpegRequired) {
@@ -1328,7 +1329,7 @@ function ChannelDetailView({ channel, onBack }: { channel: FollowedChannel; onBa
   // Quality change with FFmpeg check (matching SettingsPanel behavior)
   const handleQualityChange = useCallback(
     (q: Quality) => {
-      if (FFMPEG_REQUIRED_QUALITIES.includes(q) && !ffmpegStatus?.installed) {
+      if (FFMPEG_REQUIRED_QUALITIES.includes(q) && ffmpegStatus?.installed === false) {
         setPendingQuality(q);
         setShowFfmpegDialog(true);
         return;
@@ -1357,7 +1358,8 @@ function ChannelDetailView({ channel, onBack }: { channel: FollowedChannel; onBa
   }, [channel.id, unfollowChannel, onBack]);
 
   // Check if FFmpeg is required for current quality (for download button)
-  const ffmpegRequired = FFMPEG_REQUIRED_QUALITIES.includes(quality) && !ffmpegStatus?.installed;
+  const ffmpegRequired =
+    FFMPEG_REQUIRED_QUALITIES.includes(quality) && ffmpegStatus?.installed === false;
 
   const handleStartDownload = useCallback(async () => {
     if (ffmpegRequired) {

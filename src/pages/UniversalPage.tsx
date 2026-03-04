@@ -81,7 +81,7 @@ export function UniversalPage({ onNavigateToSettings }: UniversalPageProps) {
 
   // Check if FFmpeg is required for current quality setting
   const ffmpegRequired =
-    FFMPEG_REQUIRED_QUALITIES.includes(settings.quality) && !ffmpegStatus?.installed;
+    FFMPEG_REQUIRED_QUALITIES.includes(settings.quality) && ffmpegStatus?.installed === false;
 
   // Handle start download with FFmpeg check
   const handleStartDownload = () => {
