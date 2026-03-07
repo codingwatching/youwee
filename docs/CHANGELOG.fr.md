@@ -8,8 +8,11 @@ et ce projet suit [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Ajouté
+- **Intégration d'Aria2 comme téléchargeur externe** - Ajout de la prise en charge de `aria2c` avec arguments personnalisables et gestion d'erreurs localisée
+- **Renommage des fichiers téléchargés depuis la file d'attente et la Bibliothèque** - Ajout d'actions de renommage après téléchargement (queues YouTube + Universal et Bibliothèque), avec synchronisation du chemin/titre en base et textes UI multilingues
 
 ### Modifié
+- **Traitement dynamique de la file d'attente pendant le téléchargement** - Les workers de queue réclament désormais les éléments en temps réel, donc les vidéos ajoutées sont mises en fin de file et téléchargées automatiquement sans recliquer sur Start
 
 ### Corrigé
 
