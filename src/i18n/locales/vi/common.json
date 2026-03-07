@@ -68,6 +68,7 @@
     "YTDLP_SYSTEM_NOT_FOUND": "Không tìm thấy yt-dlp hệ thống. Hãy cài đặt qua trình quản lý gói hoặc chuyển sang App managed.",
     "YTDLP_APP_NOT_FOUND": "Không tìm thấy yt-dlp do ứng dụng quản lý. Hãy cài đặt từ Cài đặt > Dependencies.",
     "YTDLP_SYSTEM_MANAGED": "yt-dlp hệ thống được quản lý bên ngoài. Hãy cập nhật qua trình quản lý gói hoặc chuyển sang App managed.",
+    "ARIA2_NOT_FOUND": "Không tìm thấy aria2c. Hãy cài aria2 và đảm bảo aria2c có trong PATH.",
     "FFMPEG_NOT_FOUND": "Không tìm thấy FFmpeg. Hãy kiểm tra phần Dependencies.",
     "FFMPEG_SYSTEM_MANAGED": "FFmpeg hệ thống được quản lý bên ngoài. Hãy cập nhật qua trình quản lý gói hoặc chuyển sang App managed.",
     "AI_API_ERROR": "Lỗi API AI.",

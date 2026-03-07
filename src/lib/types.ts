@@ -54,6 +54,8 @@ export interface ItemDownloadSettings {
   outputPath: string;
   videoCodec: VideoCodec;
   audioBitrate: AudioBitrate;
+  useAria2: boolean;
+  aria2Args: string;
   subtitleMode: SubtitleMode;
   subtitleLangs: string[];
   subtitleEmbed: boolean;
@@ -71,6 +73,8 @@ export interface ItemUniversalSettings {
   format: Format;
   outputPath: string;
   audioBitrate: AudioBitrate;
+  useAria2: boolean;
+  aria2Args: string;
   timeRangeStart?: string;
   timeRangeEnd?: string;
   autoRetryEnabled: boolean;
@@ -108,6 +112,8 @@ export interface DownloadItem {
   completedFilesize?: number; // Actual file size after download
   completedResolution?: string; // e.g. "1920x1080"
   completedFormat?: string; // e.g. "mp4"
+  completedFilepath?: string; // Absolute path of downloaded file
+  completedHistoryId?: string; // Related history entry id after completion
   // Source detection
   extractor?: string; // e.g. "youtube", "tiktok", "instagram"
   // Settings snapshot when item was added to queue
@@ -154,6 +160,9 @@ export interface DownloadSettings {
   speedLimitEnabled: boolean; // true = limited, false = unlimited
   speedLimitValue: number; // e.g. 10
   speedLimitUnit: 'K' | 'M' | 'G'; // KB/s, MB/s, GB/s
+  // External downloader settings
+  useAria2: boolean; // Use aria2c as yt-dlp external downloader
+  aria2Args: string; // Custom aria2 arguments (raw or aria2c: prefixed)
   // Auto retry settings
   autoRetryEnabled: boolean; // Retry transient failures automatically
   autoRetryMaxAttempts: number; // Number of retries after initial failure (1-10)
@@ -181,6 +190,8 @@ export interface DownloadProgress {
   error_message?: string;
   error_code?: string;
   error_params?: Record<string, string | number | boolean>;
+  history_id?: string; // Related history entry id when available
+  filepath?: string; // Final file path when status is 'finished'
   // For live streams (no percentage available)
   downloaded_size?: string; // e.g. "2.87 MiB"
   elapsed_time?: string; // e.g. "00:00:07"
@@ -295,7 +306,20 @@ export type HistoryFilter =
   | 'twitter'
   | 'bilibili'
   | 'other';
+export type HistoryMediaType = 'all' | 'video' | 'audio';
+export type HistoryDatePreset = 'all' | 'today' | 'last7days' | 'last30days' | 'custom';
 export type HistorySort = 'recent' | 'oldest' | 'title' | 'size';
+
+export interface HistoryAdvancedFilters {
+  mediaType: HistoryMediaType;
+  datePreset: HistoryDatePreset;
+  downloadedAtFrom?: number | null;
+  downloadedAtTo?: number | null;
+  customDateFrom?: string | null;
+  customDateTo?: string | null;
+  formats: string[];
+  qualities: string[];
+}
 
 // AI types
 export type AIProvider = 'gemini' | 'openai' | 'deepseek' | 'qwen' | 'ollama' | 'proxy';

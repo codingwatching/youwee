@@ -676,6 +676,8 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
       let logStderr = true;
       let useBunRuntime = false;
       let useActualPlayerJs = false;
+      let useAria2 = false;
+      let aria2Args = '';
       let embedMetadata = false;
       let embedThumbnail = false;
       let liveFromStart = false;
@@ -697,6 +699,8 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
           subtitleFormat = parsed.subtitleFormat || 'srt';
           useBunRuntime = parsed.useBunRuntime || false;
           useActualPlayerJs = parsed.useActualPlayerJs || false;
+          useAria2 = parsed.useAria2 === true;
+          aria2Args = parsed.aria2Args || '';
           embedMetadata = parsed.embedMetadata || false;
           embedThumbnail = parsed.embedThumbnail || false;
           liveFromStart = parsed.liveFromStart || false;
@@ -783,6 +787,8 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
             embedThumbnail,
             liveFromStart,
             speedLimit,
+            useAria2,
+            aria2Args,
             sponsorblockRemove: sponsorBlockArgs.remove,
             sponsorblockMark: sponsorBlockArgs.mark,
             historyId: null,
@@ -1091,6 +1097,8 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
         let logStderr = true;
         let useBunRuntime = false;
         let useActualPlayerJs = false;
+        let useAria2 = false;
+        let aria2Args = '';
 
         try {
           const saved = localStorage.getItem('youwee-settings');
@@ -1099,6 +1107,8 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
             autoOutputPath = parsed.outputPath || '';
             useBunRuntime = parsed.useBunRuntime || false;
             useActualPlayerJs = parsed.useActualPlayerJs || false;
+            useAria2 = parsed.useAria2 === true;
+            aria2Args = parsed.aria2Args || '';
           }
           logStderr = localStorage.getItem('youwee_log_stderr') !== 'false';
         } catch (_e) {
@@ -1145,6 +1155,8 @@ export function ChannelsProvider({ children }: { children: ReactNode }) {
               cookieBrowserProfile,
               cookieFilePath,
               proxyUrl,
+              useAria2,
+              aria2Args,
             });
 
             await invoke('update_channel_video_status', { id: video.id, status: 'downloaded' });

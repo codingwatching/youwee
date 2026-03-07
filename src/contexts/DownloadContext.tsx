@@ -187,6 +187,8 @@ function saveSettings(settings: DownloadSettings) {
         speedLimitEnabled: settings.speedLimitEnabled,
         speedLimitValue: settings.speedLimitValue,
         speedLimitUnit: settings.speedLimitUnit,
+        useAria2: settings.useAria2,
+        aria2Args: settings.aria2Args,
         autoRetryEnabled: settings.autoRetryEnabled,
         autoRetryMaxAttempts: settings.autoRetryMaxAttempts,
         autoRetryDelaySeconds: settings.autoRetryDelaySeconds,
@@ -204,6 +206,11 @@ interface PlaylistInfo {
   index: number;
   total: number;
   title: string;
+}
+
+interface RenameDownloadedFileResult {
+  newFilepath: string;
+  newTitle: string;
 }
 
 interface DownloadContextType {
@@ -258,6 +265,9 @@ interface DownloadContextType {
   updateLiveFromStart: (enabled: boolean) => void;
   // Speed limit settings
   updateSpeedLimit: (enabled: boolean, value: number, unit: 'K' | 'M' | 'G') => void;
+  // External downloader settings
+  updateUseAria2: (enabled: boolean) => void;
+  updateAria2Args: (args: string) => void;
   // Auto retry settings
   updateAutoRetry: (enabled: boolean, maxAttempts: number, delaySeconds: number) => void;
   // SponsorBlock settings
@@ -270,6 +280,8 @@ interface DownloadContextType {
   retryFailedDownload: (itemId: string) => void;
   // Per-item time range
   updateItemTimeRange: (id: string, start?: string, end?: string) => void;
+  // Rename completed file
+  renameCompletedItem: (id: string, newName: string) => Promise<void>;
 }
 
 const DownloadContext = createContext<DownloadContextType | null>(null);
@@ -311,6 +323,9 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
       speedLimitEnabled: saved.speedLimitEnabled === true, // Default to false (unlimited)
       speedLimitValue: saved.speedLimitValue || 10,
       speedLimitUnit: saved.speedLimitUnit || 'M',
+      // External downloader settings
+      useAria2: saved.useAria2 === true, // Default to false
+      aria2Args: saved.aria2Args || '',
       // Auto retry settings
       autoRetryEnabled: saved.autoRetryEnabled === true, // Default to false
       autoRetryMaxAttempts: clampAutoRetryMaxAttempts(
@@ -483,6 +498,8 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
                       completedFilesize: progress.filesize,
                       completedResolution: progress.resolution,
                       completedFormat: progress.format_ext,
+                      completedFilepath: progress.filepath,
+                      completedHistoryId: progress.history_id,
                     }
                   : {}),
               }
@@ -538,6 +555,8 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
       outputPath: currentSettings.outputPath,
       videoCodec: currentSettings.videoCodec,
       audioBitrate: currentSettings.audioBitrate,
+      useAria2: currentSettings.useAria2,
+      aria2Args: currentSettings.aria2Args,
       subtitleMode: currentSettings.subtitleMode,
       subtitleLangs: [...currentSettings.subtitleLangs],
       subtitleEmbed: currentSettings.subtitleEmbed,
@@ -608,6 +627,8 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
         outputPath: currentSettings.outputPath,
         videoCodec: currentSettings.videoCodec,
         audioBitrate: mediaType === 'audio' ? audioBitrate : currentSettings.audioBitrate,
+        useAria2: currentSettings.useAria2,
+        aria2Args: currentSettings.aria2Args,
         subtitleMode: currentSettings.subtitleMode,
         subtitleLangs: [...currentSettings.subtitleLangs],
         subtitleEmbed: currentSettings.subtitleEmbed,
@@ -660,6 +681,8 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
           outputPath: settingsRef.current.outputPath,
           videoCodec: settingsRef.current.videoCodec,
           audioBitrate: settingsRef.current.audioBitrate,
+          useAria2: settingsRef.current.useAria2,
+          aria2Args: settingsRef.current.aria2Args,
           subtitleMode: settingsRef.current.subtitleMode,
           subtitleLangs: [...settingsRef.current.subtitleLangs],
           subtitleEmbed: settingsRef.current.subtitleEmbed,
@@ -810,6 +833,47 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const renameCompletedItem = useCallback(async (id: string, newName: string) => {
+    const item = itemsRef.current.find((i) => i.id === id);
+    if (!item || item.status !== 'completed') {
+      throw new Error('Only completed items can be renamed');
+    }
+
+    const filepath = item.completedFilepath;
+    if (!filepath) {
+      throw new Error('File path is not available for this item');
+    }
+
+    try {
+      const result = await invoke<RenameDownloadedFileResult>('rename_downloaded_file', {
+        filepath,
+        newName,
+        historyId: item.completedHistoryId || null,
+      });
+      if (item.completedHistoryId) {
+        await invoke('sync_history_renamed_entry', {
+          id: item.completedHistoryId,
+          filepath: result.newFilepath,
+          title: result.newTitle,
+        });
+      }
+
+      setItems((currentItems) =>
+        currentItems.map((currentItem) =>
+          currentItem.id === id
+            ? {
+                ...currentItem,
+                title: result.newTitle,
+                completedFilepath: result.newFilepath,
+              }
+            : currentItem,
+        ),
+      );
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : String(error));
+    }
+  }, []);
+
   const clearAll = useCallback(() => {
     setItems([]);
     setCurrentPlaylistInfo(null);
@@ -820,13 +884,10 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const startDownload = useCallback(async () => {
-    const currentItems = itemsRef.current;
-    // Only download items that are pending or had errors (not completed ones)
-    const itemsToDownload = currentItems.filter(
-      (item) => item.status === 'pending' || item.status === 'error',
-    );
+    const hasPendingItems = () =>
+      itemsRef.current.some((item) => item.status === 'pending' || item.status === 'error');
 
-    if (itemsToDownload.length === 0) return;
+    if (!hasPendingItems()) return;
 
     setIsDownloading(true);
     isDownloadingRef.current = true;
@@ -851,7 +912,7 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
       }),
     );
 
-    const concurrentLimit = settings.concurrentDownloads || 1;
+    const concurrentLimit = Math.max(1, settings.concurrentDownloads || 1);
 
     // Download single item
     const downloadItem = async (item: DownloadItem) => {
@@ -919,6 +980,9 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
             speedLimit: settings.speedLimitEnabled
               ? `${settings.speedLimitValue}${settings.speedLimitUnit}`
               : null,
+            // External downloader settings
+            useAria2: itemSettings?.useAria2 ?? settings.useAria2,
+            aria2Args: itemSettings?.aria2Args ?? settings.aria2Args,
             // SponsorBlock settings
             sponsorblockRemove: sponsorBlockArgs.remove,
             sponsorblockMark: sponsorBlockArgs.mark,
@@ -1013,27 +1077,56 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     };
 
     try {
-      // Process items with concurrency limit
-      const queue = [...itemsToDownload];
-      const activeDownloads: Promise<void>[] = [];
+      const claimedIds = new Set<string>();
+      const processedIds = new Set<string>();
+      let activeCount = 0;
+
+      const claimNextItem = (): DownloadItem | null => {
+        const next = itemsRef.current.find(
+          (candidate) =>
+            (candidate.status === 'pending' || candidate.status === 'error') &&
+            !claimedIds.has(candidate.id) &&
+            !processedIds.has(candidate.id),
+        );
+        if (!next) return null;
+        claimedIds.add(next.id);
+        return next;
+      };
+
+      const hasUnclaimedPendingItems = () =>
+        itemsRef.current.some(
+          (candidate) =>
+            (candidate.status === 'pending' || candidate.status === 'error') &&
+            !claimedIds.has(candidate.id) &&
+            !processedIds.has(candidate.id),
+        );
 
       const processNext = async (): Promise<void> => {
-        while (isDownloadingRef.current && queue.length > 0) {
-          const item = queue.shift();
-          if (!item) break;
-          await downloadItem(item);
+        while (isDownloadingRef.current) {
+          const item = claimNextItem();
+          if (!item) {
+            if (activeCount === 0 && !hasUnclaimedPendingItems()) {
+              return;
+            }
+            await new Promise<void>((resolve) => {
+              window.setTimeout(resolve, 200);
+            });
+            continue;
+          }
+
+          activeCount += 1;
+          try {
+            await downloadItem(item);
+          } finally {
+            activeCount -= 1;
+            claimedIds.delete(item.id);
+            processedIds.add(item.id);
+          }
         }
       };
 
-      // Calculate worker count BEFORE starting (queue.length changes during shift)
-      const workerCount = Math.min(concurrentLimit, itemsToDownload.length);
-
-      // Start concurrent workers
-      for (let i = 0; i < workerCount; i++) {
-        activeDownloads.push(processNext());
-      }
-
-      await Promise.all(activeDownloads);
+      const workers = Array.from({ length: concurrentLimit }, () => processNext());
+      await Promise.all(workers);
     } finally {
       setIsDownloading(false);
       isDownloadingRef.current = false;
@@ -1238,6 +1331,22 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const updateUseAria2 = useCallback((useAria2: boolean) => {
+    setSettings((s) => {
+      const newSettings = { ...s, useAria2 };
+      saveSettings(newSettings);
+      return newSettings;
+    });
+  }, []);
+
+  const updateAria2Args = useCallback((aria2Args: string) => {
+    setSettings((s) => {
+      const newSettings = { ...s, aria2Args };
+      saveSettings(newSettings);
+      return newSettings;
+    });
+  }, []);
+
   const updateAutoRetry = useCallback(
     (autoRetryEnabled: boolean, autoRetryMaxAttempts: number, autoRetryDelaySeconds: number) => {
       setSettings((s) => {
@@ -1352,6 +1461,8 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     updateEmbedThumbnail,
     updateLiveFromStart,
     updateSpeedLimit,
+    updateUseAria2,
+    updateAria2Args,
     updateAutoRetry,
     // SponsorBlock settings
     updateSponsorBlock,
@@ -1363,6 +1474,7 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     retryFailedDownload,
     // Per-item time range
     updateItemTimeRange,
+    renameCompletedItem,
   };
 
   return <DownloadContext.Provider value={value}>{children}</DownloadContext.Provider>;

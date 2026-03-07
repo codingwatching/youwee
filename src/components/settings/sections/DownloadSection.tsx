@@ -1,4 +1,4 @@
-import { Film, Gauge, Radio, RotateCcw, ShieldCheck } from 'lucide-react';
+import { Film, Gauge, Radio, Rocket, RotateCcw, ShieldCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import {
@@ -32,6 +32,8 @@ export function DownloadSection({ highlightId }: DownloadSectionProps) {
     updateEmbedThumbnail,
     updateLiveFromStart,
     updateSpeedLimit,
+    updateUseAria2,
+    updateAria2Args,
     updateAutoRetry,
     updateSponsorBlock,
     updateSponsorBlockMode,
@@ -47,23 +49,25 @@ export function DownloadSection({ highlightId }: DownloadSectionProps) {
         icon={<Film className="w-5 h-5 text-white" />}
         iconClassName="bg-gradient-to-br from-emerald-500 to-green-600 shadow-emerald-500/20"
       >
-        <SettingsRow
-          id="embed-metadata"
-          label={t('download.embedMetadata')}
-          description={t('download.embedMetadataDesc')}
-          highlight={highlightId === 'embed-metadata'}
-        >
-          <Switch checked={settings.embedMetadata} onCheckedChange={updateEmbedMetadata} />
-        </SettingsRow>
+        <SettingsCard>
+          <SettingsRow
+            id="embed-metadata"
+            label={t('download.embedMetadata')}
+            description={t('download.embedMetadataDesc')}
+            highlight={highlightId === 'embed-metadata'}
+          >
+            <Switch checked={settings.embedMetadata} onCheckedChange={updateEmbedMetadata} />
+          </SettingsRow>
 
-        <SettingsRow
-          id="embed-thumbnail"
-          label={t('download.embedThumbnail')}
-          description={t('download.embedThumbnailDesc')}
-          highlight={highlightId === 'embed-thumbnail'}
-        >
-          <Switch checked={settings.embedThumbnail} onCheckedChange={updateEmbedThumbnail} />
-        </SettingsRow>
+          <SettingsRow
+            id="embed-thumbnail"
+            label={t('download.embedThumbnail')}
+            description={t('download.embedThumbnailDesc')}
+            highlight={highlightId === 'embed-thumbnail'}
+          >
+            <Switch checked={settings.embedThumbnail} onCheckedChange={updateEmbedThumbnail} />
+          </SettingsRow>
+        </SettingsCard>
       </SettingsSection>
 
       <SettingsDivider />
@@ -168,14 +172,16 @@ export function DownloadSection({ highlightId }: DownloadSectionProps) {
         icon={<Radio className="w-5 h-5 text-white" />}
         iconClassName="bg-gradient-to-br from-red-500 to-rose-600 shadow-red-500/20"
       >
-        <SettingsRow
-          id="live-from-start"
-          label={t('download.liveFromStart')}
-          description={t('download.liveFromStartDesc')}
-          highlight={highlightId === 'live-from-start'}
-        >
-          <Switch checked={settings.liveFromStart} onCheckedChange={updateLiveFromStart} />
-        </SettingsRow>
+        <SettingsCard>
+          <SettingsRow
+            id="live-from-start"
+            label={t('download.liveFromStart')}
+            description={t('download.liveFromStartDesc')}
+            highlight={highlightId === 'live-from-start'}
+          >
+            <Switch checked={settings.liveFromStart} onCheckedChange={updateLiveFromStart} />
+          </SettingsRow>
+        </SettingsCard>
       </SettingsSection>
 
       <SettingsDivider />
@@ -187,78 +193,80 @@ export function DownloadSection({ highlightId }: DownloadSectionProps) {
         icon={<Gauge className="w-5 h-5 text-white" />}
         iconClassName="bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/20"
       >
-        <SettingsRow
-          id="speed-limit"
-          label={t('download.downloadSpeed')}
-          description={t('download.downloadSpeedDesc')}
-          highlight={highlightId === 'speed-limit'}
-        >
-          <div className="flex w-full flex-wrap items-center gap-3">
-            {/* Radio: Unlimited / Limited */}
-            <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1">
-              <button
-                type="button"
-                onClick={() =>
-                  updateSpeedLimit(false, settings.speedLimitValue, settings.speedLimitUnit)
-                }
-                className={cn(
-                  'px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
-                  !settings.speedLimitEnabled
-                    ? 'bg-background text-foreground shadow-md'
-                    : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                {t('download.unlimited')}
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  updateSpeedLimit(true, settings.speedLimitValue, settings.speedLimitUnit)
-                }
-                className={cn(
-                  'px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
-                  settings.speedLimitEnabled
-                    ? 'bg-background text-foreground shadow-md'
-                    : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                {t('download.limited')}
-              </button>
-            </div>
-
-            {/* Input + Unit dropdown (only when limited) */}
-            {settings.speedLimitEnabled && (
-              <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto">
-                <Input
-                  type="number"
-                  min={1}
-                  max={9999}
-                  value={settings.speedLimitValue}
-                  onChange={(e) => {
-                    const value = Math.max(1, Math.min(9999, Number(e.target.value) || 1));
-                    updateSpeedLimit(true, value, settings.speedLimitUnit);
-                  }}
-                  className="h-9 w-full text-center sm:w-20"
-                />
-                <Select
-                  value={settings.speedLimitUnit}
-                  onValueChange={(v: 'K' | 'M' | 'G') =>
-                    updateSpeedLimit(true, settings.speedLimitValue, v)
+        <SettingsCard>
+          <SettingsRow
+            id="speed-limit"
+            label={t('download.downloadSpeed')}
+            description={t('download.downloadSpeedDesc')}
+            highlight={highlightId === 'speed-limit'}
+          >
+            <div className="flex w-full flex-wrap items-center gap-3">
+              {/* Radio: Unlimited / Limited */}
+              <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1">
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateSpeedLimit(false, settings.speedLimitValue, settings.speedLimitUnit)
                   }
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
+                    !settings.speedLimitEnabled
+                      ? 'bg-background text-foreground shadow-md'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
                 >
-                  <SelectTrigger className="h-9 w-full sm:w-[85px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="K">KB/s</SelectItem>
-                    <SelectItem value="M">MB/s</SelectItem>
-                    <SelectItem value="G">GB/s</SelectItem>
-                  </SelectContent>
-                </Select>
+                  {t('download.unlimited')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateSpeedLimit(true, settings.speedLimitValue, settings.speedLimitUnit)
+                  }
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
+                    settings.speedLimitEnabled
+                      ? 'bg-background text-foreground shadow-md'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {t('download.limited')}
+                </button>
               </div>
-            )}
-          </div>
-        </SettingsRow>
+
+              {/* Input + Unit dropdown (only when limited) */}
+              {settings.speedLimitEnabled && (
+                <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={9999}
+                    value={settings.speedLimitValue}
+                    onChange={(e) => {
+                      const value = Math.max(1, Math.min(9999, Number(e.target.value) || 1));
+                      updateSpeedLimit(true, value, settings.speedLimitUnit);
+                    }}
+                    className="h-9 w-full bg-background text-center sm:w-20"
+                  />
+                  <Select
+                    value={settings.speedLimitUnit}
+                    onValueChange={(v: 'K' | 'M' | 'G') =>
+                      updateSpeedLimit(true, settings.speedLimitValue, v)
+                    }
+                  >
+                    <SelectTrigger className="h-9 w-full bg-background sm:w-[85px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="K">KB/s</SelectItem>
+                      <SelectItem value="M">MB/s</SelectItem>
+                      <SelectItem value="G">GB/s</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          </SettingsRow>
+        </SettingsCard>
       </SettingsSection>
 
       <SettingsDivider />
@@ -269,70 +277,109 @@ export function DownloadSection({ highlightId }: DownloadSectionProps) {
         icon={<RotateCcw className="w-5 h-5 text-white" />}
         iconClassName="bg-gradient-to-br from-cyan-500 to-sky-600 shadow-cyan-500/20"
       >
-        <SettingsRow
-          id="auto-retry-toggle"
-          label={t('download.autoRetryEnable')}
-          description={t('download.autoRetryEnableDesc')}
-          highlight={highlightId === 'auto-retry-toggle'}
-        >
-          <Switch
-            checked={settings.autoRetryEnabled}
-            onCheckedChange={(enabled) =>
-              updateAutoRetry(
-                enabled,
-                settings.autoRetryMaxAttempts,
-                settings.autoRetryDelaySeconds,
-              )
-            }
-          />
-        </SettingsRow>
+        <SettingsCard>
+          <SettingsRow
+            id="auto-retry-toggle"
+            label={t('download.autoRetryEnable')}
+            description={t('download.autoRetryEnableDesc')}
+            highlight={highlightId === 'auto-retry-toggle'}
+          >
+            <Switch
+              checked={settings.autoRetryEnabled}
+              onCheckedChange={(enabled) =>
+                updateAutoRetry(
+                  enabled,
+                  settings.autoRetryMaxAttempts,
+                  settings.autoRetryDelaySeconds,
+                )
+              }
+            />
+          </SettingsRow>
 
-        <SettingsRow
-          id="auto-retry-values"
-          label={t('download.autoRetryConfig')}
-          description={t('download.autoRetryConfigDesc')}
-          highlight={highlightId === 'auto-retry-values'}
-        >
-          <div className="flex w-full flex-wrap items-center gap-2 md:justify-end">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-muted-foreground">{t('download.retryAttempts')}</span>
-              <Input
-                type="number"
-                min={1}
-                max={10}
-                disabled={!settings.autoRetryEnabled}
-                value={settings.autoRetryMaxAttempts}
-                onChange={(e) =>
-                  updateAutoRetry(
-                    settings.autoRetryEnabled,
-                    clampAutoRetryMaxAttempts(Number(e.target.value) || 1),
-                    settings.autoRetryDelaySeconds,
-                  )
-                }
-                className="h-9 w-20 text-center disabled:opacity-50"
-              />
+          <SettingsRow
+            id="auto-retry-values"
+            label={t('download.autoRetryConfig')}
+            description={t('download.autoRetryConfigDesc')}
+            highlight={highlightId === 'auto-retry-values'}
+          >
+            <div className="flex w-full flex-wrap items-center gap-2 md:justify-end">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">{t('download.retryAttempts')}</span>
+                <Input
+                  type="number"
+                  min={1}
+                  max={10}
+                  disabled={!settings.autoRetryEnabled}
+                  value={settings.autoRetryMaxAttempts}
+                  onChange={(e) =>
+                    updateAutoRetry(
+                      settings.autoRetryEnabled,
+                      clampAutoRetryMaxAttempts(Number(e.target.value) || 1),
+                      settings.autoRetryDelaySeconds,
+                    )
+                  }
+                  className="h-9 w-20 bg-background text-center disabled:opacity-50"
+                />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">{t('download.retryDelay')}</span>
+                <Input
+                  type="number"
+                  min={1}
+                  max={60}
+                  disabled={!settings.autoRetryEnabled}
+                  value={settings.autoRetryDelaySeconds}
+                  onChange={(e) =>
+                    updateAutoRetry(
+                      settings.autoRetryEnabled,
+                      settings.autoRetryMaxAttempts,
+                      clampAutoRetryDelaySeconds(Number(e.target.value) || 1),
+                    )
+                  }
+                  className="h-9 w-20 bg-background text-center disabled:opacity-50"
+                />
+                <span className="text-xs text-muted-foreground">{t('download.secondsShort')}</span>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-muted-foreground">{t('download.retryDelay')}</span>
+          </SettingsRow>
+        </SettingsCard>
+      </SettingsSection>
+
+      <SettingsDivider />
+
+      {/* Aria2 Integration */}
+      <SettingsSection
+        title={t('download.aria2')}
+        description={t('download.aria2Desc')}
+        icon={<Rocket className="w-5 h-5 text-white" />}
+        iconClassName="bg-gradient-to-br from-teal-500 to-cyan-600 shadow-teal-500/20"
+      >
+        <SettingsCard>
+          <SettingsRow
+            id="aria2-toggle"
+            label={t('download.aria2Toggle')}
+            description={t('download.aria2ToggleDesc')}
+            highlight={highlightId === 'aria2-toggle'}
+          >
+            <Switch checked={settings.useAria2} onCheckedChange={updateUseAria2} />
+          </SettingsRow>
+
+          {settings.useAria2 && (
+            <SettingsRow
+              id="aria2-args"
+              label={t('download.aria2Args')}
+              description={t('download.aria2ArgsDesc')}
+              highlight={highlightId === 'aria2-args'}
+            >
               <Input
-                type="number"
-                min={1}
-                max={60}
-                disabled={!settings.autoRetryEnabled}
-                value={settings.autoRetryDelaySeconds}
-                onChange={(e) =>
-                  updateAutoRetry(
-                    settings.autoRetryEnabled,
-                    settings.autoRetryMaxAttempts,
-                    clampAutoRetryDelaySeconds(Number(e.target.value) || 1),
-                  )
-                }
-                className="h-9 w-20 text-center disabled:opacity-50"
+                value={settings.aria2Args}
+                onChange={(e) => updateAria2Args(e.target.value)}
+                placeholder={t('download.aria2ArgsPlaceholder')}
+                className="h-9 w-full bg-background md:w-[340px]"
               />
-              <span className="text-xs text-muted-foreground">{t('download.secondsShort')}</span>
-            </div>
-          </div>
-        </SettingsRow>
+            </SettingsRow>
+          )}
+        </SettingsCard>
       </SettingsSection>
     </div>
   );

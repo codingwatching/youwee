@@ -8,8 +8,12 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Thêm mới
+- **Tích hợp Aria2 làm trình tải ngoài** - Bổ sung hỗ trợ `aria2c` làm external downloader với tham số tùy chỉnh và xử lý lỗi đã bản địa hóa
+- **Đổi tên file đã tải từ Queue và Thư viện** - Thêm thao tác đổi tên sau khi tải xong (queue YouTube + Universal và Thư viện), đồng bộ đường dẫn/tên trong DB và giao diện đa ngôn ngữ
+- **Bộ lọc nâng cao và sắp xếp trong Thư viện** - Thêm panel Advanced Filters (loại media, khoảng ngày, định dạng, chất lượng), tìm kiếm theo `title + filepath`, và sắp xếp lịch sử có ghi nhớ lựa chọn sort
 
 ### Thay đổi
+- **Xử lý queue động khi đang tải** - Worker queue giờ claim item theo thời gian thực, nên video thêm mới sẽ vào cuối hàng đợi và tự tải tiếp mà không cần bấm Start lại
 
 ### Sửa lỗi
 

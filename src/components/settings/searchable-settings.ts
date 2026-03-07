@@ -109,6 +109,21 @@ export const SEARCHABLE_SETTINGS: SearchableSetting[] = [
     section: 'download',
   },
   {
+    id: 'aria2-toggle',
+    labelKey: 'download.aria2Toggle',
+    descriptionKey: 'download.aria2ToggleDesc',
+    keywords: [
+      'aria2',
+      'aria2c',
+      'external downloader',
+      'split',
+      'multi-thread',
+      'connections',
+      'download acceleration',
+    ],
+    section: 'download',
+  },
+  {
     id: 'auto-retry-toggle',
     labelKey: 'download.autoRetryEnable',
     descriptionKey: 'download.autoRetryEnableDesc',

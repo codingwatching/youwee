@@ -62,6 +62,7 @@ export function UniversalPage({ onNavigateToSettings }: UniversalPageProps) {
     clearCookieError,
     retryFailedDownload,
     updateItemTimeRange,
+    renameCompletedItem,
   } = useUniversal();
 
   const { ffmpegStatus } = useDependencies();
@@ -120,7 +121,6 @@ export function UniversalPage({ onNavigateToSettings }: UniversalPageProps) {
         <div className="flex-shrink-0 p-4 sm:p-6 space-y-3">
           {/* URL Input */}
           <UniversalUrlInput
-            disabled={isDownloading}
             onAddUrls={addFromText}
             onImportFile={importFromFile}
             onImportClipboard={importFromClipboard}
@@ -151,6 +151,7 @@ export function UniversalPage({ onNavigateToSettings }: UniversalPageProps) {
             isDownloading={isDownloading}
             onRemove={removeItem}
             onUpdateTimeRange={updateItemTimeRange}
+            onRename={renameCompletedItem}
             onClearCompleted={clearCompleted}
           />
         </div>

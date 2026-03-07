@@ -1,7 +1,7 @@
 use super::get_db;
-use crate::types::HistoryEntry;
+use crate::types::{HistoryAdvancedFilters, HistoryEntry, HistoryMediaType, HistorySort};
 use chrono::Utc;
-use rusqlite::params;
+use rusqlite::{params, params_from_iter, types::Value};
 
 /// Add a history entry (internal use)
 pub fn add_history_internal(
@@ -68,6 +68,44 @@ pub fn update_history_download(
     Ok(())
 }
 
+/// Update history filepath + title by old filepath (used after file rename)
+pub fn update_history_filepath_and_title(
+    old_filepath: String,
+    new_filepath: String,
+    new_title: String,
+) -> Result<(), String> {
+    let conn = get_db()?;
+    let rows = conn
+        .execute(
+        "UPDATE history SET filepath = ?1, title = ?2 WHERE filepath = ?3",
+        params![new_filepath, new_title, old_filepath],
+    )
+        .map_err(|e| format!("Failed to update history filepath/title: {}", e))?;
+    if rows == 0 {
+        return Err("No history entry matched this filepath".to_string());
+    }
+    Ok(())
+}
+
+/// Update history filepath + title by history entry ID (preferred when available)
+pub fn update_history_filepath_and_title_by_id(
+    id: String,
+    new_filepath: String,
+    new_title: String,
+) -> Result<(), String> {
+    let conn = get_db()?;
+    let rows = conn
+        .execute(
+            "UPDATE history SET filepath = ?1, title = ?2 WHERE id = ?3",
+            params![new_filepath, new_title, id],
+        )
+        .map_err(|e| format!("Failed to update history filepath/title by id: {}", e))?;
+    if rows == 0 {
+        return Err("History entry not found".to_string());
+    }
+    Ok(())
+}
+
 /// Add a history entry with summary (for videos summarized without downloading)
 pub fn add_history_with_summary(
     url: String,
@@ -93,45 +131,171 @@ pub fn add_history_with_summary(
     Ok(id)
 }
 
+fn audio_media_sql_condition() -> &'static str {
+    "(LOWER(COALESCE(format, '')) IN ('mp3', 'm4a', 'opus', 'flac', 'wav', 'aac', 'ogg', 'oga') OR LOWER(COALESCE(quality, '')) LIKE '%audio%')"
+}
+
+fn normalize_list(values: Option<&Vec<String>>) -> Vec<String> {
+    let mut normalized: Vec<String> = Vec::new();
+    if let Some(items) = values {
+        for item in items {
+            let value = item.trim().to_lowercase();
+            if value.is_empty() || normalized.iter().any(|v| v == &value) {
+                continue;
+            }
+            normalized.push(value);
+        }
+    }
+    normalized
+}
+
+fn normalize_quality(value: &str) -> String {
+    let lower = value.trim().to_lowercase();
+    if lower.contains("audio") {
+        "audio".to_string()
+    } else if lower.contains("best") {
+        "best".to_string()
+    } else if lower.contains("8k") {
+        "8k".to_string()
+    } else if lower.contains("4k") {
+        "4k".to_string()
+    } else if lower.contains("2k") {
+        "2k".to_string()
+    } else if lower.contains("1080") {
+        "1080".to_string()
+    } else if lower.contains("720") {
+        "720".to_string()
+    } else if lower.contains("480") {
+        "480".to_string()
+    } else if lower.contains("360") {
+        "360".to_string()
+    } else {
+        lower
+    }
+}
+
+fn apply_history_filters(
+    query: &mut String,
+    params: &mut Vec<Value>,
+    source: Option<&str>,
+    search: Option<&str>,
+    filters: Option<&HistoryAdvancedFilters>,
+) {
+    if let Some(src) = source {
+        let src = src.trim();
+        if !src.is_empty() && src != "all" {
+            query.push_str(" AND source = ?");
+            params.push(Value::from(src.to_string()));
+        }
+    }
+
+    if let Some(search_text) = search.map(|s| s.trim()).filter(|s| !s.is_empty()) {
+        let search_pattern = format!("%{}%", search_text);
+        query.push_str(" AND (title LIKE ? OR filepath LIKE ?)");
+        params.push(Value::from(search_pattern.clone()));
+        params.push(Value::from(search_pattern));
+    }
+
+    if let Some(filter) = filters {
+        match filter.media_type {
+            Some(HistoryMediaType::Audio) => {
+                query.push_str(" AND ");
+                query.push_str(audio_media_sql_condition());
+            }
+            Some(HistoryMediaType::Video) => {
+                query.push_str(" AND NOT ");
+                query.push_str(audio_media_sql_condition());
+            }
+            _ => {}
+        }
+
+        if let Some(from) = filter.downloaded_at_from {
+            query.push_str(" AND downloaded_at >= ?");
+            params.push(Value::from(from));
+        }
+        if let Some(to) = filter.downloaded_at_to {
+            query.push_str(" AND downloaded_at <= ?");
+            params.push(Value::from(to));
+        }
+
+        let formats = normalize_list(filter.formats.as_ref());
+        if !formats.is_empty() {
+            query.push_str(" AND LOWER(COALESCE(format, '')) IN (");
+            for (idx, value) in formats.iter().enumerate() {
+                if idx > 0 {
+                    query.push_str(", ");
+                }
+                query.push('?');
+                params.push(Value::from(value.clone()));
+            }
+            query.push(')');
+        }
+
+        let mut qualities = normalize_list(filter.qualities.as_ref());
+        qualities = qualities
+            .into_iter()
+            .map(|q| normalize_quality(&q))
+            .fold(Vec::new(), |mut acc, q| {
+                if !q.is_empty() && !acc.iter().any(|existing| existing == &q) {
+                    acc.push(q);
+                }
+                acc
+            });
+
+        if !qualities.is_empty() {
+            query.push_str(" AND (");
+            for (idx, quality) in qualities.iter().enumerate() {
+                if idx > 0 {
+                    query.push_str(" OR ");
+                }
+                if quality == "audio" {
+                    query.push_str("(LOWER(COALESCE(quality, '')) LIKE ? OR LOWER(COALESCE(format, '')) IN ('mp3', 'm4a', 'opus', 'flac', 'wav', 'aac', 'ogg', 'oga'))");
+                } else {
+                    query.push_str("LOWER(COALESCE(quality, '')) LIKE ?");
+                }
+                params.push(Value::from(format!("%{}%", quality)));
+            }
+            query.push(')');
+        }
+    }
+}
+
 /// Get history entries
 pub fn get_history_from_db(
     limit: Option<i64>,
     offset: Option<i64>,
     source: Option<String>,
     search: Option<String>,
+    filters: Option<HistoryAdvancedFilters>,
+    sort: Option<HistorySort>,
 ) -> Result<Vec<HistoryEntry>, String> {
     let conn = get_db()?;
 
     let limit = limit.unwrap_or(50).min(500);
     let offset = offset.unwrap_or(0);
 
-    let source_filter = source
-        .as_ref()
-        .map(|s| s != "all" && !s.is_empty())
-        .unwrap_or(false);
-
-    let search_filter = search
-        .as_ref()
-        .map(|s| !s.trim().is_empty())
-        .unwrap_or(false);
-
-    let search_pattern = search
-        .as_ref()
-        .map(|s| format!("%{}%", s.trim()))
-        .unwrap_or_default();
-
     let mut query = String::from(
         "SELECT id, url, title, thumbnail, filepath, filesize, duration, quality, format, source, downloaded_at, summary, time_range 
          FROM history WHERE 1=1"
     );
+    let mut query_params: Vec<Value> = Vec::new();
+    apply_history_filters(
+        &mut query,
+        &mut query_params,
+        source.as_deref(),
+        search.as_deref(),
+        filters.as_ref(),
+    );
 
-    if source_filter {
-        query.push_str(" AND source = ?");
+    match sort.unwrap_or_default() {
+        HistorySort::Recent => query.push_str(" ORDER BY downloaded_at DESC"),
+        HistorySort::Oldest => query.push_str(" ORDER BY downloaded_at ASC"),
+        HistorySort::Title => query.push_str(" ORDER BY LOWER(title) ASC"),
+        HistorySort::Size => query.push_str(" ORDER BY filesize IS NULL ASC, filesize DESC"),
     }
-    if search_filter {
-        query.push_str(" AND (title LIKE ? OR url LIKE ?)");
-    }
-    query.push_str(" ORDER BY downloaded_at DESC LIMIT ? OFFSET ?");
+    query.push_str(" LIMIT ? OFFSET ?");
+    query_params.push(Value::from(limit));
+    query_params.push(Value::from(offset));
 
     let mut stmt = conn
         .prepare(&query)
@@ -163,38 +327,11 @@ pub fn get_history_from_db(
         })
     }
 
-    let entries: Vec<HistoryEntry> = match (source_filter, search_filter) {
-        (true, true) => {
-            let s = source.as_ref().unwrap();
-            stmt.query_map(
-                params![s, &search_pattern, &search_pattern, limit, offset],
-                parse_row,
-            )
-            .map_err(|e| format!("Query failed: {}", e))?
-            .filter_map(|r| r.ok())
-            .collect()
-        }
-        (true, false) => {
-            let s = source.as_ref().unwrap();
-            stmt.query_map(params![s, limit, offset], parse_row)
-                .map_err(|e| format!("Query failed: {}", e))?
-                .filter_map(|r| r.ok())
-                .collect()
-        }
-        (false, true) => stmt
-            .query_map(
-                params![&search_pattern, &search_pattern, limit, offset],
-                parse_row,
-            )
-            .map_err(|e| format!("Query failed: {}", e))?
-            .filter_map(|r| r.ok())
-            .collect(),
-        (false, false) => stmt
-            .query_map(params![limit, offset], parse_row)
-            .map_err(|e| format!("Query failed: {}", e))?
-            .filter_map(|r| r.ok())
-            .collect(),
-    };
+    let entries: Vec<HistoryEntry> = stmt
+        .query_map(params_from_iter(query_params.iter()), parse_row)
+        .map_err(|e| format!("Query failed: {}", e))?
+        .filter_map(|r| r.ok())
+        .collect();
 
     Ok(entries)
 }
@@ -219,52 +356,23 @@ pub fn clear_history_from_db() -> Result<(), String> {
 pub fn get_history_count_from_db(
     source: Option<String>,
     search: Option<String>,
+    filters: Option<HistoryAdvancedFilters>,
 ) -> Result<i64, String> {
     let conn = get_db()?;
 
-    let source_filter = source
-        .as_ref()
-        .map(|s| s != "all" && !s.is_empty())
-        .unwrap_or(false);
-
-    let search_filter = search
-        .as_ref()
-        .map(|s| !s.trim().is_empty())
-        .unwrap_or(false);
-
-    let search_pattern = search
-        .as_ref()
-        .map(|s| format!("%{}%", s.trim()))
-        .unwrap_or_default();
-
     let mut query = String::from("SELECT COUNT(*) FROM history WHERE 1=1");
+    let mut query_params: Vec<Value> = Vec::new();
+    apply_history_filters(
+        &mut query,
+        &mut query_params,
+        source.as_deref(),
+        search.as_deref(),
+        filters.as_ref(),
+    );
 
-    if source_filter {
-        query.push_str(" AND source = ?");
-    }
-    if search_filter {
-        query.push_str(" AND (title LIKE ? OR url LIKE ?)");
-    }
-
-    let count: i64 = match (source_filter, search_filter) {
-        (true, true) => {
-            let s = source.as_ref().unwrap();
-            conn.query_row(
-                &query,
-                params![s, &search_pattern, &search_pattern],
-                |row| row.get(0),
-            )
-        }
-        (true, false) => {
-            let s = source.as_ref().unwrap();
-            conn.query_row(&query, params![s], |row| row.get(0))
-        }
-        (false, true) => conn.query_row(&query, params![&search_pattern, &search_pattern], |row| {
-            row.get(0)
-        }),
-        (false, false) => conn.query_row(&query, [], |row| row.get(0)),
-    }
-    .map_err(|e| format!("Failed to count history: {}", e))?;
+    let count: i64 = conn
+        .query_row(&query, params_from_iter(query_params.iter()), |row| row.get(0))
+        .map_err(|e| format!("Failed to count history: {}", e))?;
 
     Ok(count)
 }

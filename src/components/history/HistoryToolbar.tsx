@@ -1,9 +1,24 @@
-import { RefreshCw, Search, Trash2 } from 'lucide-react';
+import {
+  ArrowUpDown,
+  ChevronDown,
+  ChevronUp,
+  Filter,
+  RefreshCw,
+  Search,
+  Trash2,
+} from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useHistory } from '@/contexts/HistoryContext';
-import type { HistoryFilter } from '@/lib/types';
+import type { HistoryDatePreset, HistoryFilter, HistorySort } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 export function HistoryToolbar() {
@@ -15,11 +30,17 @@ export function HistoryToolbar() {
     totalCount,
     setFilter,
     setSearch,
+    advancedFilters,
+    setAdvancedFilters,
+    clearAdvancedFilters,
+    sort,
+    setSort,
     refreshHistory,
     clearHistory,
   } = useHistory();
 
   const [clearing, setClearing] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const filterOptions: { value: HistoryFilter; label: string }[] = [
     { value: 'all', label: t('library.toolbar.filterAll') },
@@ -31,6 +52,58 @@ export function HistoryToolbar() {
     { value: 'bilibili', label: t('library.toolbar.filterBilibili') },
     { value: 'other', label: t('library.toolbar.filterOther') },
   ];
+
+  const sortOptions: { value: HistorySort; label: string }[] = [
+    { value: 'recent', label: t('library.toolbar.sortRecent') },
+    { value: 'oldest', label: t('library.toolbar.sortOldest') },
+    { value: 'size', label: t('library.toolbar.sortSize') },
+    { value: 'title', label: t('library.toolbar.sortTitle') },
+  ];
+
+  const mediaTypeOptions: { value: 'all' | 'video' | 'audio'; label: string }[] = [
+    { value: 'all', label: t('library.toolbar.mediaAll') },
+    { value: 'video', label: t('library.toolbar.mediaVideo') },
+    { value: 'audio', label: t('library.toolbar.mediaAudio') },
+  ];
+
+  const datePresetOptions: { value: HistoryDatePreset; label: string }[] = [
+    { value: 'all', label: t('library.toolbar.dateAll') },
+    { value: 'today', label: t('library.toolbar.dateToday') },
+    { value: 'last7days', label: t('library.toolbar.dateLast7Days') },
+    { value: 'last30days', label: t('library.toolbar.dateLast30Days') },
+    { value: 'custom', label: t('library.toolbar.dateCustom') },
+  ];
+
+  const formatOptions = ['mp4', 'mkv', 'webm', 'mp3', 'm4a', 'opus'];
+  const qualityOptions = ['best', 'audio', '8k', '4k', '2k', '1080', '720', '480', '360'];
+
+  const activeAdvancedCount =
+    (advancedFilters.mediaType !== 'all' ? 1 : 0) +
+    (advancedFilters.datePreset !== 'all' ? 1 : 0) +
+    (advancedFilters.formats.length > 0 ? 1 : 0) +
+    (advancedFilters.qualities.length > 0 ? 1 : 0);
+
+  const toggleFormat = useCallback(
+    (format: string) => {
+      const current = advancedFilters.formats;
+      const next = current.includes(format)
+        ? current.filter((item) => item !== format)
+        : [...current, format];
+      setAdvancedFilters({ formats: next });
+    },
+    [advancedFilters.formats, setAdvancedFilters],
+  );
+
+  const toggleQuality = useCallback(
+    (quality: string) => {
+      const current = advancedFilters.qualities;
+      const next = current.includes(quality)
+        ? current.filter((item) => item !== quality)
+        : [...current, quality];
+      setAdvancedFilters({ qualities: next });
+    },
+    [advancedFilters.qualities, setAdvancedFilters],
+  );
 
   const handleClear = useCallback(async () => {
     if (!confirm(t('library.toolbar.clearConfirm'))) return;
@@ -84,6 +157,45 @@ export function HistoryToolbar() {
 
         {/* Actions */}
         <div className="flex items-center gap-2">
+          <Select value={sort} onValueChange={(value) => setSort(value as HistorySort)}>
+            <SelectTrigger
+              className={cn(
+                'h-8 w-auto min-w-[98px] max-w-[130px] rounded-lg px-2.5 gap-1.5',
+                'bg-background/70 border-border/50 text-xs text-muted-foreground hover:text-foreground',
+                '[&>span]:truncate',
+              )}
+            >
+              <ArrowUpDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {sortOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value} className="text-xs">
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen((prev) => !prev)}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium',
+              'bg-muted/50 hover:bg-muted transition-colors',
+              'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            <Filter className="w-4 h-4" />
+            {t('library.toolbar.advancedFilters')}
+            {activeAdvancedCount > 0 && (
+              <span className="px-1.5 py-0 rounded bg-primary/15 text-primary text-[10px]">
+                {activeAdvancedCount}
+              </span>
+            )}
+            {advancedOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          </button>
+
           <button
             type="button"
             onClick={() => refreshHistory()}
@@ -115,6 +227,158 @@ export function HistoryToolbar() {
           </button>
         </div>
       </div>
+
+      {advancedOpen && (
+        <div className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-3">
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                {t('library.toolbar.mediaType')}
+              </p>
+              <div className="inline-flex items-center rounded-md bg-muted/50 p-1">
+                {mediaTypeOptions.map((option) => (
+                  <button
+                    type="button"
+                    key={option.value}
+                    onClick={() => setAdvancedFilters({ mediaType: option.value })}
+                    className={cn(
+                      'px-2.5 py-1 text-xs rounded-sm transition-all',
+                      advancedFilters.mediaType === option.value
+                        ? 'bg-background shadow-sm text-foreground'
+                        : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                {t('library.toolbar.dateRange')}
+              </p>
+              <Select
+                value={advancedFilters.datePreset}
+                onValueChange={(value) => {
+                  const preset = value as HistoryDatePreset;
+                  if (preset === 'custom') {
+                    setAdvancedFilters({ datePreset: preset });
+                  } else {
+                    setAdvancedFilters({
+                      datePreset: preset,
+                      customDateFrom: null,
+                      customDateTo: null,
+                      downloadedAtFrom: null,
+                      downloadedAtTo: null,
+                    });
+                  }
+                }}
+              >
+                <SelectTrigger className="h-8 bg-background/70 border-border/50 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {datePresetOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value} className="text-xs">
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {advancedFilters.datePreset === 'custom' && (
+            <div className="grid gap-3 md:grid-cols-2">
+              <label htmlFor="history-date-from" className="space-y-1.5">
+                <span className="text-xs text-muted-foreground">
+                  {t('library.toolbar.dateFrom')}
+                </span>
+                <Input
+                  id="history-date-from"
+                  type="date"
+                  value={advancedFilters.customDateFrom || ''}
+                  onChange={(e) => setAdvancedFilters({ customDateFrom: e.target.value || null })}
+                  className="h-8 bg-background/70 border-border/50 text-xs"
+                />
+              </label>
+              <label htmlFor="history-date-to" className="space-y-1.5">
+                <span className="text-xs text-muted-foreground">{t('library.toolbar.dateTo')}</span>
+                <Input
+                  id="history-date-to"
+                  type="date"
+                  value={advancedFilters.customDateTo || ''}
+                  onChange={(e) => setAdvancedFilters({ customDateTo: e.target.value || null })}
+                  className="h-8 bg-background/70 border-border/50 text-xs"
+                />
+              </label>
+            </div>
+          )}
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                {t('library.toolbar.formats')}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {formatOptions.map((format) => (
+                  <button
+                    type="button"
+                    key={format}
+                    onClick={() => toggleFormat(format)}
+                    className={cn(
+                      'px-2 py-1 rounded-md text-xs border transition-colors uppercase',
+                      advancedFilters.formats.includes(format)
+                        ? 'bg-primary/10 border-primary/40 text-primary'
+                        : 'bg-background/60 border-border/50 text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {format}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                {t('library.toolbar.qualities')}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {qualityOptions.map((quality) => (
+                  <button
+                    type="button"
+                    key={quality}
+                    onClick={() => toggleQuality(quality)}
+                    className={cn(
+                      'px-2 py-1 rounded-md text-xs border transition-colors uppercase',
+                      advancedFilters.qualities.includes(quality)
+                        ? 'bg-primary/10 border-primary/40 text-primary'
+                        : 'bg-background/60 border-border/50 text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {quality}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">
+              {t('library.toolbar.activeFilters', { count: activeAdvancedCount })}
+            </span>
+            <button
+              type="button"
+              onClick={clearAdvancedFilters}
+              className="text-xs text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
+              disabled={activeAdvancedCount === 0}
+            >
+              {t('library.toolbar.clearFilters')}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

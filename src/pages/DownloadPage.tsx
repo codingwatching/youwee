@@ -54,6 +54,7 @@ export function DownloadPage({ onNavigateToSettings }: DownloadPageProps) {
     clearCookieError,
     retryFailedDownload,
     updateItemTimeRange,
+    renameCompletedItem,
   } = useDownload();
 
   const { ffmpegStatus } = useDependencies();
@@ -113,7 +114,6 @@ export function DownloadPage({ onNavigateToSettings }: DownloadPageProps) {
         <div className="flex-shrink-0 p-4 sm:p-6 space-y-3">
           {/* URL Input */}
           <UrlInput
-            disabled={isDownloading}
             isExpandingPlaylist={isExpandingPlaylist}
             onAddUrls={addFromText}
             onImportFile={importFromFile}
@@ -157,6 +157,7 @@ export function DownloadPage({ onNavigateToSettings }: DownloadPageProps) {
             currentPlaylistInfo={currentPlaylistInfo}
             onRemove={removeItem}
             onUpdateTimeRange={updateItemTimeRange}
+            onRename={renameCompletedItem}
             onClearCompleted={clearCompleted}
           />
         </div>

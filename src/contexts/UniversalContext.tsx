@@ -184,6 +184,22 @@ function loadSponsorBlockArgs(): { remove: string | null; mark: string | null } 
   return { remove: null, mark: null };
 }
 
+function loadAria2Settings(): { useAria2: boolean; aria2Args: string } {
+  try {
+    const saved = localStorage.getItem(DOWNLOAD_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return {
+        useAria2: parsed.useAria2 === true,
+        aria2Args: typeof parsed.aria2Args === 'string' ? parsed.aria2Args : '',
+      };
+    }
+  } catch (e) {
+    console.error('Failed to load aria2 settings:', e);
+  }
+  return { useAria2: false, aria2Args: '' };
+}
+
 // Save settings to localStorage
 function saveSettings(settings: UniversalSettings) {
   try {
@@ -240,9 +256,16 @@ interface UniversalContextType {
   retryFailedDownload: (itemId: string) => void;
   // Per-item time range
   updateItemTimeRange: (id: string, start?: string, end?: string) => void;
+  // Rename completed file
+  renameCompletedItem: (id: string, newName: string) => Promise<void>;
 }
 
 const UniversalContext = createContext<UniversalContextType | null>(null);
+
+interface RenameDownloadedFileResult {
+  newFilepath: string;
+  newTitle: string;
+}
 
 export function UniversalProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<DownloadItem[]>([]);
@@ -394,6 +417,8 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
                       completedFilesize: progress.filesize,
                       completedResolution: progress.resolution,
                       completedFormat: progress.format_ext,
+                      completedFilepath: progress.filepath,
+                      completedHistoryId: progress.history_id,
                     }
                   : {}),
               }
@@ -455,6 +480,7 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
 
       const currentItems = itemsRef.current;
       const currentSettings = settingsRef.current;
+      const aria2Settings = loadAria2Settings();
 
       // Snapshot current settings for these items
       const settingsSnapshot: ItemUniversalSettings = {
@@ -462,6 +488,8 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
         format: currentSettings.format,
         outputPath: currentSettings.outputPath,
         audioBitrate: currentSettings.audioBitrate,
+        useAria2: aria2Settings.useAria2,
+        aria2Args: aria2Settings.aria2Args,
         autoRetryEnabled: currentSettings.autoRetryEnabled,
         autoRetryMaxAttempts: currentSettings.autoRetryMaxAttempts,
         autoRetryDelaySeconds: currentSettings.autoRetryDelaySeconds,
@@ -521,12 +549,15 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
       const videoQuality =
         options?.quality && options.quality !== 'audio' ? options.quality : 'best';
       const audioBitrate = options?.audioBitrate === '128' ? '128' : 'auto';
+      const aria2Settings = loadAria2Settings();
 
       const settingsSnapshot: ItemUniversalSettings = {
         quality: mediaType === 'audio' ? 'audio' : videoQuality,
         format: mediaType === 'audio' ? 'mp3' : 'mp4',
         outputPath: currentSettings.outputPath,
         audioBitrate: mediaType === 'audio' ? audioBitrate : currentSettings.audioBitrate,
+        useAria2: aria2Settings.useAria2,
+        aria2Args: aria2Settings.aria2Args,
         autoRetryEnabled: currentSettings.autoRetryEnabled,
         autoRetryMaxAttempts: currentSettings.autoRetryMaxAttempts,
         autoRetryDelaySeconds: currentSettings.autoRetryDelaySeconds,
@@ -619,6 +650,47 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const renameCompletedItem = useCallback(async (id: string, newName: string) => {
+    const item = itemsRef.current.find((i) => i.id === id);
+    if (!item || item.status !== 'completed') {
+      throw new Error('Only completed items can be renamed');
+    }
+
+    const filepath = item.completedFilepath;
+    if (!filepath) {
+      throw new Error('File path is not available for this item');
+    }
+
+    try {
+      const result = await invoke<RenameDownloadedFileResult>('rename_downloaded_file', {
+        filepath,
+        newName,
+        historyId: item.completedHistoryId || null,
+      });
+      if (item.completedHistoryId) {
+        await invoke('sync_history_renamed_entry', {
+          id: item.completedHistoryId,
+          filepath: result.newFilepath,
+          title: result.newTitle,
+        });
+      }
+
+      setItems((currentItems) =>
+        currentItems.map((currentItem) =>
+          currentItem.id === id
+            ? {
+                ...currentItem,
+                title: result.newTitle,
+                completedFilepath: result.newFilepath,
+              }
+            : currentItem,
+        ),
+      );
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : String(error));
+    }
+  }, []);
+
   const clearAll = useCallback(() => {
     setItems([]);
   }, []);
@@ -628,12 +700,10 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const startDownload = useCallback(async () => {
-    const currentItems = itemsRef.current;
-    const itemsToDownload = currentItems.filter(
-      (item) => item.status === 'pending' || item.status === 'error',
-    );
+    const hasPendingItems = () =>
+      itemsRef.current.some((item) => item.status === 'pending' || item.status === 'error');
 
-    if (itemsToDownload.length === 0) return;
+    if (!hasPendingItems()) return;
 
     setIsDownloading(true);
     isDownloadingRef.current = true;
@@ -656,7 +726,7 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
       }),
     );
 
-    const concurrentLimit = settings.concurrentDownloads || 1;
+    const concurrentLimit = Math.max(1, settings.concurrentDownloads || 1);
 
     const downloadItem = async (item: DownloadItem) => {
       if (!isDownloadingRef.current) return;
@@ -669,6 +739,7 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
       const proxySettings = loadProxySettings();
       const embedSettings = loadEmbedSettings();
       const sponsorBlockArgs = loadSponsorBlockArgs();
+      const aria2Settings = loadAria2Settings();
 
       const autoRetryEnabled = itemSettings?.autoRetryEnabled ?? settings.autoRetryEnabled;
       const maxRetries = clampAutoRetryMaxAttempts(
@@ -722,6 +793,9 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
             speedLimit: settings.speedLimitEnabled
               ? `${settings.speedLimitValue}${settings.speedLimitUnit}`
               : null,
+            // External downloader settings (from item snapshot, fallback to global settings)
+            useAria2: itemSettings?.useAria2 ?? aria2Settings.useAria2,
+            aria2Args: itemSettings?.aria2Args ?? aria2Settings.aria2Args,
             // SponsorBlock settings
             sponsorblockRemove: sponsorBlockArgs.remove,
             sponsorblockMark: sponsorBlockArgs.mark,
@@ -814,24 +888,56 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
     };
 
     try {
-      const queue = [...itemsToDownload];
-      const activeDownloads: Promise<void>[] = [];
+      const claimedIds = new Set<string>();
+      const processedIds = new Set<string>();
+      let activeCount = 0;
+
+      const claimNextItem = (): DownloadItem | null => {
+        const next = itemsRef.current.find(
+          (candidate) =>
+            (candidate.status === 'pending' || candidate.status === 'error') &&
+            !claimedIds.has(candidate.id) &&
+            !processedIds.has(candidate.id),
+        );
+        if (!next) return null;
+        claimedIds.add(next.id);
+        return next;
+      };
+
+      const hasUnclaimedPendingItems = () =>
+        itemsRef.current.some(
+          (candidate) =>
+            (candidate.status === 'pending' || candidate.status === 'error') &&
+            !claimedIds.has(candidate.id) &&
+            !processedIds.has(candidate.id),
+        );
 
       const processNext = async (): Promise<void> => {
-        while (isDownloadingRef.current && queue.length > 0) {
-          const item = queue.shift();
-          if (!item) break;
-          await downloadItem(item);
+        while (isDownloadingRef.current) {
+          const item = claimNextItem();
+          if (!item) {
+            if (activeCount === 0 && !hasUnclaimedPendingItems()) {
+              return;
+            }
+            await new Promise<void>((resolve) => {
+              window.setTimeout(resolve, 200);
+            });
+            continue;
+          }
+
+          activeCount += 1;
+          try {
+            await downloadItem(item);
+          } finally {
+            activeCount -= 1;
+            claimedIds.delete(item.id);
+            processedIds.add(item.id);
+          }
         }
       };
 
-      const workerCount = Math.min(concurrentLimit, itemsToDownload.length);
-
-      for (let i = 0; i < workerCount; i++) {
-        activeDownloads.push(processNext());
-      }
-
-      await Promise.all(activeDownloads);
+      const workers = Array.from({ length: concurrentLimit }, () => processNext());
+      await Promise.all(workers);
     } finally {
       setIsDownloading(false);
       isDownloadingRef.current = false;
@@ -960,6 +1066,7 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
     retryFailedDownload,
     // Per-item time range
     updateItemTimeRange,
+    renameCompletedItem,
   };
 
   return <UniversalContext.Provider value={value}>{children}</UniversalContext.Provider>;
