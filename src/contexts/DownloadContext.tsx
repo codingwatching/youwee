@@ -884,13 +884,10 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const startDownload = useCallback(async () => {
-    const currentItems = itemsRef.current;
-    // Only download items that are pending or had errors (not completed ones)
-    const itemsToDownload = currentItems.filter(
-      (item) => item.status === 'pending' || item.status === 'error',
-    );
+    const hasPendingItems = () =>
+      itemsRef.current.some((item) => item.status === 'pending' || item.status === 'error');
 
-    if (itemsToDownload.length === 0) return;
+    if (!hasPendingItems()) return;
 
     setIsDownloading(true);
     isDownloadingRef.current = true;
@@ -915,7 +912,7 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
       }),
     );
 
-    const concurrentLimit = settings.concurrentDownloads || 1;
+    const concurrentLimit = Math.max(1, settings.concurrentDownloads || 1);
 
     // Download single item
     const downloadItem = async (item: DownloadItem) => {
@@ -1080,27 +1077,56 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     };
 
     try {
-      // Process items with concurrency limit
-      const queue = [...itemsToDownload];
-      const activeDownloads: Promise<void>[] = [];
+      const claimedIds = new Set<string>();
+      const processedIds = new Set<string>();
+      let activeCount = 0;
+
+      const claimNextItem = (): DownloadItem | null => {
+        const next = itemsRef.current.find(
+          (candidate) =>
+            (candidate.status === 'pending' || candidate.status === 'error') &&
+            !claimedIds.has(candidate.id) &&
+            !processedIds.has(candidate.id),
+        );
+        if (!next) return null;
+        claimedIds.add(next.id);
+        return next;
+      };
+
+      const hasUnclaimedPendingItems = () =>
+        itemsRef.current.some(
+          (candidate) =>
+            (candidate.status === 'pending' || candidate.status === 'error') &&
+            !claimedIds.has(candidate.id) &&
+            !processedIds.has(candidate.id),
+        );
 
       const processNext = async (): Promise<void> => {
-        while (isDownloadingRef.current && queue.length > 0) {
-          const item = queue.shift();
-          if (!item) break;
-          await downloadItem(item);
+        while (isDownloadingRef.current) {
+          const item = claimNextItem();
+          if (!item) {
+            if (activeCount === 0 && !hasUnclaimedPendingItems()) {
+              return;
+            }
+            await new Promise<void>((resolve) => {
+              window.setTimeout(resolve, 200);
+            });
+            continue;
+          }
+
+          activeCount += 1;
+          try {
+            await downloadItem(item);
+          } finally {
+            activeCount -= 1;
+            claimedIds.delete(item.id);
+            processedIds.add(item.id);
+          }
         }
       };
 
-      // Calculate worker count BEFORE starting (queue.length changes during shift)
-      const workerCount = Math.min(concurrentLimit, itemsToDownload.length);
-
-      // Start concurrent workers
-      for (let i = 0; i < workerCount; i++) {
-        activeDownloads.push(processNext());
-      }
-
-      await Promise.all(activeDownloads);
+      const workers = Array.from({ length: concurrentLimit }, () => processNext());
+      await Promise.all(workers);
     } finally {
       setIsDownloading(false);
       isDownloadingRef.current = false;

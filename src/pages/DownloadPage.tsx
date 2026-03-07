@@ -114,7 +114,6 @@ export function DownloadPage({ onNavigateToSettings }: DownloadPageProps) {
         <div className="flex-shrink-0 p-4 sm:p-6 space-y-3">
           {/* URL Input */}
           <UrlInput
-            disabled={isDownloading}
             isExpandingPlaylist={isExpandingPlaylist}
             onAddUrls={addFromText}
             onImportFile={importFromFile}
