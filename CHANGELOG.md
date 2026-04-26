@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+## [0.13.1] - 2026-04-26
+
+### Added
 - **LM Studio AI provider** - Added LM Studio as a local OpenAI-compatible AI provider with a configurable local endpoint and no API key requirement
 
 ### Changed
