@@ -28,6 +28,7 @@ const WHISPER_LANGUAGE_OPTIONS = [
   { value: 'ja', label: 'Japanese' },
   { value: 'ko', label: 'Korean' },
   { value: 'zh', label: 'Chinese' },
+  { value: 'th', label: 'Thai' },
   { value: 'fr', label: 'French' },
   { value: 'de', label: 'German' },
   { value: 'es', label: 'Spanish' },

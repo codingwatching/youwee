@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **LM Studio AI provider** - Added LM Studio as a local OpenAI-compatible AI provider with a configurable local endpoint and no API key requirement
 - **Channel video pagination with Load More** - Channels now load the first 100 videos by default and let you fetch additional batches on demand from the browse and detail views
+- **Thai language support** - Added full Thai localization across the app, including UI screens, settings, subtitle tools, download flows, and language selectors
 
 ### Changed
 

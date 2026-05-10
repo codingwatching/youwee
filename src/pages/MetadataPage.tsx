@@ -366,6 +366,7 @@ export function MetadataPage() {
                         'ko',
                         'zh-Hans',
                         'zh-Hant',
+                        'th',
                         'es',
                         'fr',
                         'de',

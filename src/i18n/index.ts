@@ -39,6 +39,15 @@ import ruPages from './locales/ru/pages.json';
 import ruSettings from './locales/ru/settings.json';
 import ruSubtitles from './locales/ru/subtitles.json';
 import ruUniversal from './locales/ru/universal.json';
+import thChannels from './locales/th/channels.json';
+import thCommon from './locales/th/common.json';
+import thDownload from './locales/th/download.json';
+import thGallery from './locales/th/gallery.json';
+import thMetadata from './locales/th/metadata.json';
+import thPages from './locales/th/pages.json';
+import thSettings from './locales/th/settings.json';
+import thSubtitles from './locales/th/subtitles.json';
+import thUniversal from './locales/th/universal.json';
 import viChannels from './locales/vi/channels.json';
 import viCommon from './locales/vi/common.json';
 import viDownload from './locales/vi/download.json';
@@ -124,6 +133,17 @@ const resources = {
     pages: ruPages,
     settings: ruSettings,
     subtitles: ruSubtitles,
+  },
+  th: {
+    common: thCommon,
+    channels: thChannels,
+    download: thDownload,
+    gallery: thGallery,
+    metadata: thMetadata,
+    universal: thUniversal,
+    pages: thPages,
+    settings: thSettings,
+    subtitles: thSubtitles,
   },
 };
 

@@ -110,9 +110,11 @@ export function HistoryDialog({
     ? 'vi-VN'
     : i18n.language.startsWith('fr')
       ? 'fr-FR'
-      : i18n.language.startsWith('zh')
-        ? 'zh-CN'
-        : 'en-US';
+      : i18n.language.startsWith('th')
+        ? 'th-TH'
+        : i18n.language.startsWith('zh')
+          ? 'zh-CN'
+          : 'en-US';
 
   const formatDateKey = useCallback((date: Date) => {
     const year = date.getFullYear();

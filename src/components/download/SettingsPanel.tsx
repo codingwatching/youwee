@@ -93,6 +93,7 @@ const commonLanguageCodes = [
   'ko',
   'zh-Hans',
   'zh-Hant',
+  'th',
   'es',
   'fr',
   'de',
