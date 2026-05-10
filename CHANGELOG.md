@@ -13,10 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-## [0.13.1] - 2026-04-26
+## [0.13.2] - 2026-05-10
 
 ### Added
-- **LM Studio AI provider** - Added LM Studio as a local OpenAI-compatible AI provider with a configurable local endpoint and no API key requirement
 - **Channel video pagination with Load More** - Channels now load the first 100 videos by default and let you fetch additional batches on demand from the browse and detail views
 - **Thai language support** - Added full Thai localization across the app, including UI screens, settings, subtitle tools, download flows, and language selectors
 - **Arabic language support** - Added full Arabic localization across the app, including UI screens, settings, subtitle tools, download flows, plus RTL document direction handling
@@ -24,9 +23,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
-- **4K WebM post-processing** - Fixed WebM downloads selecting MP4/H.264-compatible streams that could make FFmpeg fail during post-processing conversion
 - **Channel browse capped at 50 videos** - Fixed channel and playlist browsing incorrectly stopping at 50 videos when more items were available
 - **Cookie error dialog classification** - Fixed fresh-login cookie requirements being shown as a browser DB lock error, and now route DB-lock vs authenticated-cookie issues to different dialogs
+
+## [0.13.1] - 2026-04-26
+
+### Added
+- **LM Studio AI provider** - Added LM Studio as a local OpenAI-compatible AI provider with a configurable local endpoint and no API key requirement
+
+### Changed
+
+### Fixed
+- **4K WebM post-processing** - Fixed WebM downloads selecting MP4/H.264-compatible streams that could make FFmpeg fail during post-processing conversion
 
 ## [0.13.0] - 2026-04-15
 
