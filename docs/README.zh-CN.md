@@ -2,11 +2,13 @@
 
 <div align="center">
 
-  [![English](https://img.shields.io/badge/lang-English-blue)](../README.md)
-  [![Tiếng Việt](https://img.shields.io/badge/lang-Tiếng_Việt-red)](README.vi.md)
-  [![简体中文](https://img.shields.io/badge/lang-简体中文-green)](README.zh-CN.md)
-  [![Français](https://img.shields.io/badge/lang-Français-0055A4)](README.fr.md)
-  [![Русский](https://img.shields.io/badge/lang-Русский-1F5FBF)](README.ru.md)
+  ![English](https://img.shields.io/badge/lang-English-blue)
+  ![Tiếng Việt](https://img.shields.io/badge/lang-Tiếng_Việt-red)
+  ![简体中文](https://img.shields.io/badge/lang-简体中文-green)
+  ![Français](https://img.shields.io/badge/lang-Français-0055A4)
+  ![Русский](https://img.shields.io/badge/lang-Русский-1F5FBF)
+  ![العربية](https://img.shields.io/badge/lang-%D8%A7%D9%84%D8%B9%D8%B1%D8%A8%D9%8A%D8%A9-0A8F6A)
+  ![ไทย](https://img.shields.io/badge/lang-%E0%B9%84%E0%B8%97%E0%B8%A2-7B1FA2)
   [![Vote for next language](https://img.shields.io/badge/Vote-下一个语言-orange?logo=github)](https://github.com/vanloctech/youwee/discussions/18)
 
   <img src="../src-tauri/icons/icon.png" alt="Youwee Logo" width="128" height="128">
@@ -179,7 +181,3 @@ bun run tauri build
     src="https://api.star-history.com/svg?repos=vanloctech/youwee&type=Date"
   />
 </picture>
-
-<div align="center">
-  Made with ❤️ by 越南
-</div>

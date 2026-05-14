@@ -13,6 +13,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.13.3] - 2026-05-14
+
+### Added
+
+### Changed
+
+### Fixed
+- **Followed channel video fetching loop** - Fixed a pagination regression that could leave followed channels stuck in a continuous fetching cycle and prevent loading channel video lists reliably
+- **Channel fetch progress race** - Channel browse progress now ignores stale events from previous requests when switching channels or refetching quickly
+- **Load More inflating new-video counts** - Older videos loaded from additional channel pages are no longer saved as new items, preventing incorrect new-video badges and tray counts
+
 ## [0.13.2] - 2026-05-10
 
 ### Added

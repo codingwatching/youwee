@@ -38,6 +38,7 @@ pub async fn get_channel_videos(
     url: String,
     limit: Option<u32>,
     start: Option<u32>,
+    request_id: Option<u32>,
     cookie_mode: Option<String>,
     cookie_browser: Option<String>,
     cookie_browser_profile: Option<String>,
@@ -58,7 +59,7 @@ pub async fn get_channel_videos(
             tokio::time::sleep(std::time::Duration::from_secs(2)).await;
         }
 
-        match fetch_channel_videos_once(&app, &url, limit, start, is_youtube,
+        match fetch_channel_videos_once(&app, &url, limit, start, request_id, is_youtube,
             cookie_mode.as_deref(), cookie_browser.as_deref(),
             cookie_browser_profile.as_deref(), cookie_file_path.as_deref(),
             proxy_url.as_deref(),
@@ -81,6 +82,7 @@ async fn fetch_channel_videos_once(
     url: &str,
     limit: Option<u32>,
     start: Option<u32>,
+    request_id: Option<u32>,
     is_youtube: bool,
     cookie_mode: Option<&str>,
     cookie_browser: Option<&str>,
@@ -165,6 +167,7 @@ async fn fetch_channel_videos_once(
                             if new_count > fetched_count {
                                 fetched_count = new_count;
                                 let _ = app.emit("channel-fetch-progress", serde_json::json!({
+                                    "requestId": request_id,
                                     "fetched": fetched_count,
                                     "limit": limit
                                 }));
@@ -239,6 +242,7 @@ async fn fetch_channel_videos_once(
 
     let fetched_count = output.lines().filter(|line| !line.trim().is_empty()).count() as u32;
     let _ = app.emit("channel-fetch-progress", serde_json::json!({
+        "requestId": request_id,
         "fetched": fetched_count,
         "limit": limit
     }));
