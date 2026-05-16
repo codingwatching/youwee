@@ -1550,6 +1550,8 @@ fn emit_plugin_runtime_output(
     stream: &str,
     bytes: &[u8],
     log_url: Option<&str>,
+    media_title: Option<&str>,
+    filename: Option<&str>,
 ) {
     if bytes.is_empty() {
         return;
@@ -1585,6 +1587,9 @@ fn emit_plugin_runtime_output(
             plugin_name: Some(plugin_name.to_string()),
             stream: stream.to_string(),
             chunk: trimmed.to_string(),
+            media_title: media_title.map(str::to_string),
+            filename: filename.map(str::to_string),
+            media_url: log_url.map(str::to_string),
         },
     )
     .ok();
@@ -1598,6 +1603,8 @@ async fn capture_process_stream<R>(
     run_id: Option<String>,
     mut reader: R,
     log_url: Option<String>,
+    media_title: Option<String>,
+    filename: Option<String>,
 ) -> Vec<u8>
 where
     R: AsyncRead + Unpin + Send + 'static,
@@ -1617,6 +1624,8 @@ where
                     stream_name,
                     &buffer[..size],
                     log_url.as_deref(),
+                    media_title.as_deref(),
+                    filename.as_deref(),
                 );
             }
             Err(_) => break,
@@ -1692,6 +1701,8 @@ async fn capture_process_stream_err(
     run_id: Option<String>,
     reader: tokio::process::ChildStderr,
     log_url: Option<String>,
+    media_title: Option<String>,
+    filename: Option<String>,
 ) -> Vec<u8> {
     capture_process_stream(
         app,
@@ -1701,6 +1712,8 @@ async fn capture_process_stream_err(
         run_id,
         reader,
         log_url,
+        media_title,
+        filename,
     )
     .await
 }
@@ -1917,6 +1930,8 @@ async fn execute_plugin(
     let plugin_id = plugin.manifest.plugin_id.clone();
     let plugin_name = plugin.manifest.name.clone();
     let log_url = payload.url.clone();
+    let media_title = payload.title.clone();
+    let filename = Some(payload.filename.clone());
     let log_run_id = Some(run_id.to_string());
     let stdout_task = tokio::spawn(capture_process_stream(
         app.clone(),
@@ -1926,6 +1941,8 @@ async fn execute_plugin(
         log_run_id.clone(),
         stdout,
         Some(log_url.clone()),
+        media_title.clone(),
+        filename.clone(),
     ));
     let stderr_task = tokio::spawn(capture_process_stream_err(
         app.clone(),
@@ -1935,6 +1952,8 @@ async fn execute_plugin(
         log_run_id,
         stderr,
         Some(log_url),
+        media_title.clone(),
+        filename.clone(),
     ));
 
     let status = match tokio::time::timeout(
@@ -2085,6 +2104,9 @@ pub async fn run_post_download_plugins(
                     plugin.manifest.runtime.language.as_str(),
                     plugin.manifest.timeout_sec
                 )),
+                media_title: payload.title.clone(),
+                filename: Some(payload.filename.clone()),
+                media_url: Some(payload.url.clone()),
             },
         )
         .ok();
@@ -2123,6 +2145,9 @@ pub async fn run_post_download_plugins(
                             result.stdout.as_ref(),
                             result.stderr.as_ref(),
                         )),
+                        media_title: payload.title.clone(),
+                        filename: Some(payload.filename.clone()),
+                        media_url: Some(payload.url.clone()),
                     },
                 )
                 .ok();
@@ -2162,6 +2187,9 @@ pub async fn run_post_download_plugins(
                         status: "error".to_string(),
                         message: Some(error.clone()),
                         details: shorten_for_event(Some(error.clone())),
+                        media_title: payload.title.clone(),
+                        filename: Some(payload.filename.clone()),
+                        media_url: Some(payload.url.clone()),
                     },
                 )
                 .ok();

@@ -3,6 +3,9 @@ export interface PluginToastState {
   pluginId: string;
   runId?: string;
   pluginName?: string;
+  mediaTitle?: string;
+  filename?: string;
+  mediaUrl?: string;
   status: string;
   message: string;
 }
@@ -48,6 +51,9 @@ export function appendPluginToastOutput(
     pluginName?: string;
     runId?: string;
     chunk: string;
+    mediaTitle?: string;
+    filename?: string;
+    mediaUrl?: string;
   },
 ): PluginToastState[] {
   const normalizedChunk = formatPluginToastText(input.chunk).trimEnd();
@@ -72,6 +78,9 @@ export function appendPluginToastOutput(
           ...toast,
           runId: toast.runId ?? activeRunId,
           pluginName: input.pluginName ?? toast.pluginName,
+          mediaTitle: input.mediaTitle ?? toast.mediaTitle,
+          filename: input.filename ?? toast.filename,
+          mediaUrl: input.mediaUrl ?? toast.mediaUrl,
           message: normalizedChunk,
         };
       }
@@ -85,6 +94,9 @@ export function appendPluginToastOutput(
       pluginId: input.pluginId,
       runId: activeRunId,
       pluginName: input.pluginName,
+      mediaTitle: input.mediaTitle,
+      filename: input.filename,
+      mediaUrl: input.mediaUrl,
       status: 'running',
       message: normalizedChunk,
     },
@@ -99,6 +111,9 @@ export function upsertPluginToast(
     pluginId: string;
     runId?: string;
     pluginName?: string;
+    mediaTitle?: string;
+    filename?: string;
+    mediaUrl?: string;
     status: string;
     message: string;
   },
@@ -114,6 +129,9 @@ export function upsertPluginToast(
       pluginId: input.pluginId,
       runId: normalizedRunId,
       pluginName: input.pluginName,
+      mediaTitle: input.mediaTitle,
+      filename: input.filename,
+      mediaUrl: input.mediaUrl,
       status: input.status,
       message: input.message,
     },

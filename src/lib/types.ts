@@ -311,6 +311,9 @@ export interface PluginExecutionStatusEvent {
   status: string;
   message?: string | null;
   details?: string | null;
+  mediaTitle?: string | null;
+  filename?: string | null;
+  mediaUrl?: string | null;
 }
 
 export interface PluginExecutionOutputEvent {
@@ -319,6 +322,9 @@ export interface PluginExecutionOutputEvent {
   pluginName?: string | null;
   stream: 'stdout' | 'stderr';
   chunk: string;
+  mediaTitle?: string | null;
+  filename?: string | null;
+  mediaUrl?: string | null;
 }
 
 export interface VideoInfo {

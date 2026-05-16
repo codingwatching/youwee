@@ -236,6 +236,12 @@ pub struct PluginExecutionStatusEvent {
     pub message: Option<String>,
     #[serde(default)]
     pub details: Option<String>,
+    #[serde(default)]
+    pub media_title: Option<String>,
+    #[serde(default)]
+    pub filename: Option<String>,
+    #[serde(default)]
+    pub media_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -269,6 +275,12 @@ pub struct PluginExecutionOutputEvent {
     #[serde(rename = "stream")]
     pub stream: String,
     pub chunk: String,
+    #[serde(default)]
+    pub media_title: Option<String>,
+    #[serde(default)]
+    pub filename: Option<String>,
+    #[serde(default)]
+    pub media_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
