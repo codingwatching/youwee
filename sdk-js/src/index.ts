@@ -90,6 +90,8 @@ export type {
   PluginHttpBridge,
   PluginHttpRequestOptions,
   PluginHttpResponse,
+  PluginI18nBridge,
+  PluginI18nManifestSpec,
   PluginLogger,
   PluginManifest,
   PluginMeta,

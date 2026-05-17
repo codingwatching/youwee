@@ -74,7 +74,7 @@ async function notify(title: string, body: string) {
 }
 
 function AppContent() {
-  const { t } = useTranslation('settings');
+  const { t, i18n } = useTranslation('settings');
   const [currentPage, setCurrentPage] = useState<Page>('youtube');
   const [settingsInitialSection, setSettingsInitialSection] =
     useState<SettingsSectionId>('general');
@@ -96,6 +96,22 @@ function AppContent() {
   const toastTimeoutRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const pluginRuntimeNameRef = useRef(new Map<string, string>());
   const [pluginToasts, setPluginToasts] = useState<PluginToastState[]>([]);
+
+  useEffect(() => {
+    const locale = i18n.resolvedLanguage || i18n.language || 'en';
+    const direction =
+      typeof document !== 'undefined' ? document.documentElement.dir || 'ltr' : 'ltr';
+
+    void invoke('set_plugin_runtime_locale', {
+      input: {
+        locale,
+        fallbackLocale: 'en',
+        direction,
+      },
+    }).catch((error) => {
+      console.error('Failed to sync plugin runtime locale:', error);
+    });
+  }, [i18n.language, i18n.resolvedLanguage]);
 
   const appendOutputToToast = useCallback(
     (

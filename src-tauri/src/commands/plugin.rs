@@ -9,10 +9,11 @@ use crate::services::{
     install_plugin_internal, list_plugins_internal, list_runtime_providers_internal,
     open_plugin_directory_internal, set_default_provider_for_language_internal,
     set_plugin_provider_internal, set_plugin_timeout_internal, set_plugin_trust_internal,
+    set_plugin_runtime_locale_internal,
     update_plugin_env_values_internal, update_plugin_state_internal,
     update_plugin_trigger_workflow_internal,
     CreatePluginScaffoldInput, InstallPluginSourceInput, PluginEnvValuesInput,
-    PluginPermissionApprovalInput,
+    PluginPermissionApprovalInput, PluginRuntimeLocaleInput,
 };
 use crate::types::{
     PluginPackageInspection, PluginProvider, PluginRuntimeLanguage, PluginSummary,
@@ -173,4 +174,12 @@ pub fn set_default_provider_for_language(
     provider: PluginProvider,
 ) -> Result<(), String> {
     set_default_provider_for_language_internal(&app, language, provider)
+}
+
+#[tauri::command]
+pub fn set_plugin_runtime_locale(
+    app: AppHandle,
+    input: PluginRuntimeLocaleInput,
+) -> Result<(), String> {
+    set_plugin_runtime_locale_internal(&app, input)
 }

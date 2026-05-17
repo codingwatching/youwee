@@ -84,6 +84,17 @@ pub struct PluginCompatibilitySpec {
     pub sdk_version: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginI18nSpec {
+    #[serde(default)]
+    pub default_locale: Option<String>,
+    #[serde(default)]
+    pub supported_locales: Vec<String>,
+    #[serde(default)]
+    pub directory: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PluginManifest {
@@ -117,6 +128,8 @@ pub struct PluginManifest {
     pub checksum: Option<String>,
     #[serde(default)]
     pub published_at: Option<String>,
+    #[serde(default)]
+    pub i18n: Option<PluginI18nSpec>,
 }
 
 fn default_triggers() -> Vec<String> {

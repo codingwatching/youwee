@@ -236,6 +236,12 @@ export interface PluginCompatibilitySpec {
   sdkVersion?: string | null;
 }
 
+export interface PluginI18nSpec {
+  defaultLocale?: string | null;
+  supportedLocales: string[];
+  directory?: string | null;
+}
+
 export interface PluginManifest {
   id: string;
   slug: string;
@@ -254,6 +260,7 @@ export interface PluginManifest {
   readme?: string | null;
   checksum?: string | null;
   publishedAt?: string | null;
+  i18n?: PluginI18nSpec | null;
 }
 
 export interface PluginPackageSource {

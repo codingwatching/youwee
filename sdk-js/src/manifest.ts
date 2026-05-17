@@ -112,6 +112,24 @@ export function getManifestValidationErrors(manifest: PluginManifest): string[] 
     }
   }
 
+  if (manifest.i18n?.defaultLocale) {
+    if (
+      manifest.i18n.supportedLocales?.length &&
+      !manifest.i18n.supportedLocales.includes(manifest.i18n.defaultLocale)
+    ) {
+      errors.push('i18n.defaultLocale must be included in i18n.supportedLocales.');
+    }
+  }
+
+  if (manifest.i18n?.directory) {
+    const directory = manifest.i18n.directory.trim();
+    if (!directory) {
+      errors.push('i18n.directory cannot be empty.');
+    } else if (directory.startsWith('/') || directory.split(/[\\/]/).includes('..')) {
+      errors.push('i18n.directory must stay inside the plugin package.');
+    }
+  }
+
   if (manifest.compatibility?.appVersion) {
     try {
       satisfiesVersionRange('0.0.0', manifest.compatibility.appVersion);

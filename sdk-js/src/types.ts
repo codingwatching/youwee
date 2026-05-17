@@ -237,9 +237,28 @@ export interface PluginSdkBridge {
   assertAppVersion(range: string): void;
 }
 
+export interface PluginI18nManifestSpec {
+  defaultLocale?: string;
+  supportedLocales?: string[];
+  directory?: string;
+}
+
+export interface PluginI18nBridge {
+  locale: string;
+  fallbackLocale: string;
+  defaultLocale: string;
+  supportedLocales: string[];
+  t(key: string, params?: Record<string, unknown>): string;
+  has(key: string, locale?: string): boolean;
+  raw(key: string, locale?: string): string | null;
+}
+
 export interface YouweeBridge {
   app: {
     version: string | null;
+    locale: string | null;
+    fallbackLocale: string | null;
+    direction: string | null;
   };
   sdk: PluginSdkBridge;
   plugin: {
@@ -300,6 +319,7 @@ export interface PluginContext<TPayload extends PluginPayload = PluginPayload> {
     has(name: string): boolean;
   };
   log: PluginLogger;
+  i18n: PluginI18nBridge;
   youwee: YouweeBridge;
   ok(
     message: string,
@@ -368,6 +388,7 @@ export interface PluginManifest {
   readme?: string;
   checksum?: string;
   publishedAt?: string;
+  i18n?: PluginI18nManifestSpec;
   compatibility?: {
     appVersion?: string;
     sdkVersion?: string;

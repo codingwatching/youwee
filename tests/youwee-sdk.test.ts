@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { spawn } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createAIBridge, parseJsonFromModelOutput } from '../sdk-js/src/ai';
@@ -116,6 +116,46 @@ describe('youwee-sdk createContext', () => {
     expect(await ctx.youwee.fs.readText(textFile)).toBe('hello');
 
     rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  test('loads plugin locale files and falls back correctly', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'youwee-sdk-i18n-'));
+    const localesDir = join(tempDir, 'locales');
+    const originalCwd = process.cwd();
+
+    try {
+      mkdirSync(localesDir, { recursive: true });
+      writeFileSync(
+        join(localesDir, 'en.json'),
+        JSON.stringify({
+          'upload.started': 'Started {{filename}}',
+          'upload.done': 'Done',
+        }),
+      );
+      writeFileSync(
+        join(localesDir, 'vi.json'),
+        JSON.stringify({
+          'upload.started': 'Bat dau {{filename}}',
+        }),
+      );
+
+      process.chdir(tempDir);
+      process.env.YOUWEE_APP_LOCALE = 'vi';
+      process.env.YOUWEE_APP_FALLBACK_LOCALE = 'en';
+      process.env.YOUWEE_PLUGIN_I18N_DIR = 'locales';
+      process.env.YOUWEE_PLUGIN_I18N_DEFAULT_LOCALE = 'en';
+      process.env.YOUWEE_PLUGIN_I18N_SUPPORTED_LOCALES = 'en,vi';
+
+      const ctx = createContext(samplePayload);
+      expect(ctx.i18n.locale).toBe('vi');
+      expect(ctx.i18n.t('upload.started', { filename: 'video.mp4' })).toBe('Bat dau video.mp4');
+      expect(ctx.i18n.t('upload.done')).toBe('Done');
+      expect(ctx.i18n.has('upload.started')).toBe(true);
+      expect(ctx.i18n.raw('upload.done')).toBe('Done');
+    } finally {
+      process.chdir(originalCwd);
+      rmSync(tempDir, { recursive: true, force: true });
+    }
   });
 
   test('exposes http helpers', async () => {

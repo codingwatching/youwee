@@ -19,20 +19,21 @@ This document is intentionally written as technical documentation rather than a 
 5. [Plugin Module Contract](#plugin-module-contract)
 6. [SDK Surface](#sdk-surface)
 7. [Context Model](#context-model)
-8. [Result Contract](#result-contract)
-9. [Logging Contract](#logging-contract)
-10. [Youwee Capabilities Bridge](#youwee-capabilities-bridge)
-11. [AI Bridge](#ai-bridge)
-12. [Trigger Catalog](#trigger-catalog)
-13. [Local Execution](#local-execution)
-14. [Packaging and Distribution](#packaging-and-distribution)
-15. [Release and Versioning Policy](#release-and-versioning-policy)
-16. [Design Notes](#design-notes)
-17. [Troubleshooting](#troubleshooting)
-18. [AI Agent Notes](#ai-agent-notes)
-19. [Appendix A: Minimal Plugin](#appendix-a-minimal-plugin)
-20. [Appendix B: Payload Mapping](#appendix-b-payload-mapping)
-21. [Appendix C: Capability Reference](#appendix-c-capability-reference)
+8. [Plugin Internationalization](#plugin-internationalization)
+9. [Result Contract](#result-contract)
+10. [Logging Contract](#logging-contract)
+11. [Youwee Capabilities Bridge](#youwee-capabilities-bridge)
+12. [AI Bridge](#ai-bridge)
+13. [Trigger Catalog](#trigger-catalog)
+14. [Local Execution](#local-execution)
+15. [Packaging and Distribution](#packaging-and-distribution)
+16. [Release and Versioning Policy](#release-and-versioning-policy)
+17. [Design Notes](#design-notes)
+18. [Troubleshooting](#troubleshooting)
+19. [AI Agent Notes](#ai-agent-notes)
+20. [Appendix A: Minimal Plugin](#appendix-a-minimal-plugin)
+21. [Appendix B: Payload Mapping](#appendix-b-payload-mapping)
+22. [Appendix C: Capability Reference](#appendix-c-capability-reference)
 
 ---
 
@@ -344,6 +345,17 @@ Bridge to application-managed capabilities:
 - `ctx.youwee.tools`
 - `ctx.youwee.ai`
 
+### `ctx.i18n`
+
+Plugin-local internationalization bridge:
+
+- `ctx.i18n.locale`
+- `ctx.i18n.defaultLocale`
+- `ctx.i18n.supportedLocales`
+- `ctx.i18n.t(key, params?)`
+- `ctx.i18n.has(key, locale?)`
+- `ctx.i18n.raw(key, locale?)`
+
 ### `ctx.ok(...)` and `ctx.fail(...)`
 
 Result helpers:
@@ -352,6 +364,170 @@ Result helpers:
 return ctx.ok("Uploaded successfully");
 return ctx.fail("Missing token");
 ```
+
+---
+
+## Plugin Internationalization
+
+`youwee-sdk` supports file-based plugin localization.
+
+The intended authoring model is:
+
+1. declare i18n metadata in `plugin.json`
+2. place locale JSON files inside the plugin package
+3. call `ctx.i18n.t(...)` from hooks
+
+### Manifest contract
+
+Plugins may declare an `i18n` block in `plugin.json`:
+
+```json
+{
+  "id": "local.gg-drive",
+  "slug": "gg-drive",
+  "name": "GG Drive",
+  "i18n": {
+    "defaultLocale": "en",
+    "supportedLocales": ["en", "vi", "zh-CN"],
+    "directory": "locales"
+  }
+}
+```
+
+Field semantics:
+
+- `defaultLocale`: canonical fallback locale for the plugin
+- `supportedLocales`: locales intentionally shipped by the plugin
+- `directory`: relative directory inside the plugin package that contains locale files
+
+Validation rules enforced by the SDK/application contract:
+
+- `defaultLocale` must be included in `supportedLocales`
+- `directory` must be a relative path
+- `directory` must not contain path traversal
+- locale files must be JSON dictionaries
+
+If the `i18n` block is omitted, the SDK uses these defaults:
+
+- `defaultLocale = "en"`
+- `supportedLocales = []`
+- `directory = "locales"`
+
+### Plugin package layout
+
+Recommended structure:
+
+```text
+plugin/
+  plugin.json
+  src/
+    plugin.js
+  locales/
+    en.json
+    vi.json
+    zh-CN.json
+```
+
+Locale files are expected to contain flat JSON string dictionaries:
+
+```json
+{
+  "log.hookStarted": "Hook started",
+  "upload.started": "Uploading {{filename}}",
+  "upload.success": "Uploaded {{filename}} to Google Drive"
+}
+```
+
+### Runtime API
+
+The SDK exposes a localization bridge on `ctx.i18n`.
+
+#### `ctx.i18n.locale`
+
+The current Youwee UI locale when available, for example:
+
+- `vi`
+- `en`
+- `zh-CN`
+
+#### `ctx.i18n.defaultLocale`
+
+The plugin's configured default locale.
+
+#### `ctx.i18n.supportedLocales`
+
+The plugin's declared locale list from `plugin.json`.
+
+#### `ctx.i18n.t(key, params?)`
+
+Resolve a translated string for the current locale with optional `{{placeholder}}` interpolation.
+
+Example:
+
+```js
+ctx.log.info(ctx.i18n.t("upload.started", {
+  filename: ctx.file.name,
+}));
+
+return ctx.ok(ctx.i18n.t("upload.success", {
+  filename: ctx.file.name,
+}));
+```
+
+#### `ctx.i18n.has(key, locale?)`
+
+Check whether a translation key exists in a specific locale or the current locale.
+
+#### `ctx.i18n.raw(key, locale?)`
+
+Return the untranslated raw dictionary value if present.
+
+### Fallback resolution
+
+When resolving `ctx.i18n.t(key)`, the SDK uses this order:
+
+1. current Youwee locale
+2. base locale derived from the current locale if applicable
+3. Youwee fallback locale
+4. plugin `defaultLocale`
+5. the raw key itself
+
+Example:
+
+- current locale: `zh-CN`
+- base locale candidate: `zh`
+- fallback locale: `en`
+- plugin default locale: `en`
+
+The SDK will try `zh-CN`, then `zh`, then `en`.
+
+### Relationship to app locale
+
+The plugin does not reuse Youwee application translation tables.
+
+Instead:
+
+- Youwee passes its active locale into the plugin runtime
+- the plugin uses its own locale resources
+- `ctx.i18n` selects the best matching plugin translation
+
+This keeps plugin packages self-contained and shareable.
+
+### Design intent
+
+Plugin authors should prefer localized messages for:
+
+- `ctx.log.info(...)`
+- `ctx.log.warn(...)`
+- `ctx.log.error(...)`
+- `ctx.ok(...)`
+- `ctx.fail(...)`
+
+This is especially important for:
+
+- plugins shared with other users
+- plugins generating user-facing status messages
+- AI agents generating plugin code intended for multilingual environments
 
 ---
 
@@ -445,6 +621,9 @@ Resolved runtime information:
 Application runtime metadata:
 
 - `version`
+- `locale`
+- `fallbackLocale`
+- `direction`
 
 ### `ctx.youwee.sdk`
 

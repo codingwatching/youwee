@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
 import { access, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -19,6 +20,7 @@ import type {
   PluginHttpBridge,
   PluginHttpRequestOptions,
   PluginHttpResponse,
+  PluginI18nBridge,
   PluginLogger,
   PluginPayload,
   PluginResult,
@@ -253,9 +255,15 @@ function normalizeHeaders(headers: Headers): Record<string, string> {
 
 function createYouweeBridge(logger: PluginLogger): YouweeBridge {
   const appVersion = process.env.YOUWEE_APP_VERSION || null;
+  const appLocale = process.env.YOUWEE_APP_LOCALE || null;
+  const appFallbackLocale = process.env.YOUWEE_APP_FALLBACK_LOCALE || null;
+  const appDirection = process.env.YOUWEE_APP_DIRECTION || null;
   return {
     app: {
       version: appVersion,
+      locale: appLocale,
+      fallbackLocale: appFallbackLocale,
+      direction: appDirection,
     },
     sdk: createSdkBridge(appVersion),
     plugin: {
@@ -277,6 +285,94 @@ function createYouweeBridge(logger: PluginLogger): YouweeBridge {
     fs: createFileSystemBridge(),
     http: createHttpBridge(),
     ai: createAIBridge(logger),
+  };
+}
+
+function normalizeLocaleCandidates(input: string | null | undefined): string[] {
+  if (!input) return [];
+  const values = [input];
+  const dashIndex = input.indexOf('-');
+  if (dashIndex > 0) {
+    values.push(input.slice(0, dashIndex));
+  }
+  return values.map((value) => value.trim()).filter(Boolean);
+}
+
+function interpolateMessage(template: string, params: Record<string, unknown> | undefined): string {
+  if (!params) return template;
+  return template.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (_, key: string) => {
+    const value = params[key];
+    return value == null ? '' : String(value);
+  });
+}
+
+function loadLocaleTable(directory: string, locale: string): Record<string, string> | null {
+  const path = join(process.cwd(), directory, `${locale}.json`);
+  if (!existsSync(path)) return null;
+  const content = readFileSync(path, 'utf8');
+  const parsed = JSON.parse(content) as Record<string, unknown>;
+  const output: Record<string, string> = {};
+  for (const [key, value] of Object.entries(parsed)) {
+    if (typeof value === 'string') {
+      output[key] = value;
+    }
+  }
+  return output;
+}
+
+function createI18nBridge(): PluginI18nBridge {
+  const locale = process.env.YOUWEE_APP_LOCALE || 'en';
+  const fallbackLocale = process.env.YOUWEE_APP_FALLBACK_LOCALE || 'en';
+  const defaultLocale = process.env.YOUWEE_PLUGIN_I18N_DEFAULT_LOCALE || 'en';
+  const supportedLocales = process.env.YOUWEE_PLUGIN_I18N_SUPPORTED_LOCALES?.split(',')
+    .map((item) => item.trim())
+    .filter(Boolean) || [defaultLocale];
+  const directory = process.env.YOUWEE_PLUGIN_I18N_DIR || 'locales';
+  const cache = new Map<string, Record<string, string>>();
+
+  const getTable = (candidate: string): Record<string, string> | null => {
+    if (cache.has(candidate)) {
+      return cache.get(candidate) ?? null;
+    }
+    const loaded = loadLocaleTable(directory, candidate);
+    if (loaded) {
+      cache.set(candidate, loaded);
+      return loaded;
+    }
+    cache.set(candidate, {});
+    return null;
+  };
+
+  const resolveMessage = (key: string, preferredLocale?: string): string | null => {
+    const candidates = [
+      ...normalizeLocaleCandidates(preferredLocale ?? locale),
+      ...normalizeLocaleCandidates(fallbackLocale),
+      ...normalizeLocaleCandidates(defaultLocale),
+    ].filter((value, index, list) => list.indexOf(value) === index);
+
+    for (const candidate of candidates) {
+      const table = getTable(candidate);
+      if (table && typeof table[key] === 'string') {
+        return table[key];
+      }
+    }
+    return null;
+  };
+
+  return {
+    locale,
+    fallbackLocale,
+    defaultLocale,
+    supportedLocales,
+    t(key, params) {
+      return interpolateMessage(resolveMessage(key) ?? key, params);
+    },
+    has(key, preferredLocale) {
+      return resolveMessage(key, preferredLocale) != null;
+    },
+    raw(key, preferredLocale) {
+      return resolveMessage(key, preferredLocale);
+    },
   };
 }
 
@@ -341,6 +437,7 @@ export function createContext(payload: PluginPayload): PluginContext {
       },
     },
     log: logger,
+    i18n: createI18nBridge(),
     youwee: createYouweeBridge(logger),
     ok(
       message,

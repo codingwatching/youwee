@@ -280,6 +280,7 @@ pub fn run() {
             commands::list_runtime_providers,
             commands::get_runtime_provider_status,
             commands::set_default_provider_for_language,
+            commands::set_plugin_runtime_locale,
             commands::cancel_metadata_fetch,
             // Channel commands
             commands::get_channel_videos,

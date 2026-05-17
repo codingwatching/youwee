@@ -17,8 +17,8 @@ use zip::ZipArchive;
 use crate::database::add_log_internal;
 use crate::types::{
     PluginChainMutation, PluginChainState, PluginCompatibilitySpec, PluginExecutionOutputEvent,
-    PluginExecutionResult, PluginExecutionStatusEvent, PluginInstallation, PluginManifest,
-    PluginPackageInspection, PluginPackageSource, PluginPackageSourceKind,
+    PluginExecutionResult, PluginExecutionStatusEvent, PluginI18nSpec, PluginInstallation,
+    PluginManifest, PluginPackageInspection, PluginPackageSource, PluginPackageSourceKind,
     PluginPermissionApproval, PluginPermissionRequest, PluginProvider, PluginRuntimeLanguage,
     PluginRuntimeSpec, PluginSummary, PluginTriggerWorkflow, PluginWorkflowFailurePolicy,
     PluginWorkflowRun, PluginWorkflowRunStatus, PluginWorkflowStepConfig,
@@ -121,6 +121,15 @@ pub struct PluginEnvValuesInput {
     pub values: BTreeMap<String, Option<String>>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginRuntimeLocaleInput {
+    pub locale: String,
+    pub fallback_locale: String,
+    #[serde(default)]
+    pub direction: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 struct PluginRegistryEntry {
@@ -161,6 +170,12 @@ struct PluginRegistry {
     default_providers: BTreeMap<String, PluginProvider>,
     #[serde(default)]
     trigger_workflows: BTreeMap<String, PluginTriggerWorkflowRegistry>,
+    #[serde(default)]
+    app_locale: Option<String>,
+    #[serde(default)]
+    app_fallback_locale: Option<String>,
+    #[serde(default)]
+    app_direction: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -388,6 +403,36 @@ fn allowed_manifest_triggers() -> &'static [&'static str] {
     ]
 }
 
+fn validate_i18n_spec(i18n: &PluginI18nSpec, manifest_path: &Path) -> Result<(), String> {
+    if let Some(default_locale) = i18n.default_locale.as_ref() {
+        if !i18n.supported_locales.is_empty()
+            && !i18n.supported_locales.iter().any(|locale| locale == default_locale)
+        {
+            return Err(format!(
+                "Plugin manifest {} declares i18n.defaultLocale that is not listed in i18n.supportedLocales",
+                manifest_path.display()
+            ));
+        }
+    }
+
+    if let Some(directory) = i18n.directory.as_ref() {
+        let path = Path::new(directory);
+        if path.is_absolute()
+            || path
+                .components()
+                .any(|component| matches!(component, std::path::Component::ParentDir))
+        {
+            return Err(format!(
+                "Plugin manifest {} declares invalid i18n.directory {}",
+                manifest_path.display(),
+                directory
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 fn validate_manifest(manifest: &PluginManifest, manifest_path: &Path) -> Result<(), String> {
     if manifest.plugin_id.trim().is_empty() {
         return Err(format!(
@@ -483,6 +528,9 @@ fn validate_manifest(manifest: &PluginManifest, manifest_path: &Path) -> Result<
             manifest_path.display(),
             trigger
         ));
+    }
+    if let Some(i18n) = manifest.i18n.as_ref() {
+        validate_i18n_spec(i18n, manifest_path)?;
     }
     Ok(())
 }
@@ -1373,6 +1421,11 @@ pub fn create_plugin_scaffold_internal(
         readme: Some("README.md".to_string()),
         checksum: None,
         published_at: None,
+        i18n: Some(PluginI18nSpec {
+            default_locale: Some("en".to_string()),
+            supported_locales: vec!["en".to_string()],
+            directory: Some("locales".to_string()),
+        }),
     };
     validate_manifest(&manifest, Path::new("plugin.json"))?;
 
@@ -1405,6 +1458,13 @@ pub fn create_plugin_scaffold_internal(
             e
         )
     })?;
+    std::fs::create_dir_all(destination.join("locales")).map_err(|e| {
+        format!(
+            "Failed to create plugin locales directory {}: {}",
+            destination.join("locales").display(),
+            e
+        )
+    })?;
 
     let manifest_json = serde_json::to_string_pretty(&manifest)
         .map_err(|e| format!("Failed to serialize plugin manifest: {}", e))?;
@@ -1434,6 +1494,17 @@ pub fn create_plugin_scaffold_internal(
         format!(
             "Failed to write plugin module {}: {}",
             destination.join("src").join("plugin.js").display(),
+            e
+        )
+    })?;
+    std::fs::write(
+        destination.join("locales").join("en.json"),
+        build_scaffold_locale_file(),
+    )
+    .map_err(|e| {
+        format!(
+            "Failed to write scaffold locale file {}: {}",
+            destination.join("locales").join("en.json").display(),
             e
         )
     })?;
@@ -1727,6 +1798,17 @@ pub fn set_default_provider_for_language_internal(
     registry
         .default_providers
         .insert(language.as_str().to_string(), provider);
+    write_registry(app, &registry)
+}
+
+pub fn set_plugin_runtime_locale_internal(
+    app: &AppHandle,
+    input: PluginRuntimeLocaleInput,
+) -> Result<(), String> {
+    let mut registry = read_registry(app)?;
+    registry.app_locale = Some(input.locale.trim().to_string());
+    registry.app_fallback_locale = Some(input.fallback_locale.trim().to_string());
+    registry.app_direction = input.direction.map(|value| value.trim().to_string());
     write_registry(app, &registry)
 }
 
@@ -2207,6 +2289,15 @@ async fn execute_plugin(
         .get(&plugin.manifest.plugin_id)
         .map(|entry| entry.env_values.clone())
         .unwrap_or_default();
+    let app_locale = registry.app_locale.clone().unwrap_or_else(|| "en".to_string());
+    let app_fallback_locale = registry
+        .app_fallback_locale
+        .clone()
+        .unwrap_or_else(|| "en".to_string());
+    let app_direction = registry
+        .app_direction
+        .clone()
+        .unwrap_or_else(|| "ltr".to_string());
     let ffmpeg_path = crate::services::get_ffmpeg_path(app)
         .await
         .map(|path| path.to_string_lossy().to_string());
@@ -2284,9 +2375,40 @@ async fn execute_plugin(
     cmd.env("YOUWEE_PLUGIN_NAME", &plugin.manifest.name);
     cmd.env("YOUWEE_PLUGIN_VERSION", &plugin.manifest.version);
     cmd.env("YOUWEE_APP_VERSION", env!("CARGO_PKG_VERSION"));
+    cmd.env("YOUWEE_APP_LOCALE", &app_locale);
+    cmd.env("YOUWEE_APP_FALLBACK_LOCALE", &app_fallback_locale);
+    cmd.env("YOUWEE_APP_DIRECTION", &app_direction);
     cmd.env("YOUWEE_PLUGIN_LANGUAGE", plugin.manifest.runtime.language.as_str());
     cmd.env("YOUWEE_PLUGIN_PROVIDER", selected_provider.as_str());
     cmd.env("YOUWEE_PLUGIN_MAIN", entrypoint.to_string_lossy().to_string());
+    cmd.env(
+        "YOUWEE_PLUGIN_I18N_DEFAULT_LOCALE",
+        plugin
+            .manifest
+            .i18n
+            .as_ref()
+            .and_then(|value| value.default_locale.clone())
+            .unwrap_or_else(|| "en".to_string()),
+    );
+    cmd.env(
+        "YOUWEE_PLUGIN_I18N_SUPPORTED_LOCALES",
+        plugin
+            .manifest
+            .i18n
+            .as_ref()
+            .map(|value| value.supported_locales.join(","))
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| "en".to_string()),
+    );
+    cmd.env(
+        "YOUWEE_PLUGIN_I18N_DIR",
+        plugin
+            .manifest
+            .i18n
+            .as_ref()
+            .and_then(|value| value.directory.clone())
+            .unwrap_or_else(|| "locales".to_string()),
+    );
     if let Some(source) = resolved_source.as_ref() {
         cmd.env("YOUWEE_PLUGIN_PROVIDER_SOURCE", source);
     }
@@ -2913,7 +3035,7 @@ module.exports = definePlugin({{
 
   hooks: {{
     [{primary_trigger}]: async (ctx) => {{
-      ctx.log.info("Hook started", {{
+      ctx.log.info(ctx.i18n.t("log.hookStarted"), {{
         filename: ctx.file.name,
         trigger: ctx.trigger,
         ffmpegAvailable: ctx.youwee.tools.ffmpeg.available,
@@ -2926,7 +3048,7 @@ module.exports = definePlugin({{
       // 4. Use app capabilities from ctx.youwee.tools / ctx.youwee.ai
       // 5. Return ctx.ok(...) or ctx.fail(...)
 
-      return ctx.ok("Plugin scaffold ran successfully.", {{
+      return ctx.ok(ctx.i18n.t("result.success"), {{
         filepath: ctx.file.path,
         filename: ctx.file.name,
         trigger: ctx.trigger,
@@ -2944,6 +3066,15 @@ module.exports = definePlugin({{
             .replace('"', "\\\""),
         primary_trigger = primary_trigger,
     )
+}
+
+fn build_scaffold_locale_file() -> String {
+    r#"{
+  "log.hookStarted": "Hook started",
+  "result.success": "Plugin scaffold ran successfully."
+}
+"#
+    .to_string()
 }
 
 fn build_scaffold_package_json(manifest: &PluginManifest) -> String {
@@ -3034,6 +3165,7 @@ Package layout:
 - `plugin.json`: plugin manifest consumed by Youwee
 - `package.json`: package metadata and local test scripts
 - `src/plugin.js`: plugin module and hook implementations
+- `locales/en.json`: default translation file for plugin messages
 - `vendor/youwee-sdk/`: vendored SDK runtime and type declarations
 - `examples/`: sample payload and result files
 
@@ -3097,8 +3229,10 @@ Available high-level APIs:
 - `ctx.env.get(...)`
 - `ctx.env.require(...)`
 - `ctx.log.info(...)`
+- `ctx.i18n.t(...)`
 - `ctx.youwee.runtime`
 - `ctx.youwee.app.version`
+- `ctx.youwee.app.locale`
 - `ctx.youwee.sdk.assertAppVersion(...)`
 - `ctx.youwee.tools.ffmpeg`
 - `ctx.youwee.tools.ytdlp`
@@ -3288,6 +3422,7 @@ mod tests {
                 entrypoint: "src/plugin.js".to_string(),
             },
             compatibility: None,
+            i18n: None,
             triggers: vec!["download.completed".to_string()],
             permissions: PluginPermissionRequest::default(),
             timeout_sec: 60,
@@ -3321,6 +3456,7 @@ mod tests {
                 entrypoint: "index.ts".to_string(),
             },
             compatibility: None,
+            i18n: None,
             triggers: vec!["download.completed".to_string()],
             permissions: PluginPermissionRequest::default(),
             timeout_sec: 60,
@@ -3351,6 +3487,7 @@ mod tests {
                 entrypoint: "src/plugin.js".to_string(),
             },
             compatibility: None,
+            i18n: None,
             triggers: vec!["triggers.downloadQueued".to_string()],
             permissions: PluginPermissionRequest::default(),
             timeout_sec: 60,
@@ -3381,6 +3518,7 @@ mod tests {
                 entrypoint: "index.ts".to_string(),
             },
             compatibility: None,
+            i18n: None,
             triggers: vec!["download.completed".to_string()],
             permissions: PluginPermissionRequest::default(),
             timeout_sec: 60,
@@ -3412,6 +3550,7 @@ mod tests {
                 entrypoint: "src/plugin.js".to_string(),
             },
             compatibility: None,
+            i18n: None,
             triggers: vec!["download.completed".to_string()],
             permissions: PluginPermissionRequest::default(),
             timeout_sec: 60,
@@ -3462,6 +3601,7 @@ mod tests {
                 app_version: Some(">=999.0.0 <1000.0.0".to_string()),
                 sdk_version: Some(">=999.0.0 <1000.0.0".to_string()),
             }),
+            i18n: None,
             triggers: vec!["download.completed".to_string()],
             permissions: PluginPermissionRequest::default(),
             timeout_sec: 60,
