@@ -5,6 +5,7 @@ import {
   Atom,
   Blocks,
   Bot,
+  Check,
   ChevronDown,
   Download,
   FolderOpen,
@@ -452,6 +453,55 @@ function renderPluginManifestIcon(
     default:
       return <Puzzle className={className} />;
   }
+}
+
+type ToggleChoiceCardProps = {
+  checked: boolean;
+  label: string;
+  description?: string;
+  onToggle: () => void;
+  className?: string;
+};
+
+function ToggleChoiceCard({
+  checked,
+  label,
+  description,
+  onToggle,
+  className,
+}: ToggleChoiceCardProps) {
+  return (
+    <button
+      type="button"
+      aria-pressed={checked}
+      onClick={onToggle}
+      className={cn(
+        'group flex w-full items-start gap-3 rounded-xl border px-3 py-3 text-left transition-all',
+        checked
+          ? 'border-primary/35 bg-primary/[0.07] shadow-sm'
+          : 'border-border/60 bg-background/70 hover:border-border hover:bg-muted/35',
+        className,
+      )}
+    >
+      <span
+        className={cn(
+          'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors',
+          checked
+            ? 'border-primary bg-primary text-primary-foreground'
+            : 'border-border/70 bg-background text-transparent group-hover:border-primary/35',
+        )}
+      >
+        <Check className="h-3.5 w-3.5" />
+      </span>
+
+      <span className="min-w-0 flex-1 space-y-1">
+        <span className="block break-words text-sm font-medium text-foreground">{label}</span>
+        {description && (
+          <span className="block break-words text-xs text-muted-foreground">{description}</span>
+        )}
+      </span>
+    </button>
+  );
 }
 
 function getFilesystemPermissionLabel(
@@ -2119,22 +2169,13 @@ export function PostDownloadPluginsCard() {
                   </div>
                 )}
                 <div className="rounded-lg border border-border/60 bg-background/60 px-3 py-3">
-                  <label className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      checked={installAcknowledged}
-                      onChange={(event) => setInstallAcknowledged(event.target.checked)}
-                      className="mt-0.5 h-4 w-4 rounded border-border"
-                    />
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-foreground">
-                        {t('download.pluginInstallConfirmLabel')}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {t('download.pluginInstallConfirmHelp')}
-                      </p>
-                    </div>
-                  </label>
+                  <ToggleChoiceCard
+                    checked={installAcknowledged}
+                    onToggle={() => setInstallAcknowledged((current) => !current)}
+                    label={t('download.pluginInstallConfirmLabel')}
+                    description={t('download.pluginInstallConfirmHelp')}
+                    className="border-border/50 bg-background/80"
+                  />
                 </div>
               </div>
 
@@ -3001,23 +3042,26 @@ export function PostDownloadPluginsCard() {
                                       )}
 
                                       {field.inputType === 'multi-select' && (
-                                        <div className="space-y-2 rounded-lg border border-border/60 p-3">
-                                          {field.options.map((option) => {
-                                            const checked = selectedValues.includes(option.value);
-                                            return (
-                                              <label
-                                                key={option.value}
-                                                className="flex items-center gap-2 text-sm"
-                                              >
-                                                <input
-                                                  type="checkbox"
+                                        <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-3">
+                                          <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                                            <span className="rounded bg-background/80 px-2 py-1">
+                                              {selectedValues.length}/{field.options.length}
+                                            </span>
+                                          </div>
+                                          <div className="grid gap-2 sm:grid-cols-2">
+                                            {field.options.map((option) => {
+                                              const checked = selectedValues.includes(option.value);
+                                              return (
+                                                <ToggleChoiceCard
+                                                  key={option.value}
                                                   checked={checked}
-                                                  onChange={(event) => {
-                                                    const next = event.target.checked
-                                                      ? [...selectedValues, option.value]
-                                                      : selectedValues.filter(
+                                                  label={option.label}
+                                                  onToggle={() => {
+                                                    const next = checked
+                                                      ? selectedValues.filter(
                                                           (value) => value !== option.value,
-                                                        );
+                                                        )
+                                                      : [...selectedValues, option.value];
                                                     setConfigDraftValue(
                                                       plugin.manifest.id,
                                                       field.key,
@@ -3025,10 +3069,9 @@ export function PostDownloadPluginsCard() {
                                                     );
                                                   }}
                                                 />
-                                                <span>{option.label}</span>
-                                              </label>
-                                            );
-                                          })}
+                                              );
+                                            })}
+                                          </div>
                                         </div>
                                       )}
 
@@ -3777,25 +3820,29 @@ export function PostDownloadPluginsCard() {
                               />
                             </div>
                           ) : field.inputType === 'multi-select' ? (
-                            <div className="space-y-2 rounded-lg border border-border/60 p-3">
-                              {field.options
-                                .filter((option) => option.value.trim())
-                                .map((option) => {
-                                  const checked = field.defaultValueMulti.includes(option.value);
-                                  return (
-                                    <label
-                                      key={`${fieldIndex}-default-${option.value}`}
-                                      className="flex items-center gap-2 text-sm"
-                                    >
-                                      <input
-                                        type="checkbox"
+                            <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-3">
+                              <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                                <span className="rounded bg-background/80 px-2 py-1">
+                                  {field.defaultValueMulti.length}/
+                                  {field.options.filter((option) => option.value.trim()).length}
+                                </span>
+                              </div>
+                              <div className="grid gap-2 sm:grid-cols-2">
+                                {field.options
+                                  .filter((option) => option.value.trim())
+                                  .map((option) => {
+                                    const checked = field.defaultValueMulti.includes(option.value);
+                                    return (
+                                      <ToggleChoiceCard
+                                        key={`${fieldIndex}-default-${option.value}`}
                                         checked={checked}
-                                        onChange={(event) => {
-                                          const next = event.target.checked
-                                            ? [...field.defaultValueMulti, option.value]
-                                            : field.defaultValueMulti.filter(
+                                        label={option.label || option.value}
+                                        onToggle={() => {
+                                          const next = checked
+                                            ? field.defaultValueMulti.filter(
                                                 (value) => value !== option.value,
-                                              );
+                                              )
+                                            : [...field.defaultValueMulti, option.value];
                                           updateCreatePluginConfigField(
                                             fieldIndex,
                                             'defaultValueMulti',
@@ -3803,10 +3850,9 @@ export function PostDownloadPluginsCard() {
                                           );
                                         }}
                                       />
-                                      <span>{option.label || option.value}</span>
-                                    </label>
-                                  );
-                                })}
+                                    );
+                                  })}
+                              </div>
                               {field.options.filter((option) => option.value.trim()).length ===
                                 0 && (
                                 <p className="text-xs text-muted-foreground">
@@ -4200,21 +4246,23 @@ export function PostDownloadPluginsCard() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-[720px]">
+        <DialogContent className="max-h-[85vh] overflow-hidden sm:max-w-[720px]">
           <DialogHeader>
             <DialogTitle>{t('download.pluginGuideTitle')}</DialogTitle>
           </DialogHeader>
 
           {pluginGuideDialog && (
-            <div className="space-y-4">
+            <div className="min-w-0 space-y-4">
               <p className="text-sm text-muted-foreground">{t('download.pluginGuideDesc')}</p>
               <div className="rounded-xl bg-muted/30 px-3 py-2 text-sm font-medium">
                 {pluginGuideDialog.title}
               </div>
-              <SimpleMarkdown
-                content={pluginGuideDialog.content}
-                className="max-h-[60vh] overflow-y-auto text-sm text-muted-foreground"
-              />
+              <div className="min-w-0 max-h-[60vh] overflow-y-auto overflow-x-hidden pr-1">
+                <SimpleMarkdown
+                  content={pluginGuideDialog.content}
+                  className="min-w-0 text-sm text-muted-foreground"
+                />
+              </div>
             </div>
           )}
         </DialogContent>
