@@ -37,7 +37,11 @@ import { buildWorkflowSnapshotMap, savePluginWorkflowSnapshots } from '@/lib/pos
 import type {
   LogEntry,
   PluginCompatibilitySpec,
+  PluginConfigField,
+  PluginConfigFieldInputType,
+  PluginConfigFieldValue,
   PluginExecutionStatusEvent,
+  PluginFilesystemPermission,
   PluginLogsPage,
   PluginPackageInspection,
   PluginPermissionApproval,
@@ -73,15 +77,44 @@ type CreatePluginFormState = {
   preferredProvider: PluginProvider;
   triggers: WorkflowTrigger[];
   permissionNetwork: boolean;
-  permissionReadPaths: string;
-  permissionWritePaths: string;
-  permissionEnv: string;
+  permissionFilesystem: PluginFilesystemPermission[];
+  configFields: CreatePluginConfigFieldDraft[];
+};
+
+type PluginConfigDraftValue = string | boolean | string[];
+
+type CreatePluginConfigOptionDraft = {
+  clientId: string;
+  value: string;
+  label: string;
+};
+
+type CreatePluginConfigFieldDraft = {
+  clientId: string;
+  key: string;
+  label: string;
+  description: string;
+  placeholder: string;
+  required: boolean;
+  sensitive: boolean;
+  inputType: PluginConfigFieldInputType;
+  defaultValueText: string;
+  defaultValueBoolean: boolean;
+  defaultValueMulti: string[];
+  options: CreatePluginConfigOptionDraft[];
+  min: string;
+  max: string;
+  step: string;
+};
+
+type CreatePluginConfigValidation = {
+  fieldErrors: Record<string, string[]>;
+  globalErrors: string[];
+  hasErrors: boolean;
 };
 
 const PROVIDER_LABELS: Record<PluginProvider, string> = {
   deno: 'Deno',
-  node: 'Node',
-  bun: 'Bun',
   python: 'Python',
 };
 
@@ -90,6 +123,30 @@ const LANGUAGE_LABELS: Record<PluginRuntimeLanguage, string> = {
   python: 'Python',
 };
 
+const CONFIG_FIELD_INPUT_TYPES: PluginConfigFieldInputType[] = [
+  'text',
+  'textarea',
+  'password',
+  'number',
+  'boolean',
+  'file',
+  'directory',
+  'select',
+  'multi-select',
+];
+
+const FILESYSTEM_PERMISSIONS: PluginFilesystemPermission[] = [
+  'fs.plugin.read',
+  'fs.plugin.write',
+  'fs.payload-file.read',
+  'fs.payload-directory.read',
+  'fs.payload-directory.write',
+  'fs.temp.read',
+  'fs.temp.write',
+  'fs.user-selected.read',
+  'fs.user-selected.write',
+];
+
 function summarizeRequestedPermissions(
   plugin: PluginSummary | PluginPackageInspection,
   t: (key: string, opts?: Record<string, unknown>) => string,
@@ -97,20 +154,10 @@ function summarizeRequestedPermissions(
   const permissions = plugin.manifest.permissions;
   const entries: string[] = [];
   if (permissions.network) entries.push(t('download.pluginPermissionNetwork'));
-  if (permissions.readPaths.length > 0) {
+  if (permissions.fs.length > 0) {
     entries.push(
-      t('download.pluginPermissionReadPathsCount', { count: permissions.readPaths.length }),
+      ...permissions.fs.map((permission) => getFilesystemPermissionLabel(permission, t)),
     );
-  }
-  if (permissions.writePaths.length > 0) {
-    entries.push(
-      t('download.pluginPermissionWritePathsCount', {
-        count: permissions.writePaths.length,
-      }),
-    );
-  }
-  if (permissions.env.length > 0) {
-    entries.push(t('download.pluginPermissionEnvCount', { count: permissions.env.length }));
   }
   return entries;
 }
@@ -118,9 +165,7 @@ function summarizeRequestedPermissions(
 function buildRequestedPermissionApproval(plugin: PluginSummary): PluginPermissionApproval {
   return {
     network: plugin.manifest.permissions.network,
-    readPaths: plugin.manifest.permissions.readPaths.length > 0,
-    writePaths: plugin.manifest.permissions.writePaths.length > 0,
-    env: plugin.manifest.permissions.env.length > 0,
+    fs: [...plugin.manifest.permissions.fs],
   };
 }
 
@@ -128,9 +173,9 @@ function hasUnapprovedRequestedPermissions(plugin: PluginSummary) {
   const requested = buildRequestedPermissionApproval(plugin);
   return (
     (requested.network && !plugin.installation.approvedPermissions.network) ||
-    (requested.readPaths && !plugin.installation.approvedPermissions.readPaths) ||
-    (requested.writePaths && !plugin.installation.approvedPermissions.writePaths) ||
-    (requested.env && !plugin.installation.approvedPermissions.env)
+    requested.fs.some(
+      (permission) => !plugin.installation.approvedPermissions.fs.includes(permission),
+    )
   );
 }
 
@@ -302,20 +347,275 @@ const DEFAULT_CREATE_PLUGIN_FORM: CreatePluginFormState = {
   repository: '',
   license: 'MIT',
   timeoutSec: '60',
-  supportedProviders: ['node', 'bun'],
-  preferredProvider: 'node',
+  supportedProviders: ['deno'],
+  preferredProvider: 'deno',
   triggers: ['download.completed'],
   permissionNetwork: false,
-  permissionReadPaths: '',
-  permissionWritePaths: '',
-  permissionEnv: '',
+  permissionFilesystem: [],
+  configFields: [],
 };
 
-function parseMultilineList(value: string) {
-  return value
-    .split(/[\n,]/)
-    .map((item) => item.trim())
-    .filter(Boolean);
+function getFilesystemPermissionLabel(
+  permission: PluginFilesystemPermission,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+) {
+  switch (permission) {
+    case 'fs.plugin.read':
+      return t('download.pluginPermissionFsPluginRead');
+    case 'fs.plugin.write':
+      return t('download.pluginPermissionFsPluginWrite');
+    case 'fs.payload-file.read':
+      return t('download.pluginPermissionFsPayloadFileRead');
+    case 'fs.payload-directory.read':
+      return t('download.pluginPermissionFsPayloadDirectoryRead');
+    case 'fs.payload-directory.write':
+      return t('download.pluginPermissionFsPayloadDirectoryWrite');
+    case 'fs.temp.read':
+      return t('download.pluginPermissionFsTempRead');
+    case 'fs.temp.write':
+      return t('download.pluginPermissionFsTempWrite');
+    case 'fs.user-selected.read':
+      return t('download.pluginPermissionFsUserSelectedRead');
+    case 'fs.user-selected.write':
+      return t('download.pluginPermissionFsUserSelectedWrite');
+  }
+}
+
+function validateCreatePluginConfigFields(
+  fields: CreatePluginConfigFieldDraft[],
+  t: (key: string, opts?: Record<string, unknown>) => string,
+): CreatePluginConfigValidation {
+  const fieldErrors: Record<string, string[]> = {};
+  const globalErrors: string[] = [];
+  const seenKeys = new Map<string, string>();
+
+  const addFieldError = (clientId: string, message: string) => {
+    fieldErrors[clientId] = [...(fieldErrors[clientId] ?? []), message];
+  };
+
+  for (const field of fields) {
+    const trimmedKey = field.key.trim();
+    const trimmedLabel = field.label.trim();
+
+    if (!trimmedKey) {
+      addFieldError(field.clientId, t('download.pluginCreateConfigErrorKeyRequired'));
+    } else if (seenKeys.has(trimmedKey)) {
+      addFieldError(
+        field.clientId,
+        t('download.pluginCreateConfigErrorDuplicateKey', { key: trimmedKey }),
+      );
+      addFieldError(
+        seenKeys.get(trimmedKey) ?? '',
+        t('download.pluginCreateConfigErrorDuplicateKey', { key: trimmedKey }),
+      );
+    } else {
+      seenKeys.set(trimmedKey, field.clientId);
+    }
+
+    if (!trimmedLabel) {
+      addFieldError(field.clientId, t('download.pluginCreateConfigErrorLabelRequired'));
+    }
+
+    const usesOptions = field.inputType === 'select' || field.inputType === 'multi-select';
+    const normalizedOptions = field.options
+      .map((option) => ({
+        value: option.value.trim(),
+        label: option.label.trim(),
+      }))
+      .filter((option) => option.value || option.label);
+
+    if (usesOptions) {
+      if (normalizedOptions.length === 0) {
+        addFieldError(field.clientId, t('download.pluginCreateConfigErrorOptionsRequired'));
+      } else {
+        const seenOptionValues = new Set<string>();
+        for (const option of normalizedOptions) {
+          if (!option.value) {
+            addFieldError(field.clientId, t('download.pluginCreateConfigErrorOptionValueRequired'));
+          }
+          if (!option.label) {
+            addFieldError(field.clientId, t('download.pluginCreateConfigErrorOptionLabelRequired'));
+          }
+          if (option.value) {
+            if (seenOptionValues.has(option.value)) {
+              addFieldError(
+                field.clientId,
+                t('download.pluginCreateConfigErrorOptionDuplicate', { value: option.value }),
+              );
+            }
+            seenOptionValues.add(option.value);
+          }
+        }
+      }
+    }
+
+    if (field.inputType === 'number') {
+      for (const [key, rawValue] of [
+        ['default', field.defaultValueText],
+        ['min', field.min],
+        ['max', field.max],
+        ['step', field.step],
+      ] as const) {
+        const trimmed = rawValue.trim();
+        if (trimmed && !Number.isFinite(Number(trimmed))) {
+          addFieldError(
+            field.clientId,
+            t('download.pluginCreateConfigErrorNumberInvalid', { key }),
+          );
+        }
+      }
+
+      const min = field.min.trim() ? Number(field.min) : null;
+      const max = field.max.trim() ? Number(field.max) : null;
+      if (min != null && max != null && min > max) {
+        addFieldError(field.clientId, t('download.pluginCreateConfigErrorMinGreaterThanMax'));
+      }
+    }
+
+    if (
+      (field.inputType === 'text' ||
+        field.inputType === 'textarea' ||
+        field.inputType === 'password' ||
+        field.inputType === 'select') &&
+      field.defaultValueText.trim() &&
+      usesOptions
+    ) {
+      const validValues = new Set(normalizedOptions.map((option) => option.value).filter(Boolean));
+      if (!validValues.has(field.defaultValueText.trim())) {
+        addFieldError(field.clientId, t('download.pluginCreateConfigErrorDefaultOption'));
+      }
+    }
+
+    if (field.inputType === 'multi-select' && field.defaultValueMulti.length > 0) {
+      const validValues = new Set(normalizedOptions.map((option) => option.value).filter(Boolean));
+      for (const value of field.defaultValueMulti) {
+        if (!validValues.has(value)) {
+          addFieldError(
+            field.clientId,
+            t('download.pluginCreateConfigErrorDefaultMultiOption', { value }),
+          );
+        }
+      }
+    }
+  }
+
+  if (fields.length > 0 && Object.keys(fieldErrors).length > 0) {
+    globalErrors.push(t('download.pluginCreateConfigErrorSummary'));
+  }
+
+  return {
+    fieldErrors,
+    globalErrors,
+    hasErrors: globalErrors.length > 0 || Object.keys(fieldErrors).length > 0,
+  };
+}
+
+function createDraftId() {
+  return `draft-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function createEmptyConfigOptionDraft(): CreatePluginConfigOptionDraft {
+  return {
+    clientId: createDraftId(),
+    value: '',
+    label: '',
+  };
+}
+
+function createEmptyConfigFieldDraft(): CreatePluginConfigFieldDraft {
+  return {
+    clientId: createDraftId(),
+    key: '',
+    label: '',
+    description: '',
+    placeholder: '',
+    required: false,
+    sensitive: false,
+    inputType: 'text',
+    defaultValueText: '',
+    defaultValueBoolean: false,
+    defaultValueMulti: [],
+    options: [createEmptyConfigOptionDraft()],
+    min: '',
+    max: '',
+    step: '',
+  };
+}
+
+function parseConfigFieldDraft(field: CreatePluginConfigFieldDraft): PluginConfigField {
+  const options = field.options
+    .map((option) => ({
+      value: option.value.trim(),
+      label: option.label.trim() || option.value.trim(),
+    }))
+    .filter((option) => option.value);
+
+  let defaultValue: PluginConfigFieldValue | undefined;
+  switch (field.inputType) {
+    case 'boolean':
+      defaultValue = field.defaultValueBoolean;
+      break;
+    case 'multi-select':
+      defaultValue = field.defaultValueMulti.filter(Boolean);
+      break;
+    case 'number': {
+      const raw = field.defaultValueText.trim();
+      if (raw) {
+        defaultValue = Number(raw);
+      }
+      break;
+    }
+    default: {
+      const raw = field.defaultValueText.trim();
+      if (raw) {
+        defaultValue = raw;
+      }
+      break;
+    }
+  }
+
+  return {
+    key: field.key.trim(),
+    inputType: field.inputType,
+    label: field.label.trim(),
+    description: field.description.trim() || null,
+    placeholder: field.placeholder.trim() || null,
+    required: field.required,
+    defaultValue: defaultValue ?? null,
+    sensitive: field.sensitive,
+    options,
+    min: field.min.trim() ? Number(field.min) : null,
+    max: field.max.trim() ? Number(field.max) : null,
+    step: field.step.trim() ? Number(field.step) : null,
+  };
+}
+
+function getResolvedConfigFieldValue(
+  plugin: PluginSummary,
+  field: PluginConfigField,
+): PluginConfigFieldValue | undefined {
+  const savedValue = plugin.installation.configValues[field.key];
+  if (savedValue !== undefined) {
+    return savedValue as PluginConfigFieldValue;
+  }
+  return field.defaultValue ?? undefined;
+}
+
+function stringifyConfigFieldValue(value: PluginConfigFieldValue | undefined) {
+  if (value === undefined) return '';
+  if (Array.isArray(value)) return value.join(', ');
+  return String(value);
+}
+
+function formatConfigFieldDefaultValue(value: PluginConfigFieldValue | undefined) {
+  if (value === undefined) return null;
+  if (Array.isArray(value)) {
+    return value.join(', ');
+  }
+  if (typeof value === 'boolean') {
+    return value ? 'true' : 'false';
+  }
+  return String(value);
 }
 
 export function PostDownloadPluginsCard() {
@@ -340,7 +640,7 @@ export function PostDownloadPluginsCard() {
   const [inspection, setInspection] = useState<PluginPackageInspection | null>(null);
   const [installSource, setInstallSource] = useState<InstallPluginSourceInput | null>(null);
   const [installAcknowledged, setInstallAcknowledged] = useState(false);
-  const [envDrafts, setEnvDrafts] = useState<Record<string, string>>({});
+  const [configDrafts, setConfigDrafts] = useState<Record<string, PluginConfigDraftValue>>({});
   const [timeoutDrafts, setTimeoutDrafts] = useState<Record<string, string>>({});
   const [runtimeStatuses, setRuntimeStatuses] = useState<
     Record<string, { status: string; message?: string | null }>
@@ -359,14 +659,21 @@ export function PostDownloadPluginsCard() {
   const [permissionDialogPlugin, setPermissionDialogPlugin] = useState<PluginSummary | null>(null);
   const [permissionDialogState, setPermissionDialogState] = useState<PluginPermissionApproval>({
     network: false,
-    readPaths: false,
-    writePaths: false,
-    env: false,
+    fs: [],
   });
   const [createdWorkspace, setCreatedWorkspace] = useState<PluginWorkspaceSummary | null>(null);
   const [attachWorkspacePath, setAttachWorkspacePath] = useState<string | null>(null);
   const [uninstallTarget, setUninstallTarget] = useState<PluginSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const createPluginConfigValidation = useMemo(
+    () => validateCreatePluginConfigFields(createPluginForm.configFields, t),
+    [createPluginForm.configFields, t],
+  );
+  const createPluginCanSubmit =
+    !creating &&
+    createPluginForm.name.trim().length > 0 &&
+    createPluginForm.destinationRoot.trim().length > 0 &&
+    !createPluginConfigValidation.hasErrors;
 
   const loadPlugins = useCallback(async () => {
     setLoading(true);
@@ -568,11 +875,9 @@ export function PostDownloadPluginsCard() {
       setPermissionDialogPlugin(plugin);
       setPermissionDialogState({
         network: requested.network ? plugin.installation.approvedPermissions.network : false,
-        readPaths: requested.readPaths ? plugin.installation.approvedPermissions.readPaths : false,
-        writePaths: requested.writePaths
-          ? plugin.installation.approvedPermissions.writePaths
-          : false,
-        env: requested.env ? plugin.installation.approvedPermissions.env : false,
+        fs: requested.fs.filter((permission) =>
+          plugin.installation.approvedPermissions.fs.includes(permission),
+        ),
       });
       return;
     }
@@ -655,7 +960,8 @@ export function PostDownloadPluginsCard() {
 
   const handleCreatePlugin = async () => {
     const trimmedName = createPluginForm.name.trim();
-    if (!trimmedName) return;
+    const trimmedDestinationRoot = createPluginForm.destinationRoot.trim();
+    if (!trimmedName || !trimmedDestinationRoot || createPluginConfigValidation.hasErrors) return;
 
     const supportedProviders =
       createPluginForm.supportedProviders.length > 0
@@ -671,7 +977,7 @@ export function PostDownloadPluginsCard() {
       const result = await invoke<PluginWorkspaceSummary>('create_plugin_workspace', {
         input: {
           name: trimmedName,
-          destinationRoot: createPluginForm.destinationRoot.trim(),
+          destinationRoot: trimmedDestinationRoot,
           id: createPluginForm.id.trim() || null,
           slug: createPluginForm.slug.trim() || null,
           version: createPluginForm.version.trim() || null,
@@ -687,11 +993,10 @@ export function PostDownloadPluginsCard() {
               : DEFAULT_CREATE_PLUGIN_FORM.triggers,
           supportedProviders,
           preferredProvider,
+          configFields: createPluginForm.configFields.map(parseConfigFieldDraft),
           permissions: {
             network: createPluginForm.permissionNetwork,
-            readPaths: parseMultilineList(createPluginForm.permissionReadPaths),
-            writePaths: parseMultilineList(createPluginForm.permissionWritePaths),
-            env: parseMultilineList(createPluginForm.permissionEnv),
+            fs: createPluginForm.permissionFilesystem,
           },
         },
       });
@@ -744,6 +1049,113 @@ export function PostDownloadPluginsCard() {
       triggers: current.triggers.includes(trigger)
         ? current.triggers.filter((item) => item !== trigger)
         : [...current.triggers, trigger],
+    }));
+  };
+
+  const toggleCreatePluginFilesystemPermission = (permission: PluginFilesystemPermission) => {
+    setCreatePluginForm((current) => ({
+      ...current,
+      permissionFilesystem: current.permissionFilesystem.includes(permission)
+        ? current.permissionFilesystem.filter((item) => item !== permission)
+        : [...current.permissionFilesystem, permission],
+    }));
+  };
+
+  const addCreatePluginConfigField = () => {
+    setCreatePluginForm((current) => ({
+      ...current,
+      configFields: [...current.configFields, createEmptyConfigFieldDraft()],
+    }));
+  };
+
+  const removeCreatePluginConfigField = (index: number) => {
+    setCreatePluginForm((current) => ({
+      ...current,
+      configFields: current.configFields.filter((_, fieldIndex) => fieldIndex !== index),
+    }));
+  };
+
+  const updateCreatePluginConfigField = <K extends keyof CreatePluginConfigFieldDraft>(
+    index: number,
+    key: K,
+    value: CreatePluginConfigFieldDraft[K],
+  ) => {
+    setCreatePluginForm((current) => ({
+      ...current,
+      configFields: current.configFields.map((field, fieldIndex) => {
+        if (fieldIndex !== index) return field;
+
+        const nextField = { ...field, [key]: value };
+        if (key === 'inputType') {
+          const nextInputType = value as PluginConfigFieldInputType;
+          if (nextInputType === 'select' || nextInputType === 'multi-select') {
+            if (nextField.options.length === 0) {
+              nextField.options = [createEmptyConfigOptionDraft()];
+            }
+          } else {
+            nextField.defaultValueMulti = [];
+          }
+        }
+        return nextField;
+      }),
+    }));
+  };
+
+  const addCreatePluginConfigOption = (fieldIndex: number) => {
+    setCreatePluginForm((current) => ({
+      ...current,
+      configFields: current.configFields.map((field, index) =>
+        index === fieldIndex
+          ? { ...field, options: [...field.options, createEmptyConfigOptionDraft()] }
+          : field,
+      ),
+    }));
+  };
+
+  const removeCreatePluginConfigOption = (fieldIndex: number, optionIndex: number) => {
+    setCreatePluginForm((current) => ({
+      ...current,
+      configFields: current.configFields.map((field, index) => {
+        if (index !== fieldIndex) return field;
+        const nextOptions = field.options.filter(
+          (_, currentOptionIndex) => currentOptionIndex !== optionIndex,
+        );
+        const validValues = new Set(
+          nextOptions.map((option) => option.value.trim()).filter(Boolean),
+        );
+        return {
+          ...field,
+          options: nextOptions.length > 0 ? nextOptions : [createEmptyConfigOptionDraft()],
+          defaultValueMulti: field.defaultValueMulti.filter((value) => validValues.has(value)),
+          defaultValueText:
+            field.inputType === 'select' && validValues.has(field.defaultValueText)
+              ? field.defaultValueText
+              : field.inputType === 'select'
+                ? ''
+                : field.defaultValueText,
+        };
+      }),
+    }));
+  };
+
+  const updateCreatePluginConfigOption = <K extends keyof CreatePluginConfigOptionDraft>(
+    fieldIndex: number,
+    optionIndex: number,
+    key: K,
+    value: CreatePluginConfigOptionDraft[K],
+  ) => {
+    setCreatePluginForm((current) => ({
+      ...current,
+      configFields: current.configFields.map((field, index) =>
+        index === fieldIndex
+          ? {
+              ...field,
+              options: field.options.map((option, currentOptionIndex) =>
+                currentOptionIndex === optionIndex ? { ...option, [key]: value } : option,
+              ),
+            }
+          : field,
+      ),
     }));
   };
 
@@ -803,14 +1215,42 @@ export function PostDownloadPluginsCard() {
     }
   };
 
-  const setEnvDraftValue = (pluginId: string, key: string, value: string) => {
-    setEnvDrafts((current) => ({
+  const setConfigDraftValue = (pluginId: string, key: string, value: PluginConfigDraftValue) => {
+    setConfigDrafts((current) => ({
       ...current,
       [`${pluginId}:${key}`]: value,
     }));
   };
 
-  const getEnvDraftValue = (pluginId: string, key: string) => envDrafts[`${pluginId}:${key}`] ?? '';
+  const getConfigDraftValue = (
+    plugin: PluginSummary,
+    field: PluginConfigField,
+  ): PluginConfigDraftValue => {
+    const draft = configDrafts[`${plugin.manifest.id}:${field.key}`];
+    if (draft !== undefined) {
+      return draft;
+    }
+
+    if (field.sensitive) {
+      if (field.inputType === 'boolean') {
+        return Boolean(getResolvedConfigFieldValue(plugin, field));
+      }
+      if (field.inputType === 'multi-select') {
+        const resolved = getResolvedConfigFieldValue(plugin, field);
+        return Array.isArray(resolved) ? resolved : [];
+      }
+      return '';
+    }
+
+    const resolved = getResolvedConfigFieldValue(plugin, field);
+    if (field.inputType === 'boolean') {
+      return typeof resolved === 'boolean' ? resolved : false;
+    }
+    if (field.inputType === 'multi-select') {
+      return Array.isArray(resolved) ? resolved : [];
+    }
+    return stringifyConfigFieldValue(resolved);
+  };
 
   const setTimeoutDraftValue = (pluginId: string, value: string) => {
     setTimeoutDrafts((current) => ({
@@ -822,47 +1262,63 @@ export function PostDownloadPluginsCard() {
   const getTimeoutDraftValue = (plugin: PluginSummary) =>
     timeoutDrafts[plugin.manifest.id] ?? String(currentTimeoutSec(plugin));
 
-  const handleSavePluginEnv = async (plugin: PluginSummary, key: string) => {
-    const value = getEnvDraftValue(plugin.manifest.id, key);
+  const handlePickPluginConfigPath = async (
+    plugin: PluginSummary,
+    field: PluginConfigField,
+    directory: boolean,
+  ) => {
     try {
-      await invoke('update_plugin_env_values', {
-        pluginId: plugin.manifest.id,
-        input: {
-          values: {
-            [key]: value.trim() ? value : null,
-          },
-        },
+      const selected = await open({
+        directory,
+        multiple: false,
       });
-      updatePluginList((items) =>
-        items.map((item) =>
-          item.manifest.id === plugin.manifest.id
-            ? {
-                ...item,
-                installation: {
-                  ...item.installation,
-                  envValueStatus: {
-                    ...item.installation.envValueStatus,
-                    [key]: value.trim().length > 0,
-                  },
-                },
-              }
-            : item,
-        ),
-      );
-      setEnvDraftValue(plugin.manifest.id, key, '');
+      if (typeof selected === 'string' && selected.trim()) {
+        setConfigDraftValue(plugin.manifest.id, field.key, selected);
+      }
     } catch (err) {
-      console.error('Failed to update plugin env values:', err);
-      setError(t('download.pluginEnvSaveError'));
+      console.error('Failed to pick plugin config path:', err);
+      setError(localizeUnknownError(err));
     }
   };
 
-  const handleClearPluginEnv = async (plugin: PluginSummary, key: string) => {
+  const handleSavePluginConfig = async (plugin: PluginSummary, field: PluginConfigField) => {
+    const draftValue = getConfigDraftValue(plugin, field);
+    let value: PluginConfigFieldValue | null;
+
+    switch (field.inputType) {
+      case 'boolean':
+        value = Boolean(draftValue);
+        break;
+      case 'multi-select':
+        value = Array.isArray(draftValue) ? draftValue : [];
+        break;
+      case 'number': {
+        const raw = String(draftValue).trim();
+        if (!raw) {
+          value = null;
+          break;
+        }
+        const parsed = Number(raw);
+        if (!Number.isFinite(parsed)) {
+          setError(t('download.pluginConfigInvalidNumber'));
+          return;
+        }
+        value = parsed;
+        break;
+      }
+      default: {
+        const raw = String(draftValue).trim();
+        value = raw ? raw : null;
+        break;
+      }
+    }
+
     try {
-      await invoke('update_plugin_env_values', {
+      await invoke('update_plugin_config_values', {
         pluginId: plugin.manifest.id,
         input: {
           values: {
-            [key]: null,
+            [field.key]: value,
           },
         },
       });
@@ -873,19 +1329,87 @@ export function PostDownloadPluginsCard() {
                 ...item,
                 installation: {
                   ...item.installation,
-                  envValueStatus: {
-                    ...item.installation.envValueStatus,
-                    [key]: false,
+                  configValues: field.sensitive
+                    ? item.installation.configValues
+                    : {
+                        ...item.installation.configValues,
+                        ...(value === null ? {} : { [field.key]: value }),
+                      },
+                  configValueStatus: {
+                    ...item.installation.configValueStatus,
+                    [field.key]: value !== null || field.defaultValue !== undefined,
                   },
                 },
               }
             : item,
         ),
       );
-      setEnvDraftValue(plugin.manifest.id, key, '');
+      setConfigDraftValue(
+        plugin.manifest.id,
+        field.key,
+        field.inputType === 'boolean'
+          ? Boolean(value)
+          : field.inputType === 'multi-select'
+            ? Array.isArray(value)
+              ? value
+              : []
+            : field.sensitive
+              ? ''
+              : stringifyConfigFieldValue(value ?? field.defaultValue ?? undefined),
+      );
     } catch (err) {
-      console.error('Failed to clear plugin env value:', err);
-      setError(t('download.pluginEnvSaveError'));
+      console.error('Failed to update plugin config values:', err);
+      setError(t('download.pluginConfigSaveError'));
+    }
+  };
+
+  const handleClearPluginConfig = async (plugin: PluginSummary, field: PluginConfigField) => {
+    try {
+      await invoke('update_plugin_config_values', {
+        pluginId: plugin.manifest.id,
+        input: {
+          values: {
+            [field.key]: null,
+          },
+        },
+      });
+      updatePluginList((items) =>
+        items.map((item) =>
+          item.manifest.id === plugin.manifest.id
+            ? {
+                ...item,
+                installation: {
+                  ...item.installation,
+                  configValues: Object.fromEntries(
+                    Object.entries(item.installation.configValues).filter(
+                      ([entryKey]) => entryKey !== field.key,
+                    ),
+                  ),
+                  configValueStatus: {
+                    ...item.installation.configValueStatus,
+                    [field.key]: field.defaultValue !== undefined,
+                  },
+                },
+              }
+            : item,
+        ),
+      );
+      setConfigDraftValue(
+        plugin.manifest.id,
+        field.key,
+        field.inputType === 'boolean'
+          ? Boolean(field.defaultValue)
+          : field.inputType === 'multi-select'
+            ? Array.isArray(field.defaultValue)
+              ? field.defaultValue
+              : []
+            : field.sensitive
+              ? ''
+              : stringifyConfigFieldValue(field.defaultValue ?? undefined),
+      );
+    } catch (err) {
+      console.error('Failed to clear plugin config value:', err);
+      setError(t('download.pluginConfigSaveError'));
     }
   };
 
@@ -1939,24 +2463,6 @@ export function PostDownloadPluginsCard() {
                                 enabled: plugin.manifest.permissions.network,
                                 approved: plugin.installation.approvedPermissions.network,
                               },
-                              {
-                                key: 'readPaths' as const,
-                                label: t('download.pluginPermissionReadPaths'),
-                                enabled: plugin.manifest.permissions.readPaths.length > 0,
-                                approved: plugin.installation.approvedPermissions.readPaths,
-                              },
-                              {
-                                key: 'writePaths' as const,
-                                label: t('download.pluginPermissionWritePaths'),
-                                enabled: plugin.manifest.permissions.writePaths.length > 0,
-                                approved: plugin.installation.approvedPermissions.writePaths,
-                              },
-                              {
-                                key: 'env' as const,
-                                label: t('download.pluginPermissionEnv'),
-                                enabled: plugin.manifest.permissions.env.length > 0,
-                                approved: plugin.installation.approvedPermissions.env,
-                              },
                             ].map((permission) => (
                               <div
                                 key={permission.key}
@@ -1980,52 +2486,120 @@ export function PostDownloadPluginsCard() {
                             ))}
                           </div>
 
-                          {(plugin.manifest.permissions.readPaths.length > 0 ||
-                            plugin.manifest.permissions.writePaths.length > 0 ||
-                            plugin.manifest.permissions.env.length > 0) && (
-                            <div className="mt-3 space-y-2 text-[11px] text-muted-foreground">
-                              {plugin.manifest.permissions.readPaths.length > 0 && (
-                                <p>
-                                  {t('download.pluginPermissionReadPathsLabel')}:{' '}
-                                  {plugin.manifest.permissions.readPaths.join(', ')}
-                                </p>
-                              )}
-                              {plugin.manifest.permissions.writePaths.length > 0 && (
-                                <p>
-                                  {t('download.pluginPermissionWritePathsLabel')}:{' '}
-                                  {plugin.manifest.permissions.writePaths.join(', ')}
-                                </p>
-                              )}
+                          {plugin.manifest.permissions.fs.length > 0 && (
+                            <div className="mt-3 space-y-2">
+                              <p className="text-xs font-medium">
+                                {t('download.pluginPermissionFilesystem')}
+                              </p>
+                              <div className="grid gap-2 md:grid-cols-2">
+                                {plugin.manifest.permissions.fs.map((permission) => {
+                                  const approved =
+                                    plugin.installation.approvedPermissions.fs.includes(permission);
+                                  return (
+                                    <div
+                                      key={permission}
+                                      className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2"
+                                    >
+                                      <span className="text-xs">
+                                        {getFilesystemPermissionLabel(permission, t)}
+                                      </span>
+                                      <Switch
+                                        checked={approved}
+                                        onCheckedChange={(checked) =>
+                                          handleApprovePermissions(plugin, {
+                                            ...plugin.installation.approvedPermissions,
+                                            fs: checked
+                                              ? [
+                                                  ...plugin.installation.approvedPermissions.fs,
+                                                  permission,
+                                                ].filter(
+                                                  (value, index, list) =>
+                                                    list.indexOf(value) === index,
+                                                )
+                                              : plugin.installation.approvedPermissions.fs.filter(
+                                                  (value) => value !== permission,
+                                                ),
+                                          })
+                                        }
+                                      />
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
                           )}
 
-                          {plugin.manifest.permissions.env.length > 0 && (
-                            <div className="mt-4 space-y-3 border-t border-border/50 pt-3">
-                              <div className="space-y-1">
-                                <p className="text-xs font-medium">
-                                  {t('download.pluginEnvTitle')}
-                                </p>
-                                <p className="text-[11px] text-muted-foreground">
-                                  {t('download.pluginEnvDesc')}
-                                </p>
-                              </div>
+                          <div className="mt-4 space-y-3 border-t border-border/50 pt-3">
+                            <div className="space-y-1">
+                              <p className="text-xs font-medium">
+                                {t('download.pluginConfigTitle')}
+                              </p>
+                              <p className="text-[11px] text-muted-foreground">
+                                {t('download.pluginConfigDesc')}
+                              </p>
+                            </div>
 
-                              {plugin.manifest.permissions.env.map((envKey) => {
-                                const isSet = plugin.installation.envValueStatus[envKey] ?? false;
-                                const draftValue = getEnvDraftValue(plugin.manifest.id, envKey);
-                                const isSecret =
-                                  envKey.includes('TOKEN') ||
-                                  envKey.includes('SECRET') ||
-                                  envKey.includes('KEY') ||
-                                  envKey.includes('PASSWORD');
+                            {plugin.manifest.configFields.length === 0 ? (
+                              <p className="text-[11px] text-muted-foreground">
+                                {t('download.pluginConfigEmpty')}
+                              </p>
+                            ) : (
+                              plugin.manifest.configFields.map((field) => {
+                                const isSet =
+                                  plugin.installation.configValueStatus[field.key] ??
+                                  field.defaultValue !== undefined;
+                                const draftValue = getConfigDraftValue(plugin, field);
+                                const defaultValueText = formatConfigFieldDefaultValue(
+                                  field.defaultValue ?? undefined,
+                                );
+                                const textLikeValue =
+                                  typeof draftValue === 'string' ? draftValue : '';
+                                const numberInputValue =
+                                  typeof draftValue === 'string' ? draftValue : '';
+                                const selectedValues = Array.isArray(draftValue) ? draftValue : [];
+                                const booleanValue = Boolean(draftValue);
+                                const hasDraftContent = (() => {
+                                  if (field.inputType === 'boolean') return true;
+                                  if (field.inputType === 'multi-select')
+                                    return selectedValues.length > 0;
+                                  return textLikeValue.trim().length > 0;
+                                })();
 
                                 return (
                                   <div
-                                    key={`${plugin.manifest.id}-${envKey}`}
+                                    key={`${plugin.manifest.id}-${field.key}`}
                                     className="rounded-lg border border-border/60 px-3 py-3"
                                   >
-                                    <div className="flex flex-wrap items-center justify-between gap-2">
-                                      <p className="text-xs font-medium">{envKey}</p>
+                                    <div className="flex flex-wrap items-start justify-between gap-2">
+                                      <div className="space-y-1">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <p className="text-xs font-medium">{field.label}</p>
+                                          {field.required && (
+                                            <span className="rounded bg-rose-500/10 px-2 py-0.5 text-[10px] text-rose-600 dark:text-rose-400">
+                                              {t('download.pluginConfigRequired')}
+                                            </span>
+                                          )}
+                                          {field.sensitive && (
+                                            <span className="rounded bg-sky-500/10 px-2 py-0.5 text-[10px] text-sky-600 dark:text-sky-400">
+                                              {t('download.pluginConfigSensitive')}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <p className="text-[11px] text-muted-foreground">
+                                          {field.key}
+                                        </p>
+                                        {field.description && (
+                                          <p className="text-[11px] text-muted-foreground">
+                                            {field.description}
+                                          </p>
+                                        )}
+                                        {defaultValueText && (
+                                          <p className="text-[11px] text-muted-foreground">
+                                            {t('download.pluginConfigDefaultLabel')}:{' '}
+                                            {defaultValueText}
+                                          </p>
+                                        )}
+                                      </div>
                                       <span
                                         className={cn(
                                           'rounded px-2 py-0.5 text-[10px]',
@@ -2035,51 +2609,237 @@ export function PostDownloadPluginsCard() {
                                         )}
                                       >
                                         {isSet
-                                          ? t('download.pluginEnvValueSet')
-                                          : t('download.pluginEnvValueMissing')}
+                                          ? t('download.pluginConfigValueSet')
+                                          : t('download.pluginConfigValueMissing')}
                                       </span>
                                     </div>
 
-                                    <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                                      <Input
-                                        type={isSecret ? 'password' : 'text'}
-                                        value={draftValue}
-                                        onChange={(event) =>
-                                          setEnvDraftValue(
-                                            plugin.manifest.id,
-                                            envKey,
-                                            event.target.value,
-                                          )
-                                        }
-                                        placeholder={
-                                          isSet
-                                            ? t('download.pluginEnvReplacePlaceholder')
-                                            : t('download.pluginEnvValuePlaceholder')
-                                        }
-                                      />
+                                    <div className="mt-3 space-y-3">
+                                      {field.inputType === 'text' && (
+                                        <Input
+                                          value={textLikeValue}
+                                          onChange={(event) =>
+                                            setConfigDraftValue(
+                                              plugin.manifest.id,
+                                              field.key,
+                                              event.target.value,
+                                            )
+                                          }
+                                          placeholder={
+                                            field.sensitive
+                                              ? isSet
+                                                ? t('download.pluginConfigReplacePlaceholder')
+                                                : field.placeholder ||
+                                                  t('download.pluginConfigValuePlaceholder')
+                                              : field.placeholder ||
+                                                t('download.pluginConfigValuePlaceholder')
+                                          }
+                                        />
+                                      )}
+
+                                      {field.inputType === 'password' && (
+                                        <Input
+                                          type="password"
+                                          value={textLikeValue}
+                                          onChange={(event) =>
+                                            setConfigDraftValue(
+                                              plugin.manifest.id,
+                                              field.key,
+                                              event.target.value,
+                                            )
+                                          }
+                                          placeholder={
+                                            isSet
+                                              ? t('download.pluginConfigReplacePlaceholder')
+                                              : field.placeholder ||
+                                                t('download.pluginConfigValuePlaceholder')
+                                          }
+                                        />
+                                      )}
+
+                                      {field.inputType === 'textarea' && (
+                                        <Textarea
+                                          value={textLikeValue}
+                                          onChange={(event) =>
+                                            setConfigDraftValue(
+                                              plugin.manifest.id,
+                                              field.key,
+                                              event.target.value,
+                                            )
+                                          }
+                                          placeholder={
+                                            field.placeholder ||
+                                            t('download.pluginConfigValuePlaceholder')
+                                          }
+                                          rows={4}
+                                        />
+                                      )}
+
+                                      {field.inputType === 'number' && (
+                                        <Input
+                                          type="number"
+                                          value={numberInputValue}
+                                          min={field.min ?? undefined}
+                                          max={field.max ?? undefined}
+                                          step={field.step ?? undefined}
+                                          onChange={(event) =>
+                                            setConfigDraftValue(
+                                              plugin.manifest.id,
+                                              field.key,
+                                              event.target.value,
+                                            )
+                                          }
+                                          placeholder={
+                                            field.placeholder ||
+                                            t('download.pluginConfigValuePlaceholder')
+                                          }
+                                        />
+                                      )}
+
+                                      {(field.inputType === 'file' ||
+                                        field.inputType === 'directory') && (
+                                        <div className="flex gap-2">
+                                          <Input
+                                            value={textLikeValue}
+                                            onChange={(event) =>
+                                              setConfigDraftValue(
+                                                plugin.manifest.id,
+                                                field.key,
+                                                event.target.value,
+                                              )
+                                            }
+                                            placeholder={
+                                              field.placeholder ||
+                                              t('download.pluginConfigValuePlaceholder')
+                                            }
+                                          />
+                                          <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() =>
+                                              handlePickPluginConfigPath(
+                                                plugin,
+                                                field,
+                                                field.inputType === 'directory',
+                                              )
+                                            }
+                                          >
+                                            <FolderOpen className="h-4 w-4" />
+                                            {field.inputType === 'directory'
+                                              ? t('download.pluginConfigBrowseDirectory')
+                                              : t('download.pluginConfigBrowseFile')}
+                                          </Button>
+                                        </div>
+                                      )}
+
+                                      {field.inputType === 'boolean' && (
+                                        <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2">
+                                          <span className="text-xs text-muted-foreground">
+                                            {t('download.pluginConfigBooleanLabel')}
+                                          </span>
+                                          <Switch
+                                            checked={booleanValue}
+                                            onCheckedChange={(checked) =>
+                                              setConfigDraftValue(
+                                                plugin.manifest.id,
+                                                field.key,
+                                                checked,
+                                              )
+                                            }
+                                          />
+                                        </div>
+                                      )}
+
+                                      {field.inputType === 'select' && (
+                                        <Select
+                                          value={textLikeValue}
+                                          onValueChange={(value) =>
+                                            setConfigDraftValue(
+                                              plugin.manifest.id,
+                                              field.key,
+                                              value,
+                                            )
+                                          }
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue
+                                              placeholder={
+                                                field.placeholder ||
+                                                t('download.pluginConfigSelectPlaceholder')
+                                              }
+                                            />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {field.options.map((option) => (
+                                              <SelectItem key={option.value} value={option.value}>
+                                                {option.label}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      )}
+
+                                      {field.inputType === 'multi-select' && (
+                                        <div className="space-y-2 rounded-lg border border-border/60 p-3">
+                                          {field.options.map((option) => {
+                                            const checked = selectedValues.includes(option.value);
+                                            return (
+                                              <label
+                                                key={option.value}
+                                                className="flex items-center gap-2 text-sm"
+                                              >
+                                                <input
+                                                  type="checkbox"
+                                                  checked={checked}
+                                                  onChange={(event) => {
+                                                    const next = event.target.checked
+                                                      ? [...selectedValues, option.value]
+                                                      : selectedValues.filter(
+                                                          (value) => value !== option.value,
+                                                        );
+                                                    setConfigDraftValue(
+                                                      plugin.manifest.id,
+                                                      field.key,
+                                                      next,
+                                                    );
+                                                  }}
+                                                />
+                                                <span>{option.label}</span>
+                                              </label>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+
                                       <div className="flex gap-2">
                                         <Button
                                           size="sm"
-                                          onClick={() => handleSavePluginEnv(plugin, envKey)}
-                                          disabled={!draftValue.trim()}
+                                          onClick={() => handleSavePluginConfig(plugin, field)}
+                                          disabled={
+                                            field.inputType === 'boolean'
+                                              ? false
+                                              : field.required
+                                                ? !hasDraftContent
+                                                : false
+                                          }
                                         >
-                                          {t('download.pluginEnvSave')}
+                                          {t('download.pluginConfigSave')}
                                         </Button>
                                         <Button
                                           variant="outline"
                                           size="sm"
-                                          onClick={() => handleClearPluginEnv(plugin, envKey)}
-                                          disabled={!isSet}
+                                          onClick={() => handleClearPluginConfig(plugin, field)}
+                                          disabled={!isSet && field.defaultValue === undefined}
                                         >
-                                          {t('download.pluginEnvClear')}
+                                          {t('download.pluginConfigClear')}
                                         </Button>
                                       </div>
                                     </div>
                                   </div>
                                 );
-                              })}
-                            </div>
-                          )}
+                              })
+                            )}
+                          </div>
                         </div>
                       </div>
                     </CollapsibleContent>
@@ -2435,7 +3195,7 @@ export function PostDownloadPluginsCard() {
               <div className="space-y-2">
                 <p className="text-sm font-medium">{t('download.pluginSupportedProvidersLabel')}</p>
                 <div className="flex flex-wrap gap-2">
-                  {(['deno', 'node', 'bun'] as PluginProvider[]).map((provider) => {
+                  {(['deno'] as PluginProvider[]).map((provider) => {
                     const selected = createPluginForm.supportedProviders.includes(provider);
                     return (
                       <button
@@ -2524,45 +3284,450 @@ export function PostDownloadPluginsCard() {
                 />
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">
-                    {t('download.pluginPermissionReadPathsLabel')}
-                  </p>
-                  <Textarea
-                    value={createPluginForm.permissionReadPaths}
-                    onChange={(event) =>
-                      updateCreatePluginForm('permissionReadPaths', event.target.value)
-                    }
-                    placeholder={t('download.pluginCreateListPlaceholder')}
-                    rows={4}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">
-                    {t('download.pluginPermissionWritePathsLabel')}
-                  </p>
-                  <Textarea
-                    value={createPluginForm.permissionWritePaths}
-                    onChange={(event) =>
-                      updateCreatePluginForm('permissionWritePaths', event.target.value)
-                    }
-                    placeholder={t('download.pluginCreateListPlaceholder')}
-                    rows={4}
-                  />
+              <div className="space-y-3">
+                <p className="text-sm font-medium">{t('download.pluginPermissionFilesystem')}</p>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {FILESYSTEM_PERMISSIONS.map((permission) => {
+                    const selected = createPluginForm.permissionFilesystem.includes(permission);
+                    return (
+                      <button
+                        key={permission}
+                        type="button"
+                        onClick={() => toggleCreatePluginFilesystemPermission(permission)}
+                        className={cn(
+                          'flex items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-colors',
+                          selected
+                            ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                            : 'border-border/60 bg-background/70 text-muted-foreground hover:bg-muted/60',
+                        )}
+                      >
+                        <span>{getFilesystemPermissionLabel(permission, t)}</span>
+                        <span
+                          className={cn(
+                            'rounded px-2 py-0.5 text-[10px]',
+                            selected
+                              ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                              : 'bg-muted text-muted-foreground',
+                          )}
+                        >
+                          {selected
+                            ? t('download.pluginPermissionSelected')
+                            : t('download.pluginPermissionNotSelected')}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <p className="text-sm font-medium">{t('download.pluginPermissionEnvLabel')}</p>
-                <Textarea
-                  value={createPluginForm.permissionEnv}
-                  onChange={(event) => updateCreatePluginForm('permissionEnv', event.target.value)}
-                  placeholder={t('download.pluginCreateListPlaceholder')}
-                  rows={4}
-                />
+              <p className="text-xs text-muted-foreground">
+                {t('download.pluginPermissionFilesystemHelp')}
+              </p>
+            </div>
+
+            <div className="space-y-4 rounded-xl border border-border/60 bg-muted/20 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">
+                    {t('download.pluginCreateConfigFieldsTitle')}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {t('download.pluginCreateConfigFieldsHelp')}
+                  </p>
+                </div>
+                <Button variant="outline" type="button" onClick={addCreatePluginConfigField}>
+                  <Plus className="h-4 w-4" />
+                  {t('download.pluginCreateConfigAddField')}
+                </Button>
               </div>
+
+              {createPluginConfigValidation.globalErrors.length > 0 && (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                  {createPluginConfigValidation.globalErrors.map((message) => (
+                    <p key={message}>{message}</p>
+                  ))}
+                </div>
+              )}
+
+              {createPluginForm.configFields.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">
+                  {t('download.pluginCreateConfigEmpty')}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {createPluginForm.configFields.map((field, fieldIndex) => {
+                    const usesOptions =
+                      field.inputType === 'select' || field.inputType === 'multi-select';
+                    const usesNumberBounds = field.inputType === 'number';
+                    const fieldValidationErrors =
+                      createPluginConfigValidation.fieldErrors[field.clientId] ?? [];
+
+                    return (
+                      <div
+                        key={field.clientId}
+                        className={cn(
+                          'space-y-4 rounded-xl border bg-background/70 p-4',
+                          fieldValidationErrors.length > 0
+                            ? 'border-destructive/40'
+                            : 'border-border/60',
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium">
+                              {t('download.pluginCreateConfigFieldTitle', {
+                                index: fieldIndex + 1,
+                              })}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {field.key.trim() || t('download.pluginCreateConfigFieldUntitled')}
+                            </p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            type="button"
+                            onClick={() => removeCreatePluginConfigField(fieldIndex)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            {t('download.pluginCreateConfigRemoveField')}
+                          </Button>
+                        </div>
+
+                        {fieldValidationErrors.length > 0 && (
+                          <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                            {fieldValidationErrors.map((message) => (
+                              <p key={message}>{message}</p>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium">
+                              {t('download.pluginCreateConfigFieldKeyLabel')}
+                            </p>
+                            <Input
+                              value={field.key}
+                              onChange={(event) =>
+                                updateCreatePluginConfigField(fieldIndex, 'key', event.target.value)
+                              }
+                              placeholder="driveFolderId"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium">
+                              {t('download.pluginCreateConfigFieldLabelLabel')}
+                            </p>
+                            <Input
+                              value={field.label}
+                              onChange={(event) =>
+                                updateCreatePluginConfigField(
+                                  fieldIndex,
+                                  'label',
+                                  event.target.value,
+                                )
+                              }
+                              placeholder={t('download.pluginCreateConfigFieldLabelPlaceholder')}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium">
+                              {t('download.pluginCreateConfigFieldTypeLabel')}
+                            </p>
+                            <Select
+                              value={field.inputType}
+                              onValueChange={(value) =>
+                                updateCreatePluginConfigField(
+                                  fieldIndex,
+                                  'inputType',
+                                  value as PluginConfigFieldInputType,
+                                )
+                              }
+                            >
+                              <SelectTrigger className="h-10 text-sm">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {CONFIG_FIELD_INPUT_TYPES.map((inputType) => (
+                                  <SelectItem key={inputType} value={inputType}>
+                                    {t(`download.pluginConfigInputType.${inputType}`)}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium">
+                              {t('download.pluginCreateConfigFieldPlaceholderLabel')}
+                            </p>
+                            <Input
+                              value={field.placeholder}
+                              onChange={(event) =>
+                                updateCreatePluginConfigField(
+                                  fieldIndex,
+                                  'placeholder',
+                                  event.target.value,
+                                )
+                              }
+                              placeholder={t(
+                                'download.pluginCreateConfigFieldPlaceholderPlaceholder',
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">
+                            {t('download.pluginCreateConfigFieldDescriptionLabel')}
+                          </p>
+                          <Textarea
+                            value={field.description}
+                            onChange={(event) =>
+                              updateCreatePluginConfigField(
+                                fieldIndex,
+                                'description',
+                                event.target.value,
+                              )
+                            }
+                            rows={3}
+                            placeholder={t(
+                              'download.pluginCreateConfigFieldDescriptionPlaceholder',
+                            )}
+                          />
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2">
+                            <span className="text-sm">
+                              {t('download.pluginCreateConfigFieldRequiredLabel')}
+                            </span>
+                            <Switch
+                              checked={field.required}
+                              onCheckedChange={(checked) =>
+                                updateCreatePluginConfigField(fieldIndex, 'required', checked)
+                              }
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2">
+                            <span className="text-sm">
+                              {t('download.pluginCreateConfigFieldSensitiveLabel')}
+                            </span>
+                            <Switch
+                              checked={field.sensitive}
+                              onCheckedChange={(checked) =>
+                                updateCreatePluginConfigField(fieldIndex, 'sensitive', checked)
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">
+                            {t('download.pluginCreateConfigFieldDefaultLabel')}
+                          </p>
+
+                          {field.inputType === 'boolean' ? (
+                            <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2">
+                              <span className="text-sm text-muted-foreground">
+                                {t('download.pluginConfigBooleanLabel')}
+                              </span>
+                              <Switch
+                                checked={field.defaultValueBoolean}
+                                onCheckedChange={(checked) =>
+                                  updateCreatePluginConfigField(
+                                    fieldIndex,
+                                    'defaultValueBoolean',
+                                    checked,
+                                  )
+                                }
+                              />
+                            </div>
+                          ) : field.inputType === 'multi-select' ? (
+                            <div className="space-y-2 rounded-lg border border-border/60 p-3">
+                              {field.options
+                                .filter((option) => option.value.trim())
+                                .map((option) => {
+                                  const checked = field.defaultValueMulti.includes(option.value);
+                                  return (
+                                    <label
+                                      key={`${fieldIndex}-default-${option.value}`}
+                                      className="flex items-center gap-2 text-sm"
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        onChange={(event) => {
+                                          const next = event.target.checked
+                                            ? [...field.defaultValueMulti, option.value]
+                                            : field.defaultValueMulti.filter(
+                                                (value) => value !== option.value,
+                                              );
+                                          updateCreatePluginConfigField(
+                                            fieldIndex,
+                                            'defaultValueMulti',
+                                            next,
+                                          );
+                                        }}
+                                      />
+                                      <span>{option.label || option.value}</span>
+                                    </label>
+                                  );
+                                })}
+                              {field.options.filter((option) => option.value.trim()).length ===
+                                0 && (
+                                <p className="text-xs text-muted-foreground">
+                                  {t('download.pluginCreateConfigFieldDefaultOptionsHint')}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <Input
+                              type={field.inputType === 'number' ? 'number' : 'text'}
+                              value={field.defaultValueText}
+                              onChange={(event) =>
+                                updateCreatePluginConfigField(
+                                  fieldIndex,
+                                  'defaultValueText',
+                                  event.target.value,
+                                )
+                              }
+                              placeholder={t('download.pluginCreateConfigFieldDefaultPlaceholder')}
+                            />
+                          )}
+                        </div>
+
+                        {usesNumberBounds && (
+                          <div className="grid gap-4 md:grid-cols-3">
+                            <div className="space-y-2">
+                              <p className="text-sm font-medium">
+                                {t('download.pluginCreateConfigFieldMinLabel')}
+                              </p>
+                              <Input
+                                type="number"
+                                value={field.min}
+                                onChange={(event) =>
+                                  updateCreatePluginConfigField(
+                                    fieldIndex,
+                                    'min',
+                                    event.target.value,
+                                  )
+                                }
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <p className="text-sm font-medium">
+                                {t('download.pluginCreateConfigFieldMaxLabel')}
+                              </p>
+                              <Input
+                                type="number"
+                                value={field.max}
+                                onChange={(event) =>
+                                  updateCreatePluginConfigField(
+                                    fieldIndex,
+                                    'max',
+                                    event.target.value,
+                                  )
+                                }
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <p className="text-sm font-medium">
+                                {t('download.pluginCreateConfigFieldStepLabel')}
+                              </p>
+                              <Input
+                                type="number"
+                                value={field.step}
+                                onChange={(event) =>
+                                  updateCreatePluginConfigField(
+                                    fieldIndex,
+                                    'step',
+                                    event.target.value,
+                                  )
+                                }
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {usesOptions && (
+                          <div className="space-y-3 rounded-lg border border-border/60 p-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="text-sm font-medium">
+                                {t('download.pluginCreateConfigFieldOptionsLabel')}
+                              </p>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                type="button"
+                                onClick={() => addCreatePluginConfigOption(fieldIndex)}
+                              >
+                                <Plus className="h-4 w-4" />
+                                {t('download.pluginCreateConfigAddOption')}
+                              </Button>
+                            </div>
+
+                            <div className="space-y-3">
+                              {field.options.map((option, optionIndex) => (
+                                <div
+                                  key={option.clientId}
+                                  className="grid gap-3 md:grid-cols-[1fr_1fr_auto]"
+                                >
+                                  <Input
+                                    value={option.value}
+                                    onChange={(event) =>
+                                      updateCreatePluginConfigOption(
+                                        fieldIndex,
+                                        optionIndex,
+                                        'value',
+                                        event.target.value,
+                                      )
+                                    }
+                                    placeholder={t(
+                                      'download.pluginCreateConfigFieldOptionValuePlaceholder',
+                                    )}
+                                  />
+                                  <Input
+                                    value={option.label}
+                                    onChange={(event) =>
+                                      updateCreatePluginConfigOption(
+                                        fieldIndex,
+                                        optionIndex,
+                                        'label',
+                                        event.target.value,
+                                      )
+                                    }
+                                    placeholder={t(
+                                      'download.pluginCreateConfigFieldOptionLabelPlaceholder',
+                                    )}
+                                  />
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    type="button"
+                                    onClick={() =>
+                                      removeCreatePluginConfigOption(fieldIndex, optionIndex)
+                                    }
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                    {t('download.pluginCreateConfigRemoveOption')}
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <p className="text-xs text-muted-foreground">{t('download.pluginCreateHelp')}</p>
@@ -2578,14 +3743,7 @@ export function PostDownloadPluginsCard() {
               >
                 {t('download.pluginDismiss')}
               </Button>
-              <Button
-                onClick={handleCreatePlugin}
-                disabled={
-                  creating ||
-                  !createPluginForm.name.trim() ||
-                  !createPluginForm.destinationRoot.trim()
-                }
-              >
+              <Button onClick={handleCreatePlugin} disabled={!createPluginCanSubmit}>
                 <Plus className="h-4 w-4" />
                 {creating ? t('download.pluginCreating') : t('download.pluginCreateWorkspace')}
               </Button>
@@ -2697,9 +3855,7 @@ export function PostDownloadPluginsCard() {
               {(['javascript', 'python'] as PluginRuntimeLanguage[]).map((language) => {
                 const allowedProviders = providers.filter((provider) =>
                   language === 'javascript'
-                    ? provider.provider === 'deno' ||
-                      provider.provider === 'node' ||
-                      provider.provider === 'bun'
+                    ? provider.provider === 'deno'
                     : provider.provider === 'python',
                 );
                 if (allowedProviders.length === 0) return null;
@@ -2799,21 +3955,6 @@ export function PostDownloadPluginsCard() {
                       label: t('download.pluginPermissionNetwork'),
                       enabled: permissionDialogPlugin.manifest.permissions.network,
                     },
-                    {
-                      key: 'readPaths' as const,
-                      label: t('download.pluginPermissionReadPaths'),
-                      enabled: permissionDialogPlugin.manifest.permissions.readPaths.length > 0,
-                    },
-                    {
-                      key: 'writePaths' as const,
-                      label: t('download.pluginPermissionWritePaths'),
-                      enabled: permissionDialogPlugin.manifest.permissions.writePaths.length > 0,
-                    },
-                    {
-                      key: 'env' as const,
-                      label: t('download.pluginPermissionEnv'),
-                      enabled: permissionDialogPlugin.manifest.permissions.env.length > 0,
-                    },
                   ]
                     .filter((permission) => permission.enabled)
                     .map((permission) => (
@@ -2834,6 +3975,34 @@ export function PostDownloadPluginsCard() {
                       </div>
                     ))}
                 </div>
+
+                {permissionDialogPlugin.manifest.permissions.fs.length > 0 && (
+                  <div className="mt-3 grid gap-2 md:grid-cols-2">
+                    {permissionDialogPlugin.manifest.permissions.fs.map((permission) => (
+                      <div
+                        key={permission}
+                        className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2"
+                      >
+                        <span className="text-sm">
+                          {getFilesystemPermissionLabel(permission, t)}
+                        </span>
+                        <Switch
+                          checked={permissionDialogState.fs.includes(permission)}
+                          onCheckedChange={(checked) =>
+                            setPermissionDialogState((current) => ({
+                              ...current,
+                              fs: checked
+                                ? [...current.fs, permission].filter(
+                                    (value, index, list) => list.indexOf(value) === index,
+                                  )
+                                : current.fs.filter((value) => value !== permission),
+                            }))
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <p className="text-xs text-muted-foreground">

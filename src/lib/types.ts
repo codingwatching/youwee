@@ -207,21 +207,60 @@ export interface DownloadProgress {
 }
 
 export type PluginRuntimeLanguage = 'javascript' | 'python';
-export type PluginProvider = 'deno' | 'node' | 'bun' | 'python';
+export type PluginProvider = 'deno' | 'python';
 export type PluginPackageSourceKind = 'workspace' | 'package-ywp';
+export type PluginFilesystemPermission =
+  | 'fs.plugin.read'
+  | 'fs.plugin.write'
+  | 'fs.payload-file.read'
+  | 'fs.payload-directory.read'
+  | 'fs.payload-directory.write'
+  | 'fs.temp.read'
+  | 'fs.temp.write'
+  | 'fs.user-selected.read'
+  | 'fs.user-selected.write';
 
 export interface PluginPermissionSet {
   network: boolean;
-  readPaths: string[];
-  writePaths: string[];
-  env: string[];
+  fs: PluginFilesystemPermission[];
 }
 
 export interface PluginPermissionApproval {
   network: boolean;
-  readPaths: boolean;
-  writePaths: boolean;
-  env: boolean;
+  fs: PluginFilesystemPermission[];
+}
+
+export type PluginConfigFieldInputType =
+  | 'text'
+  | 'textarea'
+  | 'password'
+  | 'number'
+  | 'boolean'
+  | 'file'
+  | 'directory'
+  | 'select'
+  | 'multi-select';
+
+export interface PluginConfigFieldOption {
+  value: string;
+  label: string;
+}
+
+export type PluginConfigFieldValue = string | number | boolean | string[];
+
+export interface PluginConfigField {
+  key: string;
+  inputType: PluginConfigFieldInputType;
+  label: string;
+  description?: string | null;
+  placeholder?: string | null;
+  required: boolean;
+  defaultValue?: PluginConfigFieldValue | null;
+  sensitive: boolean;
+  options: PluginConfigFieldOption[];
+  min?: number | null;
+  max?: number | null;
+  step?: number | null;
 }
 
 export interface PluginRuntimeSpec {
@@ -256,6 +295,7 @@ export interface PluginManifest {
   compatibility?: PluginCompatibilitySpec | null;
   triggers: string[];
   permissions: PluginPermissionSet;
+  configFields: PluginConfigField[];
   timeoutSec: number;
   readme?: string | null;
   checksum?: string | null;
@@ -290,7 +330,8 @@ export interface PluginInstallation {
   lastResolvedSource?: string | null;
   lastExecutionStatus?: string | null;
   lastError?: string | null;
-  envValueStatus: Record<string, boolean>;
+  configValues: Record<string, unknown>;
+  configValueStatus: Record<string, boolean>;
   signatureStatus?: string | null;
   signerKeyId?: string | null;
   signerFingerprint?: string | null;

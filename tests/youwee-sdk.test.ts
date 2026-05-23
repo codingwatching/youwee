@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createAIBridge, parseJsonFromModelOutput } from '../sdk-js/src/ai';
@@ -129,11 +137,17 @@ describe('youwee-sdk createContext', () => {
   test('maps payload fields and runtime bridge values', () => {
     process.env.YOUWEE_APP_VERSION = '0.13.3';
     process.env.YOUWEE_PLUGIN_ID = 'plugin-1';
-    process.env.YOUWEE_PLUGIN_PROVIDER = 'node';
+    process.env.YOUWEE_PLUGIN_PROVIDER = 'deno';
     process.env.YOUWEE_PLUGIN_PROVIDER_SOURCE = 'system';
     process.env.YOUWEE_PLUGIN_TIMEOUT_MS = '60000';
     process.env.YOUWEE_FFMPEG_PATH = '/usr/local/bin/ffmpeg';
     process.env.MY_SECRET = 'secret-value';
+    process.env.YOUWEE_PLUGIN_CONFIG_JSON = JSON.stringify({
+      apiToken: 'token-123',
+      maxRetries: 3,
+      enabled: true,
+      labels: ['a', 'b'],
+    });
 
     const ctx = createContext(samplePayload);
 
@@ -142,10 +156,14 @@ describe('youwee-sdk createContext', () => {
     expect(ctx.file.path).toBe('/tmp/video.mp4');
     expect(ctx.media.url).toBe('https://example.com/video');
     expect(ctx.env.require('MY_SECRET')).toBe('secret-value');
+    expect(ctx.config.require('apiToken')).toBe('token-123');
+    expect(ctx.config.get('maxRetries')).toBe(3);
+    expect(ctx.config.get('enabled')).toBe(true);
+    expect(ctx.config.get('labels')).toEqual(['a', 'b']);
     expect(ctx.youwee.app.version).toBe('0.13.3');
     expect(ctx.youwee.sdk.version).toBe(SDK_VERSION);
     expect(ctx.youwee.plugin.id).toBe('plugin-1');
-    expect(ctx.youwee.runtime.provider).toBe('node');
+    expect(ctx.youwee.runtime.provider).toBe('deno');
     expect(ctx.youwee.tools.ffmpeg.available).toBe(true);
     expect(ctx.youwee.tools.ffmpeg.path).toBe('/usr/local/bin/ffmpeg');
     expect(ctx.youwee.sdk.checkAppVersion('>=0.13.0 <0.14.0').compatible).toBe(true);
@@ -254,8 +272,8 @@ describe('youwee-sdk manifest helpers', () => {
       version: '0.1.0',
       runtime: {
         language: 'javascript',
-        supportedProviders: ['node', 'bun'],
-        preferredProvider: 'node',
+        supportedProviders: ['deno'],
+        preferredProvider: 'deno',
         entrypoint: 'src/plugin.js',
       },
       triggers: ['download.completed'],
@@ -294,7 +312,7 @@ describe('youwee-sdk manifest helpers', () => {
     expect(slugifyPluginName('GG Drive Upload')).toBe('gg-drive-upload');
     expect(packageJson).toContain(`"youwee-sdk": "^${SDK_VERSION}"`);
     expect(packageJson).toContain('YOUWEE_PLUGIN_MAIN=src/plugin.js');
-    expect(packageJson).toContain('node_modules/youwee-sdk/dist/runtime-cli.js');
+    expect(packageJson).toContain('deno run');
   });
 
   test('rejects invalid compatibility syntax in manifests', () => {
@@ -305,7 +323,7 @@ describe('youwee-sdk manifest helpers', () => {
       version: '0.1.0',
       runtime: {
         language: 'javascript',
-        supportedProviders: ['node'],
+        supportedProviders: ['deno'],
         entrypoint: 'src/plugin.js',
       },
       compatibility: {
@@ -324,13 +342,86 @@ describe('youwee-sdk manifest helpers', () => {
       version: '0.1.0',
       runtime: {
         language: 'javascript',
-        supportedProviders: ['node'],
+        supportedProviders: ['deno'],
         entrypoint: 'src/plugin.js',
       },
       triggers: ['triggers.downloadQueued'],
     });
 
     expect(errors.join('\n')).toContain('plugin.json must use raw runtime names');
+  });
+
+  test('validates structured config fields and rejects obsolete permissions.env', () => {
+    const errors = getManifestValidationErrors({
+      id: 'local.plugin-1',
+      slug: 'example-plugin',
+      name: 'Example plugin',
+      version: '0.1.0',
+      runtime: {
+        language: 'javascript',
+        supportedProviders: ['deno'],
+        entrypoint: 'src/plugin.js',
+      },
+      triggers: ['download.completed'],
+      permissions: {
+        network: true,
+        env: ['OLD_SECRET'],
+      } as never,
+      configFields: [
+        {
+          key: 'uploadMode',
+          inputType: 'select',
+          label: 'Upload mode',
+          defaultValue: 'copy',
+          options: [
+            { value: 'copy', label: 'Copy' },
+            { value: 'move', label: 'Move' },
+          ],
+        },
+        {
+          key: 'tags',
+          inputType: 'multi-select',
+          label: 'Tags',
+          defaultValue: ['bad'],
+          options: [{ value: 'good', label: 'Good' }],
+        },
+        {
+          key: 'exportDir',
+          inputType: 'directory',
+          label: 'Export directory',
+        },
+      ],
+    });
+
+    expect(errors.join('\n')).toContain('permissions.env is obsolete');
+    expect(errors.join('\n')).toContain('defaultValue contains unsupported option "bad"');
+  });
+
+  test('requires file or directory config fields for fs.user-selected capabilities', () => {
+    const errors = getManifestValidationErrors({
+      id: 'local.plugin-1',
+      slug: 'example-plugin',
+      name: 'Example plugin',
+      version: '0.1.0',
+      runtime: {
+        language: 'javascript',
+        supportedProviders: ['deno'],
+        entrypoint: 'src/plugin.js',
+      },
+      triggers: ['download.completed'],
+      permissions: {
+        fs: ['fs.user-selected.write'],
+      },
+      configFields: [
+        {
+          key: 'folderName',
+          inputType: 'text',
+          label: 'Folder name',
+        },
+      ],
+    });
+
+    expect(errors.join('\n')).toContain('fs.user-selected.*');
   });
 
   test('builds dist output and packs a .ywp runtime package', async () => {
@@ -352,8 +443,8 @@ describe('youwee-sdk manifest helpers', () => {
         version: '0.1.0',
         runtime: {
           language: 'javascript',
-          supportedProviders: ['node', 'bun'],
-          preferredProvider: 'node',
+          supportedProviders: ['deno'],
+          preferredProvider: 'deno',
           entrypoint: 'src/plugin.js',
         },
         compatibility: {
@@ -428,8 +519,8 @@ module.exports = definePlugin({
             version: '0.1.0',
             runtime: {
               language: 'javascript',
-              supportedProviders: ['node'],
-              preferredProvider: 'node',
+              supportedProviders: ['deno'],
+              preferredProvider: 'deno',
               entrypoint: 'src/plugin.js',
             },
             triggers: ['download.completed'],
@@ -497,8 +588,8 @@ module.exports = definePlugin({
             version: '0.1.0',
             runtime: {
               language: 'javascript',
-              supportedProviders: ['node'],
-              preferredProvider: 'node',
+              supportedProviders: ['deno'],
+              preferredProvider: 'deno',
               entrypoint: 'src/plugin.js',
             },
             triggers: ['download.completed'],
@@ -578,11 +669,17 @@ describe('youwee-sdk compatibility helpers', () => {
 });
 
 describe('youwee-sdk runtime-cli', () => {
-  test('loads a plugin module and writes the final JSON result', async () => {
+  test('loads a plugin module and writes the final JSON result through Deno', async () => {
+    if (spawnSync('deno', ['--version'], { stdio: 'ignore' }).status !== 0) {
+      return;
+    }
+
     const tempDir = mkdtempSync(join(tmpdir(), 'youwee-sdk-test-'));
+    const resolvedTempDir = realpathSync(tempDir);
     const pluginFile = join(tempDir, 'plugin.cjs');
     const sdkEntry = resolve(process.cwd(), 'sdk-js/dist/index.js');
     const runtimeCli = resolve(process.cwd(), 'sdk-js/dist/runtime-cli.js');
+    const runtimeDistDir = realpathSync(resolve(process.cwd(), 'sdk-js', 'dist'));
 
     writeFileSync(
       pluginFile,
@@ -602,13 +699,24 @@ describe('youwee-sdk runtime-cli', () => {
       stdout: string;
       stderr: string;
     }>((resolvePromise, reject) => {
-      const proc = spawn('node', [runtimeCli], {
-        env: {
-          ...process.env,
-          YOUWEE_PLUGIN_MAIN: pluginFile,
+      const proc = spawn(
+        'deno',
+        [
+          'run',
+          '--quiet',
+          '--unstable-detect-cjs',
+          '--allow-env',
+          `--allow-read=${tempDir},${resolvedTempDir},${runtimeDistDir}`,
+          runtimeCli,
+        ],
+        {
+          env: {
+            ...process.env,
+            YOUWEE_PLUGIN_MAIN: pluginFile,
+          },
+          stdio: ['pipe', 'pipe', 'pipe'],
         },
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
+      );
 
       let stdout = '';
       let stderr = '';
@@ -666,8 +774,8 @@ describe('youwee-sdk cli', () => {
             version: '0.1.0',
             runtime: {
               language: 'javascript',
-              supportedProviders: ['node'],
-              preferredProvider: 'node',
+              supportedProviders: ['deno'],
+              preferredProvider: 'deno',
               entrypoint: 'src/plugin.js',
             },
             triggers: ['download.completed'],

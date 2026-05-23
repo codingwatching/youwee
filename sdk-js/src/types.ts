@@ -5,7 +5,7 @@ export type PluginTrigger =
   | 'download.failed';
 
 export type PluginRuntimeLanguage = 'javascript' | 'python';
-export type PluginProvider = 'deno' | 'node' | 'bun' | 'python';
+export type PluginProvider = 'deno' | 'python';
 
 export interface ParsedSemver {
   major: number;
@@ -253,6 +253,57 @@ export interface PluginI18nBridge {
   raw(key: string, locale?: string): string | null;
 }
 
+export type PluginConfigFieldInputType =
+  | 'text'
+  | 'textarea'
+  | 'password'
+  | 'number'
+  | 'boolean'
+  | 'file'
+  | 'directory'
+  | 'select'
+  | 'multi-select';
+
+export type PluginFilesystemPermission =
+  | 'fs.plugin.read'
+  | 'fs.plugin.write'
+  | 'fs.payload-file.read'
+  | 'fs.payload-directory.read'
+  | 'fs.payload-directory.write'
+  | 'fs.temp.read'
+  | 'fs.temp.write'
+  | 'fs.user-selected.read'
+  | 'fs.user-selected.write';
+
+export interface PluginConfigFieldOption {
+  value: string;
+  label: string;
+}
+
+export type PluginConfigFieldValue = string | number | boolean | string[];
+
+export interface PluginConfigField {
+  key: string;
+  inputType: PluginConfigFieldInputType;
+  label: string;
+  description?: string;
+  placeholder?: string;
+  required?: boolean;
+  defaultValue?: PluginConfigFieldValue;
+  sensitive?: boolean;
+  options?: PluginConfigFieldOption[];
+  min?: number;
+  max?: number;
+  step?: number;
+}
+
+export interface PluginConfigBridge {
+  get<T extends PluginConfigFieldValue = PluginConfigFieldValue>(key: string): T | undefined;
+  require<T extends PluginConfigFieldValue = PluginConfigFieldValue>(key: string): T;
+  has(key: string): boolean;
+  all(): Record<string, PluginConfigFieldValue>;
+}
+
 export interface YouweeBridge {
   app: {
     version: string | null;
@@ -313,6 +364,7 @@ export interface PluginContext<TPayload extends PluginPayload = PluginPayload> {
     thumbnail: string | null;
   };
   chain: PluginChainState;
+  config: PluginConfigBridge;
   env: {
     get(name: string): string | undefined;
     require(name: string): string;
@@ -359,9 +411,7 @@ export interface PluginDefinition<THooks extends PluginHooks = PluginHooks> {
 
 export interface PluginPermissionRequest {
   network?: boolean;
-  readPaths?: string[];
-  writePaths?: string[];
-  env?: string[];
+  fs?: PluginFilesystemPermission[];
 }
 
 export interface PluginRuntimeSpec {
@@ -384,6 +434,7 @@ export interface PluginManifest {
   runtime: PluginRuntimeSpec;
   triggers?: string[];
   permissions?: PluginPermissionRequest;
+  configFields?: PluginConfigField[];
   timeoutSec?: number;
   readme?: string;
   checksum?: string;

@@ -1,6 +1,8 @@
 import { SDK_VERSION, satisfiesVersionRange } from './compatibility';
 import type {
   ManifestValidationResult,
+  PluginConfigField,
+  PluginFilesystemPermission,
   PluginManifest,
   PluginPackageDefinitionInput,
   PluginProvider,
@@ -8,7 +10,7 @@ import type {
 } from './types';
 
 const PROVIDERS_BY_LANGUAGE: Record<PluginRuntimeLanguage, PluginProvider[]> = {
-  javascript: ['deno', 'node', 'bun'],
+  javascript: ['deno'],
   python: ['python'],
 };
 
@@ -18,6 +20,147 @@ const ALLOWED_TRIGGERS = new Set([
   'download.completed',
   'download.failed',
 ]);
+
+const ALLOWED_CONFIG_INPUT_TYPES = new Set([
+  'text',
+  'textarea',
+  'password',
+  'number',
+  'boolean',
+  'file',
+  'directory',
+  'select',
+  'multi-select',
+]);
+
+const ALLOWED_FILESYSTEM_PERMISSIONS = new Set<PluginFilesystemPermission>([
+  'fs.plugin.read',
+  'fs.plugin.write',
+  'fs.payload-file.read',
+  'fs.payload-directory.read',
+  'fs.payload-directory.write',
+  'fs.temp.read',
+  'fs.temp.write',
+  'fs.user-selected.read',
+  'fs.user-selected.write',
+]);
+
+function validateConfigFieldDefaultValue(field: PluginConfigField): string | null {
+  const value = field.defaultValue;
+  if (value === undefined) return null;
+
+  switch (field.inputType) {
+    case 'text':
+    case 'textarea':
+    case 'password':
+    case 'file':
+    case 'directory':
+    case 'select':
+      return typeof value === 'string' ? null : `${field.key} defaultValue must be a string.`;
+    case 'number':
+      return typeof value === 'number' && Number.isFinite(value)
+        ? null
+        : `${field.key} defaultValue must be a number.`;
+    case 'boolean':
+      return typeof value === 'boolean' ? null : `${field.key} defaultValue must be a boolean.`;
+    case 'multi-select':
+      return Array.isArray(value) && value.every((item) => typeof item === 'string')
+        ? null
+        : `${field.key} defaultValue must be an array of strings.`;
+    default:
+      return `Unsupported inputType for ${field.key}.`;
+  }
+}
+
+function validateConfigField(field: PluginConfigField, index: number): string[] {
+  const errors: string[] = [];
+  const label = field.key?.trim() || `configFields[${index}]`;
+
+  if (!field.key?.trim()) {
+    errors.push(`configFields[${index}].key is required.`);
+  }
+  if (!field.label?.trim()) {
+    errors.push(`${label} label is required.`);
+  }
+  if (!ALLOWED_CONFIG_INPUT_TYPES.has(field.inputType)) {
+    errors.push(`${label} has unsupported inputType "${field.inputType}".`);
+  }
+
+  const requiresOptions = field.inputType === 'select' || field.inputType === 'multi-select';
+  if (requiresOptions) {
+    if (!field.options?.length) {
+      errors.push(`${label} must declare options for ${field.inputType}.`);
+    }
+  } else if (field.options?.length) {
+    errors.push(`${label} cannot declare options for ${field.inputType}.`);
+  }
+
+  if (field.options?.length) {
+    const optionValues = new Set<string>();
+    for (const option of field.options) {
+      if (!option.value?.trim()) {
+        errors.push(`${label} has an option with an empty value.`);
+      }
+      if (!option.label?.trim()) {
+        errors.push(`${label} has an option with an empty label.`);
+      }
+      if (optionValues.has(option.value)) {
+        errors.push(`${label} has duplicate option value "${option.value}".`);
+      }
+      optionValues.add(option.value);
+    }
+  }
+
+  const defaultValueError = validateConfigFieldDefaultValue(field);
+  if (defaultValueError) {
+    errors.push(defaultValueError);
+  }
+
+  if (
+    field.inputType === 'select' &&
+    typeof field.defaultValue === 'string' &&
+    field.options?.length
+  ) {
+    if (!field.options.some((option) => option.value === field.defaultValue)) {
+      errors.push(`${label} defaultValue must match one declared option.`);
+    }
+  }
+
+  if (
+    field.inputType === 'multi-select' &&
+    Array.isArray(field.defaultValue) &&
+    field.options?.length
+  ) {
+    const allowedValues = new Set(field.options.map((option) => option.value));
+    for (const item of field.defaultValue) {
+      if (!allowedValues.has(item)) {
+        errors.push(`${label} defaultValue contains unsupported option "${item}".`);
+      }
+    }
+  }
+
+  const usesNumberBounds =
+    field.min !== undefined || field.max !== undefined || field.step !== undefined;
+  if (field.inputType !== 'number' && usesNumberBounds) {
+    errors.push(`${label} can only use min, max, or step with number fields.`);
+  }
+  if (field.inputType === 'number') {
+    for (const [name, value] of [
+      ['min', field.min],
+      ['max', field.max],
+      ['step', field.step],
+    ] as const) {
+      if (value !== undefined && (!Number.isFinite(value) || Number.isNaN(value))) {
+        errors.push(`${label} ${name} must be a finite number.`);
+      }
+    }
+    if (typeof field.min === 'number' && typeof field.max === 'number' && field.min > field.max) {
+      errors.push(`${label} min cannot be greater than max.`);
+    }
+  }
+
+  return errors;
+}
 
 export function slugifyPluginName(input: string): string {
   let slug = '';
@@ -96,6 +239,39 @@ export function getManifestValidationErrors(manifest: PluginManifest): string[] 
     errors.push('timeoutSec must be greater than 0.');
   }
 
+  if (manifest.permissions && 'env' in (manifest.permissions as Record<string, unknown>)) {
+    errors.push(
+      'permissions.env is obsolete. Define plugin configuration fields with configFields instead.',
+    );
+  }
+
+  if (manifest.permissions?.fs?.length) {
+    const seenFs = new Set<string>();
+    for (const permission of manifest.permissions.fs) {
+      if (!ALLOWED_FILESYSTEM_PERMISSIONS.has(permission)) {
+        errors.push(`permissions.fs contains unsupported capability "${permission}".`);
+      } else if (seenFs.has(permission)) {
+        errors.push(`permissions.fs contains duplicate capability "${permission}".`);
+      } else {
+        seenFs.add(permission);
+      }
+    }
+
+    const needsUserSelected =
+      manifest.permissions.fs.includes('fs.user-selected.read') ||
+      manifest.permissions.fs.includes('fs.user-selected.write');
+    if (
+      needsUserSelected &&
+      !manifest.configFields?.some(
+        (field) => field.inputType === 'file' || field.inputType === 'directory',
+      )
+    ) {
+      errors.push(
+        'permissions.fs uses fs.user-selected.* but configFields does not declare any file or directory inputs.',
+      );
+    }
+  }
+
   if (!manifest.triggers?.length) {
     errors.push('triggers must contain at least one runtime trigger string.');
   } else {
@@ -150,6 +326,19 @@ export function getManifestValidationErrors(manifest: PluginManifest): string[] 
     }
   }
 
+  if (manifest.configFields?.length) {
+    const seenKeys = new Set<string>();
+    for (const [index, field] of manifest.configFields.entries()) {
+      if (field.key?.trim()) {
+        if (seenKeys.has(field.key)) {
+          errors.push(`configFields contains duplicate key "${field.key}".`);
+        }
+        seenKeys.add(field.key);
+      }
+      errors.push(...validateConfigField(field, index));
+    }
+  }
+
   return errors;
 }
 
@@ -175,10 +364,8 @@ export function createPluginPackageDefinition(
     type: 'commonjs',
     main,
     scripts: {
-      'test:node':
-        'YOUWEE_PLUGIN_MAIN=src/plugin.js node node_modules/youwee-sdk/dist/runtime-cli.js',
-      'test:bun':
-        'YOUWEE_PLUGIN_MAIN=src/plugin.js bun node_modules/youwee-sdk/dist/runtime-cli.js',
+      'test:deno':
+        'YOUWEE_PLUGIN_MAIN=src/plugin.js deno run --quiet --unstable-detect-cjs --allow-env --allow-read=. --allow-write=. node_modules/youwee-sdk/dist/runtime-cli.js',
     },
     dependencies: {
       'youwee-sdk': sdkVersion,

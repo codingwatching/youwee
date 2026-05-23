@@ -170,7 +170,7 @@ At minimum, your workspace should depend on:
 ```json
 {
   "dependencies": {
-    "youwee-sdk": "^1.0.0"
+    "youwee-sdk": "^1.0.1"
   }
 }
 ```
@@ -218,8 +218,7 @@ See [Internationalization](#internationalization).
 Typical local test commands:
 
 ```bash
-bun run test:node
-bun run test:bun
+bun run test:deno
 ```
 
 These commands execute the shared SDK bootstrap against your source plugin module.
@@ -275,8 +274,7 @@ The CI workflow validates the workspace on push and pull request:
 
 - `bun install`
 - `bun run build`
-- `bun run test:node`
-- `bun run test:bun`
+- `bun run test:deno`
 
 This is the fast check to make sure the source workspace still builds and runs through the shared SDK runtime.
 
@@ -350,8 +348,8 @@ Example:
   "license": "MIT",
   "runtime": {
     "language": "javascript",
-    "supportedProviders": ["node", "bun"],
-    "preferredProvider": "node",
+    "supportedProviders": ["deno"],
+    "preferredProvider": "deno",
     "entrypoint": "src/plugin.js"
   },
   "compatibility": {
@@ -363,9 +361,10 @@ Example:
   ],
   "permissions": {
     "network": true,
-    "readPaths": [],
-    "writePaths": [],
-    "env": ["GOOGLE_DRIVE_ACCESS_TOKEN"]
+    "fs": [
+      "fs.payload-file.read",
+      "fs.user-selected.write"
+    ]
   },
   "timeoutSec": 300,
   "i18n": {
@@ -390,8 +389,6 @@ For JavaScript plugins:
 - `language` must be `"javascript"`
 - `supportedProviders` must be a subset of:
   - `"deno"`
-  - `"node"`
-  - `"bun"`
 - `preferredProvider` is optional
 - `entrypoint` points to the source module inside the workspace
 
@@ -432,14 +429,88 @@ Incorrect:
 Fields:
 
 - `network: boolean`
-- `readPaths: string[]`
-- `writePaths: string[]`
-- `env: string[]`
+- `fs: PluginFilesystemPermission[]`
 
 These values are:
 
 - shown to the user during install/enable
 - enforced by the Youwee runtime before execution
+
+Supported filesystem capabilities in v1:
+
+- `fs.plugin.read`
+- `fs.plugin.write`
+- `fs.payload-file.read`
+- `fs.payload-directory.read`
+- `fs.payload-directory.write`
+- `fs.temp.read`
+- `fs.temp.write`
+- `fs.user-selected.read`
+- `fs.user-selected.write`
+
+Use capabilities instead of hardcoding absolute paths from the user's machine.
+For example, `fs.user-selected.*` should be paired with `configFields` that use
+`file` or `directory` inputs so Youwee can resolve the actual path on each machine.
+
+### Plugin configuration fields
+
+Use `configFields` in `plugin.json` for plugin-defined settings that Youwee should render automatically.
+
+Supported input types in v1:
+
+- `text`
+- `textarea`
+- `password`
+- `number`
+- `boolean`
+- `file`
+- `directory`
+- `select`
+- `multi-select`
+
+Example:
+
+```json
+{
+  "configFields": [
+    {
+      "key": "driveFolderId",
+      "inputType": "text",
+      "label": "Google Drive folder ID",
+      "required": true,
+      "placeholder": "1AbCdEf..."
+    },
+    {
+      "key": "uploadMode",
+      "inputType": "select",
+      "label": "Upload mode",
+      "defaultValue": "copy",
+      "options": [
+        { "value": "copy", "label": "Copy" },
+        { "value": "move", "label": "Move" }
+      ]
+    },
+    {
+      "key": "apiToken",
+      "inputType": "password",
+      "label": "API token",
+      "required": true,
+      "sensitive": true
+    }
+  ]
+}
+```
+
+Field rules:
+
+- `label` is shown in Youwee instead of the raw key
+- `required` fields must be set before the plugin can run
+- `defaultValue` is used when no saved value exists
+- `sensitive` fields are stored and passed to runtime, but Youwee masks them in the UI after saving
+- `options` are required for `select` and `multi-select`
+- `min`, `max`, and `step` are only valid for `number`
+
+Do not use `permissions.env` for plugin-defined settings. It is obsolete in this SDK version.
 
 ### Compatibility
 
@@ -502,7 +573,8 @@ Top-level sections include:
 - `ctx.download`
 - `ctx.file`
 - `ctx.media`
-- `ctx.context`
+- `ctx.chain`
+- `ctx.config`
 - `ctx.env`
 - `ctx.log`
 - `ctx.youwee`
@@ -516,19 +588,21 @@ ctx.file.path
 ctx.file.name
 ctx.media.url
 ctx.media.title
-ctx.context.downloadKind
+ctx.download.kind
 ```
 
-Workflow-aware fields:
+Plugin configuration:
 
 ```js
-ctx.workflow.runId
-ctx.workflow.stepIndex
-ctx.workflow.stepPluginId
-ctx.workflow.state
+ctx.config.get("driveFolderId")
+ctx.config.require("apiToken")
+ctx.config.has("uploadMode")
+ctx.config.all()
 ```
 
-The workflow state is how later steps can observe mutations from earlier steps.
+Use `ctx.config` for values declared in `plugin.json` under `configFields`.
+
+Use `ctx.env` only when you intentionally need raw runtime environment variables provided by Youwee or the host process.
 
 ---
 
@@ -806,8 +880,7 @@ Recommended local commands:
 
 ```bash
 bun install
-bun run test:node
-bun run test:bun
+bun run test:deno
 bunx youwee-sdk build
 bunx youwee-sdk keygen ./plugin.youwee-plugin-key.json
 bunx youwee-sdk pack --private-key ./plugin.youwee-plugin-key.json
@@ -824,8 +897,6 @@ Plugin manifests must declare supported providers explicitly.
 Supported JavaScript providers:
 
 - `deno`
-- `node`
-- `bun`
 
 ### Compatibility helpers
 
@@ -939,8 +1010,8 @@ Then configure the values inside Youwee after installation.
   "version": "0.1.0",
   "runtime": {
     "language": "javascript",
-    "supportedProviders": ["node"],
-    "preferredProvider": "node",
+    "supportedProviders": ["deno"],
+    "preferredProvider": "deno",
     "entrypoint": "src/plugin.js"
   },
   "triggers": ["download.completed"],

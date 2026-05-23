@@ -23,8 +23,6 @@ impl PluginRuntimeLanguage {
 #[serde(rename_all = "lowercase")]
 pub enum PluginProvider {
     Deno,
-    Node,
-    Bun,
     Python,
 }
 
@@ -32,8 +30,6 @@ impl PluginProvider {
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Deno => "deno",
-            Self::Node => "node",
-            Self::Bun => "bun",
             Self::Python => "python",
         }
     }
@@ -45,11 +41,45 @@ pub struct PluginPermissionRequest {
     #[serde(default)]
     pub network: bool,
     #[serde(default)]
-    pub read_paths: Vec<String>,
-    #[serde(default)]
-    pub write_paths: Vec<String>,
-    #[serde(default)]
-    pub env: Vec<String>,
+    pub fs: Vec<PluginFilesystemPermission>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum PluginFilesystemPermission {
+    #[serde(rename = "fs.plugin.read")]
+    PluginRead,
+    #[serde(rename = "fs.plugin.write")]
+    PluginWrite,
+    #[serde(rename = "fs.payload-file.read")]
+    PayloadFileRead,
+    #[serde(rename = "fs.payload-directory.read")]
+    PayloadDirectoryRead,
+    #[serde(rename = "fs.payload-directory.write")]
+    PayloadDirectoryWrite,
+    #[serde(rename = "fs.temp.read")]
+    TempRead,
+    #[serde(rename = "fs.temp.write")]
+    TempWrite,
+    #[serde(rename = "fs.user-selected.read")]
+    UserSelectedRead,
+    #[serde(rename = "fs.user-selected.write")]
+    UserSelectedWrite,
+}
+
+impl PluginFilesystemPermission {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::PluginRead => "fs.plugin.read",
+            Self::PluginWrite => "fs.plugin.write",
+            Self::PayloadFileRead => "fs.payload-file.read",
+            Self::PayloadDirectoryRead => "fs.payload-directory.read",
+            Self::PayloadDirectoryWrite => "fs.payload-directory.write",
+            Self::TempRead => "fs.temp.read",
+            Self::TempWrite => "fs.temp.write",
+            Self::UserSelectedRead => "fs.user-selected.read",
+            Self::UserSelectedWrite => "fs.user-selected.write",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -58,11 +88,54 @@ pub struct PluginPermissionApproval {
     #[serde(default)]
     pub network: bool,
     #[serde(default)]
-    pub read_paths: bool,
+    pub fs: Vec<PluginFilesystemPermission>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum PluginConfigFieldInputType {
+    Text,
+    Textarea,
+    Password,
+    Number,
+    Boolean,
+    File,
+    Directory,
+    Select,
+    MultiSelect,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginConfigFieldOption {
+    pub value: String,
+    pub label: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginConfigField {
+    pub key: String,
+    pub input_type: PluginConfigFieldInputType,
+    pub label: String,
     #[serde(default)]
-    pub write_paths: bool,
+    pub description: Option<String>,
     #[serde(default)]
-    pub env: bool,
+    pub placeholder: Option<String>,
+    #[serde(default)]
+    pub required: bool,
+    #[serde(default)]
+    pub default_value: Option<Value>,
+    #[serde(default)]
+    pub sensitive: bool,
+    #[serde(default)]
+    pub options: Vec<PluginConfigFieldOption>,
+    #[serde(default)]
+    pub min: Option<f64>,
+    #[serde(default)]
+    pub max: Option<f64>,
+    #[serde(default)]
+    pub step: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -120,6 +193,8 @@ pub struct PluginManifest {
     pub triggers: Vec<String>,
     #[serde(default)]
     pub permissions: PluginPermissionRequest,
+    #[serde(default)]
+    pub config_fields: Vec<PluginConfigField>,
     #[serde(default = "default_timeout_sec")]
     pub timeout_sec: u64,
     #[serde(default)]
@@ -194,7 +269,9 @@ pub struct PluginInstallation {
     #[serde(default)]
     pub last_error: Option<String>,
     #[serde(default)]
-    pub env_value_status: BTreeMap<String, bool>,
+    pub config_values: BTreeMap<String, Value>,
+    #[serde(default)]
+    pub config_value_status: BTreeMap<String, bool>,
     #[serde(default)]
     pub signature_status: Option<String>,
     #[serde(default)]

@@ -273,7 +273,7 @@ pub fn run() {
             commands::update_plugin_trigger_workflow,
             commands::enqueue_plugin_workflow_trigger,
             commands::approve_plugin_permissions,
-            commands::update_plugin_env_values,
+            commands::update_plugin_config_values,
             commands::set_plugin_provider,
             commands::set_plugin_timeout,
             commands::open_plugin_directory,

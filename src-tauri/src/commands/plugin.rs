@@ -12,9 +12,9 @@ use crate::services::{
     set_plugin_provider_internal, set_plugin_timeout_internal,
     set_plugin_runtime_locale_internal,
     uninstall_plugin_internal,
-    update_plugin_env_values_internal, update_plugin_state_internal,
+    update_plugin_config_values_internal, update_plugin_state_internal,
     update_plugin_trigger_workflow_internal,
-    AttachPluginWorkspaceInput, CreatePluginWorkspaceInput, PluginEnvValuesInput,
+    AttachPluginWorkspaceInput, CreatePluginWorkspaceInput, PluginConfigValuesInput,
     PluginPermissionApprovalInput, PluginRuntimeLocaleInput,
 };
 use crate::types::{
@@ -117,12 +117,12 @@ pub fn approve_plugin_permissions(
 }
 
 #[tauri::command]
-pub fn update_plugin_env_values(
+pub fn update_plugin_config_values(
     app: AppHandle,
     plugin_id: String,
-    input: PluginEnvValuesInput,
+    input: PluginConfigValuesInput,
 ) -> Result<(), String> {
-    update_plugin_env_values_internal(&app, &plugin_id, input)
+    update_plugin_config_values_internal(&app, &plugin_id, input)
 }
 
 #[tauri::command]

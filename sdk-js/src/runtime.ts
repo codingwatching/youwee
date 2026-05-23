@@ -14,6 +14,8 @@ import type {
   CompatibilityCheckResult,
   PluginChainMutation,
   PluginChainState,
+  PluginConfigBridge,
+  PluginConfigFieldValue,
   PluginContext,
   PluginDefinition,
   PluginFileSystemBridge,
@@ -376,8 +378,55 @@ function createI18nBridge(): PluginI18nBridge {
   };
 }
 
+function parsePluginConfig(): Record<string, PluginConfigFieldValue> {
+  const raw = process.env.YOUWEE_PLUGIN_CONFIG_JSON;
+  if (!raw?.trim()) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const output: Record<string, PluginConfigFieldValue> = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+        output[key] = value;
+        continue;
+      }
+      if (Array.isArray(value) && value.every((item) => typeof item === 'string')) {
+        output[key] = value;
+      }
+    }
+    return output;
+  } catch {
+    return {};
+  }
+}
+
+function createConfigBridge(): PluginConfigBridge {
+  const values = parsePluginConfig();
+  return {
+    get<T extends PluginConfigFieldValue = PluginConfigFieldValue>(key: string) {
+      return values[key] as T | undefined;
+    },
+    require<T extends PluginConfigFieldValue = PluginConfigFieldValue>(key: string) {
+      const value = values[key];
+      if (value === undefined) {
+        throw new Error(`Missing required plugin config value: ${key}`);
+      }
+      return value as T;
+    },
+    has(key) {
+      return values[key] !== undefined;
+    },
+    all() {
+      return { ...values };
+    },
+  };
+}
+
 export function createContext(payload: PluginPayload): PluginContext {
   const logger = createLogger();
+  const config = createConfigBridge();
   const chain: PluginChainState = payload.chainState ?? {
     jobId: payload.jobId,
     source: payload.source ?? null,
@@ -421,6 +470,7 @@ export function createContext(payload: PluginPayload): PluginContext {
       thumbnail: payload.thumbnail ?? null,
     },
     chain,
+    config,
     env: {
       get(name) {
         return process.env[name];

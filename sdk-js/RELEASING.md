@@ -38,6 +38,10 @@ Do not edit `dist/` by hand. Rebuild it from the TypeScript source before releas
    - `cargo check` in `src-tauri/`
 5. Verify plugin scaffold vendoring still includes every required SDK runtime file.
 6. Verify backend compatibility enforcement still matches the SDK compatibility helpers.
+7. Pack and publish from the `sdk-js/` directory, not from the repository root:
+   - `cd sdk-js`
+   - `bun pm pack --destination /tmp/youwee-sdk-pack`
+   - `bun publish --dry-run`
 
 ## Versioning Policy
 
@@ -70,3 +74,4 @@ When the package is eventually published externally:
 - publish only built artifacts and package docs
 - ensure `README.md`, `CHANGELOG.md`, and `RELEASING.md` remain included in the package
 - keep CommonJS output unless the runtime policy formally adopts dual CJS/ESM support
+- run packaging commands inside `sdk-js/` so Bun targets the SDK package instead of the app workspace root

@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-05-23
+
+### Fixed
+- **Deno-only JavaScript runtime** - Removed plugin `Node` and `Bun` providers so JavaScript plugins now execute through one supported Deno runtime path.
+- **Deno runtime bootstrap** - Fixed shared runtime bootstrap execution and macOS filesystem permission path handling for Deno-based plugin runs.
+- **Workspace scaffold** - Updated generated workspace scripts, CI workflows, and local test commands to use `test:deno` consistently.
+
 ## [1.0.0] - 2026-05-18
 
 ### Added

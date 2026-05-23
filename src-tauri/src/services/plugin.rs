@@ -17,14 +17,15 @@ use zip::ZipArchive;
 use crate::database::{add_log_internal, clear_plugin_logs_from_db};
 use crate::types::{
     PackagedPluginBuildInfo, PackagedPluginChecksums, PackagedPluginSignature,
-    PluginChainMutation, PluginChainState, PluginCompatibilitySpec, PluginExecutionOutputEvent,
-    PluginExecutionResult, PluginExecutionStatusEvent, PluginI18nSpec, PluginInstallation,
-    PluginManifest, PluginPackageInspection, PluginPackageSource, PluginPackageSourceKind,
-    PluginPermissionApproval, PluginPermissionRequest, PluginProvider, PluginRuntimeLanguage,
-    PluginRuntimeSpec, PluginSignaturePayload, PluginSummary, PluginTriggerWorkflow,
-    PluginWorkflowFailurePolicy, PluginWorkflowRun, PluginWorkflowRunStatus,
-    PluginWorkflowStepConfig, PluginWorkflowStepSnapshot, PostDownloadPluginPayload,
-    RuntimeProviderStatus,
+    PluginChainMutation, PluginChainState, PluginCompatibilitySpec, PluginConfigField,
+    PluginConfigFieldInputType, PluginExecutionOutputEvent, PluginExecutionResult,
+    PluginExecutionStatusEvent, PluginFilesystemPermission, PluginI18nSpec,
+    PluginInstallation, PluginManifest, PluginPackageInspection, PluginPackageSource,
+    PluginPackageSourceKind, PluginPermissionApproval, PluginPermissionRequest,
+    PluginProvider, PluginRuntimeLanguage, PluginRuntimeSpec, PluginSignaturePayload,
+    PluginSummary, PluginTriggerWorkflow, PluginWorkflowFailurePolicy, PluginWorkflowRun,
+    PluginWorkflowRunStatus, PluginWorkflowStepConfig, PluginWorkflowStepSnapshot,
+    PostDownloadPluginPayload, RuntimeProviderStatus,
 };
 use crate::utils::CommandExt;
 
@@ -72,9 +73,8 @@ static PLUGIN_WORKFLOW_QUEUE: OnceLock<tokio::sync::Mutex<()>> = OnceLock::new()
 #[serde(rename_all = "camelCase")]
 pub struct PluginPermissionApprovalInput {
     pub network: bool,
-    pub read_paths: bool,
-    pub write_paths: bool,
-    pub env: bool,
+    #[serde(default)]
+    pub fs: Vec<PluginFilesystemPermission>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -119,14 +119,16 @@ pub struct CreatePluginWorkspaceInput {
     #[serde(default)]
     pub permissions: PluginPermissionRequest,
     #[serde(default)]
+    pub config_fields: Vec<PluginConfigField>,
+    #[serde(default)]
     pub timeout_sec: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct PluginEnvValuesInput {
+pub struct PluginConfigValuesInput {
     #[serde(default)]
-    pub values: BTreeMap<String, Option<String>>,
+    pub values: BTreeMap<String, Option<Value>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -146,7 +148,7 @@ struct PluginRegistryEntry {
     #[serde(default)]
     approved_permissions: PluginPermissionApproval,
     #[serde(default)]
-    env_values: BTreeMap<String, String>,
+    config_values: BTreeMap<String, Value>,
     #[serde(default)]
     selected_provider: Option<PluginProvider>,
     #[serde(default)]
@@ -414,9 +416,7 @@ fn find_existing_installation_path(root: &Path, plugin_id: &str) -> Option<PathB
 
 fn default_supported_providers(language: &PluginRuntimeLanguage) -> Vec<PluginProvider> {
     match language {
-        PluginRuntimeLanguage::Javascript => {
-            vec![PluginProvider::Deno, PluginProvider::Node, PluginProvider::Bun]
-        }
+        PluginRuntimeLanguage::Javascript => vec![PluginProvider::Deno],
         PluginRuntimeLanguage::Python => vec![PluginProvider::Python],
     }
 }
@@ -453,6 +453,145 @@ fn validate_i18n_spec(i18n: &PluginI18nSpec, manifest_path: &Path) -> Result<(),
                 "Plugin manifest {} declares invalid i18n.directory {}",
                 manifest_path.display(),
                 directory
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+fn config_value_matches_field_type(field: &PluginConfigField, value: &Value) -> bool {
+    match field.input_type {
+        PluginConfigFieldInputType::Text
+        | PluginConfigFieldInputType::Textarea
+        | PluginConfigFieldInputType::Password
+        | PluginConfigFieldInputType::File
+        | PluginConfigFieldInputType::Directory
+        | PluginConfigFieldInputType::Select => value.is_string(),
+        PluginConfigFieldInputType::Number => value.as_f64().is_some(),
+        PluginConfigFieldInputType::Boolean => value.is_boolean(),
+        PluginConfigFieldInputType::MultiSelect => value
+            .as_array()
+            .map(|items| items.iter().all(Value::is_string))
+            .unwrap_or(false),
+    }
+}
+
+fn validate_plugin_config_field(
+    field: &PluginConfigField,
+    manifest_path: &Path,
+    field_index: usize,
+) -> Result<(), String> {
+    if field.key.trim().is_empty() {
+        return Err(format!(
+            "Plugin manifest {} has a config field at index {} without key",
+            manifest_path.display(),
+            field_index
+        ));
+    }
+    if field.label.trim().is_empty() {
+        return Err(format!(
+            "Plugin manifest {} has configFields[{}] without label",
+            manifest_path.display(),
+            field.key
+        ));
+    }
+
+    let requires_options = matches!(
+        field.input_type,
+        PluginConfigFieldInputType::Select | PluginConfigFieldInputType::MultiSelect
+    );
+    if requires_options && field.options.is_empty() {
+        return Err(format!(
+            "Plugin manifest {} config field {} must declare options",
+            manifest_path.display(),
+            field.key
+        ));
+    }
+    if !requires_options && !field.options.is_empty() {
+        return Err(format!(
+            "Plugin manifest {} config field {} cannot declare options for this inputType",
+            manifest_path.display(),
+            field.key
+        ));
+    }
+
+    let mut seen_option_values = BTreeMap::<String, bool>::new();
+    for option in &field.options {
+        if option.value.trim().is_empty() {
+            return Err(format!(
+                "Plugin manifest {} config field {} contains an option with empty value",
+                manifest_path.display(),
+                field.key
+            ));
+        }
+        if option.label.trim().is_empty() {
+            return Err(format!(
+                "Plugin manifest {} config field {} contains an option with empty label",
+                manifest_path.display(),
+                field.key
+            ));
+        }
+        if seen_option_values.insert(option.value.clone(), true).is_some() {
+            return Err(format!(
+                "Plugin manifest {} config field {} contains duplicate option value {}",
+                manifest_path.display(),
+                field.key,
+                option.value
+            ));
+        }
+    }
+
+    if let Some(default_value) = field.default_value.as_ref() {
+        if !config_value_matches_field_type(field, default_value) {
+            return Err(format!(
+                "Plugin manifest {} config field {} has defaultValue with the wrong type",
+                manifest_path.display(),
+                field.key
+            ));
+        }
+
+        if matches!(field.input_type, PluginConfigFieldInputType::Select) {
+            let selected = default_value.as_str().unwrap_or_default();
+            if !field.options.iter().any(|option| option.value == selected) {
+                return Err(format!(
+                    "Plugin manifest {} config field {} defaultValue must match a declared option",
+                    manifest_path.display(),
+                    field.key
+                ));
+            }
+        }
+
+        if matches!(field.input_type, PluginConfigFieldInputType::MultiSelect) {
+            let values = default_value.as_array().cloned().unwrap_or_default();
+            for value in values {
+                let selected = value.as_str().unwrap_or_default();
+                if !field.options.iter().any(|option| option.value == selected) {
+                    return Err(format!(
+                        "Plugin manifest {} config field {} defaultValue contains unsupported option {}",
+                        manifest_path.display(),
+                        field.key,
+                        selected
+                    ));
+                }
+            }
+        }
+    }
+
+    let uses_number_bounds = field.min.is_some() || field.max.is_some() || field.step.is_some();
+    if !matches!(field.input_type, PluginConfigFieldInputType::Number) && uses_number_bounds {
+        return Err(format!(
+            "Plugin manifest {} config field {} can only use min, max, or step with number inputType",
+            manifest_path.display(),
+            field.key
+        ));
+    }
+    if let (Some(min), Some(max)) = (field.min, field.max) {
+        if min > max {
+            return Err(format!(
+                "Plugin manifest {} config field {} has min greater than max",
+                manifest_path.display(),
+                field.key
             ));
         }
     }
@@ -515,6 +654,14 @@ fn validate_manifest(manifest: &PluginManifest, manifest_path: &Path) -> Result<
             ));
         }
     }
+    let permissions_json = serde_json::to_value(&manifest.permissions)
+        .map_err(|e| format!("Failed to inspect plugin permissions: {}", e))?;
+    if permissions_json.get("env").is_some() {
+        return Err(format!(
+            "Plugin manifest {} uses obsolete permissions.env. Define configFields instead.",
+            manifest_path.display()
+        ));
+    }
     if let Some(compatibility) = manifest.compatibility.as_ref() {
         if let Some(range) = compatibility.app_version.as_ref() {
             if range.trim().is_empty() {
@@ -532,6 +679,39 @@ fn validate_manifest(manifest: &PluginManifest, manifest_path: &Path) -> Result<
                 ));
             }
         }
+    }
+    let mut seen_fs_permissions = BTreeMap::<String, bool>::new();
+    for permission in &manifest.permissions.fs {
+        if seen_fs_permissions
+            .insert(permission.as_str().to_string(), true)
+            .is_some()
+        {
+            return Err(format!(
+                "Plugin manifest {} contains duplicate filesystem capability {}",
+                manifest_path.display(),
+                permission.as_str()
+            ));
+        }
+    }
+    let needs_user_selected = manifest.permissions.fs.iter().any(|permission| {
+        matches!(
+            permission,
+            PluginFilesystemPermission::UserSelectedRead
+                | PluginFilesystemPermission::UserSelectedWrite
+        )
+    });
+    if needs_user_selected
+        && !manifest.config_fields.iter().any(|field| {
+            matches!(
+                field.input_type,
+                PluginConfigFieldInputType::File | PluginConfigFieldInputType::Directory
+            )
+        })
+    {
+        return Err(format!(
+            "Plugin manifest {} uses fs.user-selected.* but configFields does not declare any file or directory inputs",
+            manifest_path.display()
+        ));
     }
     if manifest.triggers.is_empty() {
         return Err(format!(
@@ -558,6 +738,20 @@ fn validate_manifest(manifest: &PluginManifest, manifest_path: &Path) -> Result<
     }
     if let Some(i18n) = manifest.i18n.as_ref() {
         validate_i18n_spec(i18n, manifest_path)?;
+    }
+    let mut seen_config_field_keys = BTreeMap::<String, bool>::new();
+    for (index, field) in manifest.config_fields.iter().enumerate() {
+        if seen_config_field_keys
+            .insert(field.key.clone(), true)
+            .is_some()
+        {
+            return Err(format!(
+                "Plugin manifest {} contains duplicate config field key {}",
+                manifest_path.display(),
+                field.key
+            ));
+        }
+        validate_plugin_config_field(field, manifest_path, index)?;
     }
     Ok(())
 }
@@ -634,7 +828,7 @@ fn current_sdk_version() -> String {
     serde_json::from_str::<serde_json::Value>(SDK_JS_PACKAGE_JSON)
         .ok()
         .and_then(|value| value.get("version").and_then(|value| value.as_str()).map(str::to_string))
-        .unwrap_or_else(|| "1.0.0".to_string())
+        .unwrap_or_else(|| "1.0.1".to_string())
 }
 
 fn build_scaffold_compatibility_range(version: &str) -> String {
@@ -652,6 +846,19 @@ fn validate_execution_compatibility(manifest: &PluginManifest) -> Result<(), Str
 fn load_manifest_from_file(manifest_path: &Path) -> Result<PluginManifest, String> {
     let raw = std::fs::read_to_string(manifest_path)
         .map_err(|e| format!("Failed to read {}: {}", manifest_path.display(), e))?;
+
+    let raw_json: Value = serde_json::from_str(&raw)
+        .map_err(|e| format!("Failed to parse {}: {}", manifest_path.display(), e))?;
+    if raw_json
+        .get("permissions")
+        .and_then(|value| value.get("env"))
+        .is_some()
+    {
+        return Err(format!(
+            "Plugin manifest {} uses obsolete permissions.env. Define configFields instead.",
+            manifest_path.display()
+        ));
+    }
 
     let manifest: PluginManifest = serde_json::from_str(&raw)
         .map_err(|e| format!("Failed to parse {}: {}", manifest_path.display(), e))?;
@@ -1261,6 +1468,95 @@ fn default_provider_for_language(language: &PluginRuntimeLanguage) -> PluginProv
     }
 }
 
+fn validate_runtime_config_value(field: &PluginConfigField, value: &Value) -> Result<(), String> {
+    if !config_value_matches_field_type(field, value) {
+        return Err(format!(
+            "Invalid value type for plugin config field {}",
+            field.key
+        ));
+    }
+
+    match field.input_type {
+        PluginConfigFieldInputType::Select => {
+            let selected = value.as_str().unwrap_or_default();
+            if !field.options.iter().any(|option| option.value == selected) {
+                return Err(format!(
+                    "Plugin config field {} must use one of the declared options",
+                    field.key
+                ));
+            }
+        }
+        PluginConfigFieldInputType::MultiSelect => {
+            let values = value.as_array().cloned().unwrap_or_default();
+            for entry in values {
+                let selected = entry.as_str().unwrap_or_default();
+                if !field.options.iter().any(|option| option.value == selected) {
+                    return Err(format!(
+                        "Plugin config field {} contains unsupported option {}",
+                        field.key, selected
+                    ));
+                }
+            }
+        }
+        PluginConfigFieldInputType::Number => {
+            let Some(number) = value.as_f64() else {
+                return Err(format!(
+                    "Plugin config field {} must be a number",
+                    field.key
+                ));
+            };
+            if let Some(min) = field.min {
+                if number < min {
+                    return Err(format!(
+                        "Plugin config field {} must be greater than or equal to {}",
+                        field.key, min
+                    ));
+                }
+            }
+            if let Some(max) = field.max {
+                if number > max {
+                    return Err(format!(
+                        "Plugin config field {} must be less than or equal to {}",
+                        field.key, max
+                    ));
+                }
+            }
+        }
+        _ => {}
+    }
+
+    Ok(())
+}
+
+fn resolve_effective_plugin_config_values(
+    manifest: &PluginManifest,
+    stored: &BTreeMap<String, Value>,
+) -> Result<BTreeMap<String, Value>, String> {
+    let mut resolved = BTreeMap::new();
+
+    for field in &manifest.config_fields {
+        let value = stored
+            .get(&field.key)
+            .cloned()
+            .or_else(|| field.default_value.clone());
+        match value {
+            Some(value) => {
+                validate_runtime_config_value(field, &value)?;
+                resolved.insert(field.key.clone(), value);
+            }
+            None if field.required => {
+                return Err(format!(
+                    "Plugin config field {} ({}) is required but not configured",
+                    field.key, field.label
+                ));
+            }
+            None => {}
+        }
+    }
+
+    Ok(resolved)
+}
+
 fn build_installation_from_registry(
     registry: &PluginRegistry,
     manifest: &PluginManifest,
@@ -1268,16 +1564,26 @@ fn build_installation_from_registry(
     installed_path: String,
 ) -> PluginInstallation {
     let entry = registry.installations.get(&manifest.plugin_id);
-    let env_value_status = manifest
-        .permissions
-        .env
+    let config_values = manifest
+        .config_fields
         .iter()
-        .map(|key| {
+        .filter(|field| !field.sensitive)
+        .filter_map(|field| {
+            let value = entry
+                .and_then(|record| record.config_values.get(&field.key))
+                .cloned();
+            value.map(|value| (field.key.clone(), value))
+        })
+        .collect();
+    let config_value_status = manifest
+        .config_fields
+        .iter()
+        .map(|field| {
             let is_set = entry
-                .and_then(|value| value.env_values.get(key))
-                .map(|value| !value.trim().is_empty())
-                .unwrap_or(false);
-            (key.clone(), is_set)
+                .and_then(|value| value.config_values.get(&field.key))
+                .or_else(|| field.default_value.as_ref())
+                .is_some();
+            (field.key.clone(), is_set)
         })
         .collect();
     PluginInstallation {
@@ -1299,7 +1605,8 @@ fn build_installation_from_registry(
         last_resolved_source: entry.and_then(|value| value.last_resolved_source.clone()),
         last_execution_status: entry.and_then(|value| value.last_execution_status.clone()),
         last_error: entry.and_then(|value| value.last_error.clone()),
-        env_value_status,
+        config_values,
+        config_value_status,
         signature_status: entry.and_then(|value| value.signature_status.clone()),
         signer_key_id: entry.and_then(|value| value.signer_key_id.clone()),
         signer_fingerprint: entry.and_then(|value| value.signer_fingerprint.clone()),
@@ -1745,7 +2052,7 @@ pub async fn install_plugin_internal(
             enabled: false,
             trusted,
             approved_permissions: PluginPermissionApproval::default(),
-            env_values: BTreeMap::new(),
+            config_values: BTreeMap::new(),
             selected_provider,
             timeout_sec_override: None,
             source: Some(package.source.clone()),
@@ -1828,9 +2135,9 @@ pub fn attach_plugin_workspace_internal(
                 .as_ref()
                 .map(|value| value.approved_permissions.clone())
                 .unwrap_or_default(),
-            env_values: existing
+            config_values: existing
                 .as_ref()
-                .map(|value| value.env_values.clone())
+                .map(|value| value.config_values.clone())
                 .unwrap_or_default(),
             selected_provider: existing
                 .as_ref()
@@ -1965,6 +2272,7 @@ pub fn create_plugin_workspace_internal(
         supported_providers,
         preferred_provider,
         permissions,
+        config_fields,
         timeout_sec,
     } = input;
 
@@ -1980,7 +2288,7 @@ pub fn create_plugin_workspace_internal(
         .filter(|value| !value.is_empty())
         .unwrap_or_else(|| generate_plugin_id(author.as_deref(), &slug));
     let supported_providers = if supported_providers.is_empty() {
-        vec![PluginProvider::Node, PluginProvider::Bun]
+        vec![PluginProvider::Deno]
     } else {
         supported_providers
     };
@@ -2050,6 +2358,7 @@ pub fn create_plugin_workspace_internal(
         }),
         triggers,
         permissions,
+        config_fields,
         timeout_sec: timeout_sec.unwrap_or(60).max(1),
         readme: Some("README.md".to_string()),
         checksum: None,
@@ -2340,20 +2649,23 @@ pub fn approve_plugin_permissions_internal(
         .ok_or_else(|| format!("Plugin not found: {}", plugin_id))?;
     entry.approved_permissions = PluginPermissionApproval {
         network: permissions.network,
-        read_paths: permissions.read_paths,
-        write_paths: permissions.write_paths,
-        env: permissions.env,
+        fs: permissions.fs,
     };
     write_registry(app, &registry)
 }
 
-pub fn update_plugin_env_values_internal(
+pub fn update_plugin_config_values_internal(
     app: &AppHandle,
     plugin_id: &str,
-    input: PluginEnvValuesInput,
+    input: PluginConfigValuesInput,
 ) -> Result<(), String> {
     let plugin = get_plugin_details_internal(app, plugin_id)?;
-    let allowed_keys = &plugin.manifest.permissions.env;
+    let fields_by_key = plugin
+        .manifest
+        .config_fields
+        .iter()
+        .map(|field| (field.key.clone(), field.clone()))
+        .collect::<BTreeMap<_, _>>();
 
     let mut registry = read_registry(app)?;
     let entry = registry
@@ -2362,16 +2674,17 @@ pub fn update_plugin_env_values_internal(
         .ok_or_else(|| format!("Plugin not found: {}", plugin_id))?;
 
     for (key, value) in input.values {
-        if !allowed_keys.iter().any(|allowed| allowed == &key) {
-            return Err(format!("Plugin does not request env key: {}", key));
-        }
+        let field = fields_by_key
+            .get(&key)
+            .ok_or_else(|| format!("Plugin does not declare config field: {}", key))?;
 
         match value {
-            Some(raw) if !raw.trim().is_empty() => {
-                entry.env_values.insert(key, raw);
+            Some(raw) => {
+                validate_runtime_config_value(field, &raw)?;
+                entry.config_values.insert(key, raw);
             }
-            _ => {
-                entry.env_values.remove(&key);
+            None => {
+                entry.config_values.remove(&key);
             }
         }
     }
@@ -2534,26 +2847,6 @@ pub async fn get_runtime_provider_status_internal(
                 details: Some("Resolves app-managed Deno first, then system Deno.".to_string()),
             }
         }
-        PluginProvider::Node => {
-            let path = resolve_command_path("node").await;
-            RuntimeProviderStatus {
-                provider,
-                available: path.is_some(),
-                resolved_path: path.map(|value| value.to_string_lossy().to_string()),
-                resolved_source: Some("system".to_string()),
-                details: None,
-            }
-        }
-        PluginProvider::Bun => {
-            let path = resolve_command_path("bun").await;
-            RuntimeProviderStatus {
-                provider,
-                available: path.is_some(),
-                resolved_path: path.map(|value| value.to_string_lossy().to_string()),
-                resolved_source: Some("system".to_string()),
-                details: None,
-            }
-        }
         PluginProvider::Python => {
             let path = if let Some(path) = resolve_command_path("python3").await {
                 Some(path)
@@ -2573,12 +2866,7 @@ pub async fn get_runtime_provider_status_internal(
 
 pub async fn list_runtime_providers_internal(app: &AppHandle) -> Vec<RuntimeProviderStatus> {
     let mut statuses = Vec::new();
-    for provider in [
-        PluginProvider::Deno,
-        PluginProvider::Node,
-        PluginProvider::Bun,
-        PluginProvider::Python,
-    ] {
+    for provider in [PluginProvider::Deno, PluginProvider::Python] {
         statuses.push(get_runtime_provider_status_internal(app, provider).await);
     }
     statuses
@@ -2619,45 +2907,114 @@ fn resolve_plugin_entrypoint(plugin_dir: &Path, entrypoint: &str) -> Result<Path
 fn collect_missing_permissions(
     requested: &PluginPermissionRequest,
     approved: &PluginPermissionApproval,
-) -> Vec<&'static str> {
+) -> Vec<String> {
     let mut missing = Vec::new();
     if requested.network && !approved.network {
-        missing.push("network");
+        missing.push("network".to_string());
     }
-    if !requested.read_paths.is_empty() && !approved.read_paths {
-        missing.push("readPaths");
-    }
-    if !requested.write_paths.is_empty() && !approved.write_paths {
-        missing.push("writePaths");
-    }
-    if !requested.env.is_empty() && !approved.env {
-        missing.push("env");
+    for permission in &requested.fs {
+        if !approved.fs.iter().any(|approved_permission| approved_permission == permission) {
+            missing.push(permission.as_str().to_string());
+        }
     }
     missing
 }
 
-fn resolve_permission_paths(plugin_dir: &Path, raw_paths: &[String], read: bool) -> Result<Vec<PathBuf>, String> {
-    let mut resolved = Vec::new();
-    for raw in raw_paths {
-        let trimmed = raw.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-        let path = PathBuf::from(trimmed);
-        let candidate = if path.is_absolute() {
-            path
-        } else {
-            plugin_dir.join(path)
-        };
-        if read {
-            let canonical = std::fs::canonicalize(&candidate)
-                .map_err(|e| format!("Failed to resolve path {}: {}", candidate.display(), e))?;
-            resolved.push(canonical);
-        } else {
-            resolved.push(candidate);
+fn collect_user_selected_permission_paths(
+    fields: &[PluginConfigField],
+    values: &BTreeMap<String, Value>,
+) -> Vec<PathBuf> {
+    fields
+        .iter()
+        .filter(|field| {
+            matches!(
+                field.input_type,
+                PluginConfigFieldInputType::File | PluginConfigFieldInputType::Directory
+            )
+        })
+        .filter_map(|field| values.get(&field.key).and_then(Value::as_str))
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .collect()
+}
+
+fn path_scope_variants(path: &Path) -> Vec<PathBuf> {
+    let mut variants = vec![path.to_path_buf()];
+    if let Ok(canonical) = std::fs::canonicalize(path) {
+        if canonical != path {
+            variants.push(canonical);
         }
     }
-    Ok(resolved)
+    variants.sort();
+    variants.dedup();
+    variants
+}
+
+fn build_permission_path_scopes(
+    plugin_dir: &Path,
+    payload_file: &Path,
+    manifest: &PluginManifest,
+    resolved_config_values: &BTreeMap<String, Value>,
+) -> Result<(Vec<PathBuf>, Vec<PathBuf>), String> {
+    let mut allow_read = path_scope_variants(plugin_dir);
+    let mut allow_write = Vec::<PathBuf>::new();
+    let payload_directory = payload_file.parent().map(Path::to_path_buf);
+    let user_selected_paths =
+        collect_user_selected_permission_paths(&manifest.config_fields, resolved_config_values);
+    let temp_dir = std::env::temp_dir();
+
+    for permission in &manifest.permissions.fs {
+        match permission {
+            PluginFilesystemPermission::PluginRead => {
+                allow_read.extend(path_scope_variants(plugin_dir));
+            }
+            PluginFilesystemPermission::PluginWrite => {
+                allow_write.extend(path_scope_variants(plugin_dir));
+            }
+            PluginFilesystemPermission::PayloadFileRead => {
+                allow_read.extend(path_scope_variants(payload_file));
+            }
+            PluginFilesystemPermission::PayloadDirectoryRead => {
+                if let Some(directory) = payload_directory.as_ref() {
+                    allow_read.extend(path_scope_variants(directory));
+                }
+            }
+            PluginFilesystemPermission::PayloadDirectoryWrite => {
+                if let Some(directory) = payload_directory.as_ref() {
+                    allow_write.extend(path_scope_variants(directory));
+                }
+            }
+            PluginFilesystemPermission::TempRead => {
+                allow_read.extend(path_scope_variants(&temp_dir));
+            }
+            PluginFilesystemPermission::TempWrite => {
+                allow_write.extend(path_scope_variants(&temp_dir));
+            }
+            PluginFilesystemPermission::UserSelectedRead => {
+                for path in &user_selected_paths {
+                    if !path.exists() {
+                        return Err(format!(
+                            "Failed to resolve configured path {}: path does not exist",
+                            path.display()
+                        ));
+                    }
+                    allow_read.extend(path_scope_variants(path));
+                }
+            }
+            PluginFilesystemPermission::UserSelectedWrite => {
+                for path in &user_selected_paths {
+                    allow_write.extend(path_scope_variants(path));
+                }
+            }
+        }
+    }
+
+    allow_read.sort();
+    allow_read.dedup();
+    allow_write.sort();
+    allow_write.dedup();
+    Ok((allow_read, allow_write))
 }
 
 fn push_allow_flag(args: &mut Vec<String>, flag_name: &str, values: &[PathBuf]) {
@@ -2690,14 +3047,6 @@ async fn resolve_provider_command(
             };
             Ok((path.to_string_lossy().to_string(), Some(source.to_string())))
         }
-        PluginProvider::Node => resolve_command_path("node")
-            .await
-            .map(|path| (path.to_string_lossy().to_string(), Some("system".to_string())))
-            .ok_or_else(|| "Node runtime is not available".to_string()),
-        PluginProvider::Bun => resolve_command_path("bun")
-            .await
-            .map(|path| (path.to_string_lossy().to_string(), Some("system".to_string())))
-            .ok_or_else(|| "Bun runtime is not available".to_string()),
         PluginProvider::Python => {
             let path = if let Some(path) = resolve_command_path("python3").await {
                 Some(path)
@@ -2931,11 +3280,13 @@ async fn execute_plugin(
     let entrypoint = resolve_plugin_entrypoint(&plugin_dir, &plugin.manifest.runtime.entrypoint)?;
     let (command_path, resolved_source) = resolve_provider_command(app, &selected_provider).await?;
     let registry = read_registry(app).unwrap_or_default();
-    let env_values = registry
+    let stored_config_values = registry
         .installations
         .get(&plugin.manifest.plugin_id)
-        .map(|entry| entry.env_values.clone())
+        .map(|entry| entry.config_values.clone())
         .unwrap_or_default();
+    let resolved_config_values =
+        resolve_effective_plugin_config_values(&plugin.manifest, &stored_config_values)?;
     let app_locale = registry.app_locale.clone().unwrap_or_else(|| "en".to_string());
     let app_fallback_locale = registry
         .app_fallback_locale
@@ -2957,49 +3308,41 @@ async fn execute_plugin(
         .map_err(|e| format!("Failed to serialize plugin payload: {}", e))?;
     let payload_file = std::fs::canonicalize(PathBuf::from(&payload.filepath))
         .unwrap_or_else(|_| PathBuf::from(&payload.filepath));
-    let app_sdk_runtime_bundle = if matches!(selected_provider, PluginProvider::Node | PluginProvider::Bun)
-    {
+    let (mut allow_read_scopes, allow_write_scopes) = build_permission_path_scopes(
+        &plugin_dir,
+        &payload_file,
+        &plugin.manifest,
+        &resolved_config_values,
+    )?;
+    let app_sdk_runtime_bundle = if matches!(
+        (&plugin.manifest.runtime.language, &selected_provider),
+        (PluginRuntimeLanguage::Javascript, PluginProvider::Deno)
+    ) {
         Some(ensure_app_sdk_runtime_bundle(app)?)
     } else {
         None
     };
+    if let Some(bundle_root) = app_sdk_runtime_bundle.as_ref() {
+        allow_read_scopes.extend(path_scope_variants(bundle_root));
+        allow_read_scopes.sort();
+        allow_read_scopes.dedup();
+    }
 
     let mut command_args = Vec::<String>::new();
     match selected_provider {
         PluginProvider::Deno => {
-            let mut allow_read = vec![plugin_dir.clone(), payload_file.clone()];
-            if let Some(parent) = payload_file.parent() {
-                allow_read.push(parent.to_path_buf());
-            }
-            allow_read.extend(resolve_permission_paths(
-                &plugin_dir,
-                &plugin.manifest.permissions.read_paths,
-                true,
-            )?);
-            let allow_write = resolve_permission_paths(
-                &plugin_dir,
-                &plugin.manifest.permissions.write_paths,
-                false,
-            )?;
-
             command_args.push("run".to_string());
             command_args.push("--quiet".to_string());
+            command_args.push("--unstable-detect-cjs".to_string());
+            command_args.push("--node-modules-dir=auto".to_string());
+            command_args.push("--allow-env".to_string());
             if plugin.manifest.permissions.network {
                 command_args.push("--allow-net".to_string());
             }
-            push_allow_flag(&mut command_args, "allow-read", &allow_read);
-            if !allow_write.is_empty() {
-                push_allow_flag(&mut command_args, "allow-write", &allow_write);
+            push_allow_flag(&mut command_args, "allow-read", &allow_read_scopes);
+            if !allow_write_scopes.is_empty() {
+                push_allow_flag(&mut command_args, "allow-write", &allow_write_scopes);
             }
-            if !plugin.manifest.permissions.env.is_empty() {
-                command_args.push(format!(
-                    "--allow-env={}",
-                    plugin.manifest.permissions.env.join(",")
-                ));
-            }
-            command_args.push(entrypoint.to_string_lossy().to_string());
-        }
-        PluginProvider::Node | PluginProvider::Bun => {
             let runtime_cli = app_sdk_runtime_bundle
                 .as_ref()
                 .ok_or_else(|| "Missing app SDK runtime bundle".to_string())?
@@ -3027,6 +3370,11 @@ async fn execute_plugin(
     cmd.env("YOUWEE_PLUGIN_SLUG", &plugin.manifest.slug);
     cmd.env("YOUWEE_PLUGIN_NAME", &plugin.manifest.name);
     cmd.env("YOUWEE_PLUGIN_VERSION", &plugin.manifest.version);
+    cmd.env(
+        "YOUWEE_PLUGIN_CONFIG_JSON",
+        serde_json::to_string(&resolved_config_values)
+            .map_err(|e| format!("Failed to serialize plugin config values: {}", e))?,
+    );
     cmd.env("YOUWEE_APP_VERSION", env!("CARGO_PKG_VERSION"));
     cmd.env("YOUWEE_APP_LOCALE", &app_locale);
     cmd.env("YOUWEE_APP_FALLBACK_LOCALE", &app_fallback_locale);
@@ -3116,30 +3464,16 @@ async fn execute_plugin(
     if let Some(value) = ai_config.whisper_model.as_ref() {
         cmd.env("YOUWEE_AI_WHISPER_MODEL", value);
     }
-    if matches!(selected_provider, PluginProvider::Node | PluginProvider::Bun) {
-        let mut node_path_roots = Vec::<PathBuf>::new();
-        let plugin_node_modules = plugin_dir.join("node_modules");
-        if plugin_node_modules.is_dir() {
-            node_path_roots.push(plugin_node_modules);
-        }
-        let vendor_root = plugin_dir.join("vendor");
-        if vendor_root.is_dir() {
-            node_path_roots.push(vendor_root);
-        }
-        let app_sdk_node_modules = app_sdk_runtime_bundle
-            .as_ref()
-            .ok_or_else(|| "Missing app SDK runtime bundle".to_string())?
-            .parent()
-            .map(Path::to_path_buf)
-            .ok_or_else(|| "Failed to resolve app SDK node_modules path".to_string())?;
-        node_path_roots.push(app_sdk_node_modules);
-
-        let node_path_value = std::env::join_paths(node_path_roots)
-            .map_err(|e| format!("Failed to build NODE_PATH for plugin runtime: {}", e))?;
-        cmd.env("NODE_PATH", node_path_value);
-    }
-    for (key, value) in env_values {
-        cmd.env(key, value);
+    for (key, value) in &resolved_config_values {
+        let serialized = match value {
+            Value::String(text) => text.clone(),
+            Value::Number(number) => number.to_string(),
+            Value::Bool(flag) => flag.to_string(),
+            Value::Array(items) => serde_json::to_string(items)
+                .map_err(|e| format!("Failed to serialize config field {}: {}", key, e))?,
+            _ => continue,
+        };
+        cmd.env(key, serialized);
     }
 
     let mut child = cmd
@@ -3713,7 +4047,7 @@ module.exports = definePlugin({{
       // Start editing here:
       // 1. Read the downloaded file info from ctx.file
       // 2. Read extra metadata from ctx.media or ctx.download
-      // 3. Read secrets from ctx.env.require("YOUR_ENV_NAME")
+      // 3. Read plugin config from ctx.config.require("yourConfigKey")
       // 4. Use app capabilities from ctx.youwee.tools / ctx.youwee.ai
       // 5. Return ctx.ok(...) or ctx.fail(...)
 
@@ -3760,8 +4094,7 @@ fn build_scaffold_package_json(manifest: &PluginManifest) -> String {
     "build": "bunx youwee-sdk build",
     "pack": "bunx youwee-sdk pack --private-key ./plugin.youwee-plugin-key.json",
     "keygen": "bunx youwee-sdk keygen ./plugin.youwee-plugin-key.json",
-    "test:node": "YOUWEE_PLUGIN_MAIN=src/plugin.js node node_modules/youwee-sdk/dist/runtime-cli.js",
-    "test:bun": "YOUWEE_PLUGIN_MAIN=src/plugin.js bun node_modules/youwee-sdk/dist/runtime-cli.js"
+    "test:deno": "YOUWEE_PLUGIN_MAIN=src/plugin.js deno run --quiet --unstable-detect-cjs --allow-env --allow-read=. --allow-write=. node_modules/youwee-sdk/dist/runtime-cli.js"
   }},
   "dependencies": {{
     "youwee-sdk": "^{sdk_version}"
@@ -3804,17 +4137,19 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: vx
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
       - name: Build plugin
         run: bun run build
 
-      - name: Run Node runtime check
-        run: bun run test:node < examples/payload.download.completed.json
-
-      - name: Run Bun runtime check
-        run: bun run test:bun < examples/payload.download.completed.json
+      - name: Run Deno runtime check
+        run: bun run test:deno < examples/payload.download.completed.json
 "#
     .to_string()
 }
@@ -3843,6 +4178,11 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: vx
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -4023,8 +4363,8 @@ Available high-level APIs:
 - `ctx.download`
 - `ctx.file`
 - `ctx.media`
-- `ctx.env.get(...)`
-- `ctx.env.require(...)`
+- `ctx.config.get(...)`
+- `ctx.config.require(...)`
 - `ctx.log.info(...)`
 - `ctx.i18n.t(...)`
 - `ctx.youwee.runtime`
@@ -4076,9 +4416,42 @@ The final structured result must remain on `stdout`.
 
 ## Runtime notes
 
+## Plugin configuration fields
+
+Declare user-facing plugin settings with `configFields` in `plugin.json`.
+
+Example:
+
+```json
+{{
+  "permissions": {{
+    "fs": ["fs.user-selected.write"]
+  }},
+  "configFields": [
+    {{
+      "key": "outputDirectory",
+      "inputType": "directory",
+      "label": "Output folder",
+      "required": true
+    }}
+  ]
+}}
+```
+
+Read them at runtime with:
+
+```js
+const outputDirectory = ctx.config.require("outputDirectory");
+```
+
+Do not use `permissions.env` for plugin-defined configuration. It is obsolete.
+
+Use filesystem capabilities instead of hardcoding user-specific absolute paths.
+For example, `fs.user-selected.*` should be paired with `file` or `directory`
+config fields so Youwee can resolve the actual path on each machine.
+
 This scaffold is optimized for:
-- Node
-- Bun
+- Deno
 
 If your implementation depends on runtime-specific APIs, update
 `runtime.supportedProviders` in `plugin.json`.
@@ -4118,7 +4491,7 @@ Recommended setup:
 3. Store the full JSON contents of `plugin.youwee-plugin-key.json` in that secret
 4. Create a tag like `v0.1.0` to trigger the release workflow
 
-The CI workflow validates `bun install`, `bun run build`, `bun run test:node`, and `bun run test:bun`.
+The CI workflow validates `bun install`, `bun run build`, and `bun run test:deno`.
 
 The release workflow:
 
@@ -4127,16 +4500,10 @@ The release workflow:
 3. packs a signed `.ywp`
 4. uploads the `.ywp` and `.sha256` files to the GitHub release
 
-Node:
+Deno:
 
 ```bash
-cat examples/payload.download.completed.json | YOUWEE_PLUGIN_MAIN=src/plugin.js node node_modules/youwee-sdk/dist/runtime-cli.js
-```
-
-Bun:
-
-```bash
-cat examples/payload.download.completed.json | YOUWEE_PLUGIN_MAIN=src/plugin.js bun node_modules/youwee-sdk/dist/runtime-cli.js
+cat examples/payload.download.completed.json | YOUWEE_PLUGIN_MAIN=src/plugin.js deno run --quiet --unstable-detect-cjs --allow-env --allow-read=. --allow-write=. node_modules/youwee-sdk/dist/runtime-cli.js
 ```
 
 ## Packaging
@@ -4260,14 +4627,15 @@ mod tests {
             license: None,
             runtime: PluginRuntimeSpec {
                 language: PluginRuntimeLanguage::Javascript,
-                supported_providers: vec![PluginProvider::Node, PluginProvider::Bun],
-                preferred_provider: Some(PluginProvider::Node),
+                supported_providers: vec![PluginProvider::Deno],
+                preferred_provider: Some(PluginProvider::Deno),
                 entrypoint: "src/plugin.js".to_string(),
             },
             compatibility: None,
             i18n: None,
             triggers: vec!["download.completed".to_string()],
             permissions: PluginPermissionRequest::default(),
+            config_fields: Vec::new(),
             timeout_sec: 60,
             readme: None,
             checksum: None,
@@ -4302,6 +4670,7 @@ mod tests {
             i18n: None,
             triggers: vec!["download.completed".to_string()],
             permissions: PluginPermissionRequest::default(),
+            config_fields: Vec::new(),
             timeout_sec: 60,
             readme: None,
             checksum: None,
@@ -4325,14 +4694,15 @@ mod tests {
             license: None,
             runtime: PluginRuntimeSpec {
                 language: PluginRuntimeLanguage::Javascript,
-                supported_providers: vec![PluginProvider::Node],
-                preferred_provider: Some(PluginProvider::Node),
+                supported_providers: vec![PluginProvider::Deno],
+                preferred_provider: Some(PluginProvider::Deno),
                 entrypoint: "src/plugin.js".to_string(),
             },
             compatibility: None,
             i18n: None,
             triggers: vec!["triggers.downloadQueued".to_string()],
             permissions: PluginPermissionRequest::default(),
+            config_fields: Vec::new(),
             timeout_sec: 60,
             readme: None,
             checksum: None,
@@ -4364,6 +4734,7 @@ mod tests {
             i18n: None,
             triggers: vec!["download.completed".to_string()],
             permissions: PluginPermissionRequest::default(),
+            config_fields: Vec::new(),
             timeout_sec: 60,
             readme: Some("README.md".to_string()),
             checksum: None,
@@ -4382,7 +4753,7 @@ mod tests {
 
         assert!(ci_workflow.contains("name: Plugin CI"));
         assert!(ci_workflow.contains("bun run build"));
-        assert!(ci_workflow.contains("bun run test:node"));
+        assert!(ci_workflow.contains("bun run test:deno"));
         assert!(release_workflow.contains("name: Plugin Release"));
         assert!(release_workflow.contains("YOUWEE_PLUGIN_SIGNING_KEY"));
         assert!(release_workflow.contains("release/*.ywp"));
@@ -4402,14 +4773,15 @@ mod tests {
             license: None,
             runtime: PluginRuntimeSpec {
                 language: PluginRuntimeLanguage::Javascript,
-                supported_providers: vec![PluginProvider::Node, PluginProvider::Bun],
-                preferred_provider: Some(PluginProvider::Node),
+                supported_providers: vec![PluginProvider::Deno],
+                preferred_provider: Some(PluginProvider::Deno),
                 entrypoint: "src/plugin.js".to_string(),
             },
             compatibility: None,
             i18n: None,
             triggers: vec!["download.completed".to_string()],
             permissions: PluginPermissionRequest::default(),
+            config_fields: Vec::new(),
             timeout_sec: 60,
             readme: Some("README.md".to_string()),
             checksum: None,
@@ -4425,7 +4797,7 @@ mod tests {
             package_json.contains("\"keygen\": \"bunx youwee-sdk keygen ./plugin.youwee-plugin-key.json\"")
         );
         assert!(package_json.contains("YOUWEE_PLUGIN_MAIN=src/plugin.js"));
-        assert!(package_json.contains("node_modules/youwee-sdk/dist/runtime-cli.js"));
+        assert!(package_json.contains("deno run --quiet"));
     }
 
     #[test]
@@ -4457,8 +4829,8 @@ mod tests {
             license: None,
             runtime: PluginRuntimeSpec {
                 language: PluginRuntimeLanguage::Javascript,
-                supported_providers: vec![PluginProvider::Node],
-                preferred_provider: Some(PluginProvider::Node),
+                supported_providers: vec![PluginProvider::Deno],
+                preferred_provider: Some(PluginProvider::Deno),
                 entrypoint: "src/plugin.js".to_string(),
             },
             compatibility: Some(crate::types::PluginCompatibilitySpec {
@@ -4468,6 +4840,7 @@ mod tests {
             i18n: None,
             triggers: vec!["download.completed".to_string()],
             permissions: PluginPermissionRequest::default(),
+            config_fields: Vec::new(),
             timeout_sec: 60,
             readme: None,
             checksum: None,
