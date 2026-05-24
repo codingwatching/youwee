@@ -805,13 +805,15 @@ function AboutSettingsContent({
       label: 'X',
       faIcon: 'fa-twitter',
       color: 'text-sky-400',
+      hoverBg: 'hover:bg-sky-500/10',
       href: `https://x.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`,
     },
     {
       key: 'facebook',
       label: 'Facebook',
       faIcon: 'fa-facebook',
-      color: 'text-blue-600',
+      color: 'text-blue-600 dark:text-blue-400',
+      hoverBg: 'hover:bg-blue-500/10',
       href: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
     },
     {
@@ -819,6 +821,7 @@ function AboutSettingsContent({
       label: 'Reddit',
       faIcon: 'fa-reddit',
       color: 'text-orange-500',
+      hoverBg: 'hover:bg-orange-500/10',
       href: `https://www.reddit.com/submit?url=${encodedUrl}&title=${encodedText}`,
     },
     {
@@ -826,6 +829,7 @@ function AboutSettingsContent({
       label: 'Telegram',
       faIcon: 'fa-telegram',
       color: 'text-sky-500',
+      hoverBg: 'hover:bg-sky-500/10',
       href: `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`,
     },
     {
@@ -833,6 +837,7 @@ function AboutSettingsContent({
       label: 'WhatsApp',
       faIcon: 'fa-whatsapp',
       color: 'text-green-500',
+      hoverBg: 'hover:bg-green-500/10',
       href: `https://wa.me/?text=${encodeURIComponent(`${shareText} ${appUrl}`)}`,
     },
     {
@@ -840,6 +845,7 @@ function AboutSettingsContent({
       label: 'Weibo',
       faIcon: 'fa-weibo',
       color: 'text-rose-500',
+      hoverBg: 'hover:bg-rose-500/10',
       href: `https://service.weibo.com/share/share.php?url=${encodedUrl}&title=${encodedText}`,
     },
   ];
@@ -862,115 +868,138 @@ function AboutSettingsContent({
         icon={<Info className="w-5 h-5 text-white" />}
         iconClassName="bg-gradient-to-br from-pink-500 to-rose-600 shadow-pink-500/20"
       >
-        {/* App Info Card */}
-        <SettingsCard id="app-version" highlight={highlightId === 'app-version'}>
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl overflow-hidden flex-shrink-0">
-                <img src="/logo-128.png" alt="Youwee" className="w-full h-full object-cover" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-lg font-bold">Youwee</span>
-                  <Badge variant="secondary" className="font-mono text-xs">
-                    v{appVersion}
-                  </Badge>
+        {/* ── Hero App Info Card ── */}
+        <div
+          id="app-version"
+          className={cn(
+            'relative overflow-hidden rounded-[1.4rem] transition-all duration-500',
+            'bg-background/78 shadow-[0_16px_40px_rgba(0,0,0,0.08)] backdrop-blur-2xl',
+            'dark:shadow-[0_22px_50px_rgba(0,0,0,0.25)]',
+            highlightId === 'app-version' &&
+              'ring-2 ring-primary ring-offset-2 ring-offset-background',
+          )}
+        >
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_hsl(var(--primary)/0.14),_transparent_32%),radial-gradient(circle_at_bottom_right,_hsl(var(--gradient-via)/0.16),_transparent_34%)]" />
+          <div className="relative p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 flex-shrink-0 rounded-2xl overflow-hidden">
+                  <img src="/logo-128.png" alt="Youwee" className="w-full h-full object-cover" />
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">{t('about.appDesc')}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {isAppChecking ? (
-                    <span className="flex items-center gap-1">
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                      {t('about.checkingUpdates')}
-                    </span>
-                  ) : isAppUpdateAvailable && updater.updateInfo ? (
-                    <span className="text-primary font-medium">
-                      {t('about.versionAvailable', { version: updater.updateInfo.version })}
-                    </span>
-                  ) : isAppUpToDate ? (
-                    <span className="flex items-center gap-1 text-emerald-500">
-                      <CheckCircle2 className="w-3 h-3" />
-                      {t('about.upToDate')}
-                    </span>
-                  ) : isAppError ? (
-                    <span className="text-destructive">
-                      {updater.error || t('about.checkFailed')}
-                    </span>
-                  ) : null}
-                </p>
+                <div>
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xl font-bold tracking-tight gradient-text">Youwee</span>
+                    <Badge
+                      variant="secondary"
+                      className="font-mono text-xs bg-primary/10 text-primary border-0"
+                    >
+                      v{appVersion}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">{t('about.appDesc')}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {isAppChecking ? (
+                      <span className="flex items-center gap-1.5">
+                        <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                        {t('about.checkingUpdates')}
+                      </span>
+                    ) : isAppUpdateAvailable && updater.updateInfo ? (
+                      <span className="inline-flex items-center gap-1.5 text-primary font-medium">
+                        <Download className="w-3 h-3" />
+                        {t('about.versionAvailable', { version: updater.updateInfo.version })}
+                      </span>
+                    ) : isAppUpToDate ? (
+                      <span className="flex items-center gap-1.5 text-emerald-500">
+                        <CheckCircle2 className="w-3 h-3" />
+                        {t('about.upToDate')}
+                      </span>
+                    ) : isAppError ? (
+                      <span className="text-destructive">
+                        {updater.error || t('about.checkFailed')}
+                      </span>
+                    ) : null}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {isAppUpdateAvailable && (
+                  <Button
+                    size="sm"
+                    onClick={updater.downloadAndInstall}
+                    disabled={updater.status === 'downloading' || updater.status === 'ready'}
+                    className="gap-1.5"
+                  >
+                    {updater.status === 'downloading' || updater.status === 'ready' ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        {updater.status === 'downloading'
+                          ? `${updater.progress ? Math.round((updater.progress.downloaded / updater.progress.total) * 100) : 0}%`
+                          : t('about.restarting')}
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        {t('about.update')}
+                      </>
+                    )}
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={updater.checkForUpdate}
+                  disabled={isAppChecking}
+                  title={t('about.checkForUpdates')}
+                  className="h-9 w-9"
+                >
+                  <RefreshCw className={cn('w-4 h-4', isAppChecking && 'animate-spin')} />
+                </Button>
               </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              {isAppUpdateAvailable && (
-                <Button
-                  size="sm"
-                  onClick={updater.downloadAndInstall}
-                  disabled={updater.status === 'downloading' || updater.status === 'ready'}
-                  className="gap-1.5"
-                >
-                  {updater.status === 'downloading' || updater.status === 'ready' ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      {updater.status === 'downloading'
-                        ? `${updater.progress ? Math.round((updater.progress.downloaded / updater.progress.total) * 100) : 0}%`
-                        : t('about.restarting')}
-                    </>
-                  ) : (
-                    <>
-                      <Download className="w-4 h-4" />
-                      {t('about.update')}
-                    </>
-                  )}
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={updater.checkForUpdate}
-                disabled={isAppChecking}
-                title={t('about.checkForUpdates')}
-                className="h-9 w-9"
+
+            {/* Quick Links */}
+            <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-border/30">
+              <a
+                href="https://github.com/vanloctech/youwee/blob/main/LICENSE"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background/60 hover:bg-background text-xs font-medium transition-all hover:shadow-sm"
               >
-                <RefreshCw className={cn('w-4 h-4', isAppChecking && 'animate-spin')} />
-              </Button>
+                <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                {t('about.license')}
+              </a>
+              <a
+                href="https://github.com/vanloctech/youwee/issues"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background/60 hover:bg-background text-xs font-medium transition-all hover:shadow-sm"
+              >
+                <Bug className="w-3.5 h-3.5 text-muted-foreground" />
+                {t('about.reportIssue')}
+              </a>
             </div>
           </div>
+        </div>
 
-          {/* Quick Links */}
-          <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-border/50">
-            <a
-              href="https://github.com/vanloctech/youwee/blob/main/LICENSE"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background/50 hover:bg-background text-xs font-medium transition-colors"
-            >
-              <FileText className="w-3.5 h-3.5" />
-              {t('about.license')}
-            </a>
-            <a
-              href="https://github.com/vanloctech/youwee/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background/50 hover:bg-background text-xs font-medium transition-colors"
-            >
-              <Bug className="w-3.5 h-3.5" />
-              {t('about.reportIssue')}
-            </a>
-          </div>
-
-          {/* Community */}
-          <div className="mt-4 pt-4 border-t border-border/50">
-            <div className="flex items-center gap-2 mb-2">
-              <Github className="w-4 h-4 text-muted-foreground" />
-              <p className="text-sm font-medium">{t('about.communityTitle')}</p>
+        {/* ── Community & Support Row ── */}
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* Community Card */}
+          <div className="rounded-xl bg-muted/30 p-4 transition-all hover:bg-muted/40">
+            <div className="flex items-center gap-2.5 mb-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10">
+                <Github className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+              </div>
+              <p className="text-sm font-semibold">{t('about.communityTitle')}</p>
             </div>
-            <p className="text-xs text-muted-foreground mb-3">{t('about.communityDesc')}</p>
+            <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+              {t('about.communityDesc')}
+            </p>
             <div className="flex flex-wrap items-center gap-2">
               <a
                 href="https://github.com/vanloctech/youwee"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background/50 hover:bg-background text-xs font-medium transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background/60 hover:bg-background text-xs font-medium transition-all hover:shadow-sm"
               >
                 <Github className="w-3.5 h-3.5" />
                 GitHub
@@ -979,7 +1008,7 @@ function AboutSettingsContent({
                 href={redditUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background/50 hover:bg-background text-xs font-medium transition-colors text-orange-500"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background/60 hover:bg-orange-500/10 text-xs font-medium transition-all text-orange-500 hover:shadow-sm"
               >
                 <i className="fa fa-reddit text-[12px]" aria-hidden="true" />
                 Reddit
@@ -990,98 +1019,112 @@ function AboutSettingsContent({
                 href={productHuntUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex max-w-full"
+                className="inline-flex max-w-full transition-opacity hover:opacity-90"
               >
                 <img
                   src={productHuntBadgeUrl}
                   alt={t('about.productHuntBadgeAlt')}
                   width={250}
                   height={54}
-                  className="h-[54px] w-[250px] max-w-full"
+                  className="h-[54px] w-[250px] max-w-full rounded-lg"
                 />
               </a>
             </div>
           </div>
 
-          {/* Support */}
-          <div className="mt-4 pt-4 border-t border-border/50">
-            <div className="flex items-center gap-2 mb-2">
-              <Heart className="w-4 h-4 text-red-500" />
-              <p className="text-sm font-medium">{t('about.supportTitle')}</p>
+          {/* Support Card */}
+          <div className="rounded-xl bg-muted/30 p-4 transition-all hover:bg-muted/40">
+            <div className="flex items-center gap-2.5 mb-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/10">
+                <Heart className="w-4 h-4 text-rose-500" />
+              </div>
+              <p className="text-sm font-semibold">{t('about.supportTitle')}</p>
             </div>
-            <p className="text-xs text-muted-foreground mb-3">{t('about.supportDesc')}</p>
-            <div className="flex flex-wrap items-center gap-2">
-              <a
-                href={buyMeACoffeeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group inline-flex min-h-14 items-center gap-3 rounded-md border border-dashed border-amber-500/40 bg-amber-500/10 px-3 py-2 text-left transition-colors hover:bg-amber-500/15"
-              >
-                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                  <Coffee className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                    <span>{t('about.buyMeACoffee')}</span>
-                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground transition-colors group-hover:text-foreground" />
-                  </div>
-                  <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
-                    {t('about.buyMeACoffeeDesc')}
-                  </p>
-                </div>
-              </a>
-            </div>
-          </div>
-
-          {/* Share */}
-          <div className="mt-4 pt-4 border-t border-border/50">
-            <div className="flex items-center gap-2 mb-2">
-              <Share2 className="w-4 h-4 text-muted-foreground" />
-              <p className="text-sm font-medium">{t('about.shareTitle')}</p>
-            </div>
-            <p className="text-xs text-muted-foreground mb-3">{t('about.shareDesc')}</p>
-            <div className="flex flex-wrap items-center gap-2">
-              {shareLinks.map((item) => (
-                <a
-                  key={item.key}
-                  href={item.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={cn(
-                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background/50 hover:bg-background text-xs font-medium transition-colors',
-                    item.color,
-                  )}
-                >
-                  <i className={cn('fa', item.faIcon, 'text-[12px]')} aria-hidden="true" />
-                  {item.label}
-                </a>
-              ))}
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background/50 hover:bg-background text-xs font-medium transition-colors"
-              >
-                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                {copied ? t('about.copied') : t('about.copyLink')}
-              </button>
-            </div>
-          </div>
-
-          {/* Made with love */}
-          <div className="flex items-center justify-center gap-1.5 mt-4 pt-4 border-t border-border/50">
-            <span className="text-xs text-muted-foreground">{t('about.madeWith')}</span>
-            <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500" />
-            <span className="text-xs text-muted-foreground">{t('about.by')}</span>
+            <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+              {t('about.supportDesc')}
+            </p>
             <a
-              href="https://github.com/vanloctech"
+              href={buyMeACoffeeUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm font-semibold bg-gradient-to-r from-red-500 via-yellow-500 to-red-500 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
+              className="group flex items-center gap-3 rounded-xl border border-dashed border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-amber-500/10 px-4 py-3 transition-all hover:border-amber-500/50 hover:shadow-sm hover:shadow-amber-500/5"
             >
-              vanloctech
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 transition-transform group-hover:scale-110">
+                <Coffee className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                  <span>{t('about.buyMeACoffee')}</span>
+                  <ExternalLink className="h-3 w-3 text-muted-foreground transition-all group-hover:text-foreground group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                </div>
+                <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
+                  {t('about.buyMeACoffeeDesc')}
+                </p>
+              </div>
             </a>
           </div>
-        </SettingsCard>
+        </div>
+
+        {/* ── Share Card ── */}
+        <div className="rounded-xl bg-muted/30 p-4 transition-all hover:bg-muted/40">
+          <div className="flex items-center gap-2.5 mb-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
+              <Share2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">{t('about.shareTitle')}</p>
+              <p className="text-xs text-muted-foreground">{t('about.shareDesc')}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 mt-3">
+            {shareLinks.map((item) => (
+              <a
+                key={item.key}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-background/60 text-xs font-medium transition-all hover:shadow-sm hover:scale-105',
+                  item.color,
+                  item.hoverBg,
+                )}
+              >
+                <i className={cn('fa', item.faIcon, 'text-[13px]')} aria-hidden="true" />
+                {item.label}
+              </a>
+            ))}
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-background/60 hover:bg-background text-xs font-medium transition-all hover:shadow-sm hover:scale-105',
+                copied && 'text-emerald-500',
+              )}
+            >
+              {copied ? (
+                <Check className="w-3.5 h-3.5" />
+              ) : (
+                <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+              )}
+              {copied ? t('about.copied') : t('about.copyLink')}
+            </button>
+          </div>
+        </div>
+
+        {/* ── Made with love ── */}
+        <div className="flex items-center justify-center gap-2 py-2">
+          <span className="text-xs text-muted-foreground">{t('about.madeWith')}</span>
+          <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500 animate-pulse" />
+          <span className="text-xs text-muted-foreground">{t('about.by')}</span>
+          <a
+            href="https://github.com/vanloctech"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-bold gradient-text hover:opacity-80 transition-opacity"
+          >
+            vanloctech
+          </a>
+        </div>
 
         {/* Auto Update Toggle */}
         <SettingsRow
