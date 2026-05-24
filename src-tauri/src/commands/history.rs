@@ -335,12 +335,10 @@ pub async fn open_macos_privacy_settings() -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::database::{get_db, DB_CONNECTION};
+    use crate::database::{db_test_guard, get_db, DB_CONNECTION};
     use rusqlite::params;
     use std::fs;
-    use std::sync::{Mutex, OnceLock};
-
-    static HISTORY_TEST_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    use std::sync::Mutex;
 
     fn make_temp_file(name: &str) -> PathBuf {
         let dir =
@@ -421,16 +419,9 @@ mod tests {
             .expect("clear history table");
     }
 
-    fn history_test_guard() -> std::sync::MutexGuard<'static, ()> {
-        HISTORY_TEST_LOCK
-            .get_or_init(|| Mutex::new(()))
-            .lock()
-            .expect("lock history test mutex")
-    }
-
     #[test]
     fn rename_downloaded_file_updates_history_by_id() {
-        let _guard = history_test_guard();
+        let _guard = db_test_guard();
         ensure_test_history_table();
         let old = make_temp_file("video.mp4");
         let old_path = old.to_string_lossy().to_string();
@@ -476,7 +467,7 @@ mod tests {
 
     #[test]
     fn rename_downloaded_file_updates_history_by_filepath_fallback() {
-        let _guard = history_test_guard();
+        let _guard = db_test_guard();
         ensure_test_history_table();
         let old = make_temp_file("movie.mkv");
         let old_path = old.to_string_lossy().to_string();

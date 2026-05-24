@@ -5,6 +5,9 @@ use tauri::{AppHandle, Manager};
 // Global database connection wrapped in Mutex for thread safety
 pub static DB_CONNECTION: std::sync::OnceLock<Mutex<Connection>> = std::sync::OnceLock::new();
 
+#[cfg(test)]
+static DB_TEST_LOCK: std::sync::OnceLock<Mutex<()>> = std::sync::OnceLock::new();
+
 pub const MAX_LOG_ENTRIES: i64 = 500;
 
 /// Initialize the SQLite database
@@ -315,4 +318,12 @@ pub fn get_db() -> Result<std::sync::MutexGuard<'static, Connection>, String> {
         .ok_or_else(|| "Database not initialized".to_string())?
         .lock()
         .map_err(|e| format!("Failed to acquire database lock: {}", e))
+}
+
+#[cfg(test)]
+pub fn db_test_guard() -> std::sync::MutexGuard<'static, ()> {
+    DB_TEST_LOCK
+        .get_or_init(|| Mutex::new(()))
+        .lock()
+        .expect("lock shared database test mutex")
 }

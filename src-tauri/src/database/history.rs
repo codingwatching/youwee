@@ -900,13 +900,11 @@ pub fn remove_history_from_collection_in_db(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::database::{get_db, DB_CONNECTION};
+    use crate::database::{db_test_guard, get_db, DB_CONNECTION};
     use rusqlite::params;
     use std::fs;
     use std::path::{Path, PathBuf};
-    use std::sync::{Mutex, OnceLock};
-
-    static HISTORY_TEST_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    use std::sync::Mutex;
 
     fn make_temp_file(name: &str) -> PathBuf {
         let dir =
@@ -976,13 +974,6 @@ mod tests {
             .expect("clear history");
     }
 
-    fn history_test_guard() -> std::sync::MutexGuard<'static, ()> {
-        HISTORY_TEST_LOCK
-            .get_or_init(|| Mutex::new(()))
-            .lock()
-            .expect("lock history test mutex")
-    }
-
     fn insert_history_row(id: &str, filepath: &str) {
         let conn = get_db().expect("get db");
         conn.execute(
@@ -1000,7 +991,7 @@ mod tests {
 
     #[test]
     fn assign_history_tags_reuses_existing_tag() {
-        let _guard = history_test_guard();
+        let _guard = db_test_guard();
         ensure_test_history_tables();
         let history_id = uuid::Uuid::new_v4().to_string();
         insert_history_row(&history_id, "");
@@ -1024,7 +1015,7 @@ mod tests {
 
     #[test]
     fn history_filters_by_tag_any_mode() {
-        let _guard = history_test_guard();
+        let _guard = db_test_guard();
         ensure_test_history_tables();
         let first_id = uuid::Uuid::new_v4().to_string();
         let second_id = uuid::Uuid::new_v4().to_string();
@@ -1053,7 +1044,7 @@ mod tests {
 
     #[test]
     fn create_and_assign_collection_counts_items() {
-        let _guard = history_test_guard();
+        let _guard = db_test_guard();
         ensure_test_history_tables();
         let history_id = uuid::Uuid::new_v4().to_string();
         insert_history_row(&history_id, "");
