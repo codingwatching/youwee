@@ -312,43 +312,47 @@ const WORKFLOW_TRIGGER_TONES: Record<
   }
 > = {
   'download.queued': {
-    cardClassName: 'bg-gradient-to-br from-slate-500/[0.10] via-background to-background',
+    cardClassName:
+      '!p-5 relative overflow-hidden rounded-[1.4rem] bg-background/78 backdrop-blur-2xl transition-all duration-500',
     titleBadgeClassName: 'bg-slate-500/15 text-slate-700 dark:bg-slate-400/15 dark:text-slate-200',
     titleClassName: 'text-slate-800 dark:text-slate-100',
-    panelClassName: 'border-slate-500/20 bg-background/70',
-    emptyClassName: 'border-slate-500/20 bg-background/65',
-    stepClassName: 'border-slate-500/20 bg-background/75',
+    panelClassName: 'border-slate-500/20 bg-background/70 relative z-10',
+    emptyClassName: 'border-slate-500/20 bg-background/65 relative z-10',
+    stepClassName: 'border-slate-500/20 bg-background/75 relative z-10',
     triggerButtonSelectedClassName:
       'border-slate-500/40 bg-slate-500/12 text-slate-700 dark:text-slate-200',
   },
   'download.beforeStart': {
-    cardClassName: 'bg-gradient-to-br from-amber-500/[0.12] via-background to-background',
+    cardClassName:
+      '!p-5 relative overflow-hidden rounded-[1.4rem] bg-background/78 backdrop-blur-2xl transition-all duration-500',
     titleBadgeClassName: 'bg-amber-500/15 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300',
     titleClassName: 'text-amber-900 dark:text-amber-100',
-    panelClassName: 'border-amber-500/20 bg-background/70',
-    emptyClassName: 'border-amber-500/20 bg-background/65',
-    stepClassName: 'border-amber-500/20 bg-background/75',
+    panelClassName: 'border-amber-500/20 bg-background/70 relative z-10',
+    emptyClassName: 'border-amber-500/20 bg-background/65 relative z-10',
+    stepClassName: 'border-amber-500/20 bg-background/75 relative z-10',
     triggerButtonSelectedClassName:
       'border-amber-500/45 bg-amber-500/12 text-amber-700 dark:text-amber-300',
   },
   'download.completed': {
-    cardClassName: 'bg-gradient-to-br from-emerald-500/[0.12] via-background to-background',
+    cardClassName:
+      '!p-5 relative overflow-hidden rounded-[1.4rem] bg-background/78 backdrop-blur-2xl transition-all duration-500',
     titleBadgeClassName:
       'bg-emerald-500/15 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300',
     titleClassName: 'text-emerald-900 dark:text-emerald-100',
-    panelClassName: 'border-emerald-500/20 bg-background/70',
-    emptyClassName: 'border-emerald-500/20 bg-background/65',
-    stepClassName: 'border-emerald-500/20 bg-background/75',
+    panelClassName: 'border-emerald-500/20 bg-background/70 relative z-10',
+    emptyClassName: 'border-emerald-500/20 bg-background/65 relative z-10',
+    stepClassName: 'border-emerald-500/20 bg-background/75 relative z-10',
     triggerButtonSelectedClassName:
       'border-emerald-500/45 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300',
   },
   'download.failed': {
-    cardClassName: 'bg-gradient-to-br from-rose-500/[0.12] via-background to-background',
+    cardClassName:
+      '!p-5 relative overflow-hidden rounded-[1.4rem] bg-background/78 backdrop-blur-2xl transition-all duration-500',
     titleBadgeClassName: 'bg-rose-500/15 text-rose-700 dark:bg-rose-400/15 dark:text-rose-300',
     titleClassName: 'text-rose-900 dark:text-rose-100',
-    panelClassName: 'border-rose-500/20 bg-background/70',
-    emptyClassName: 'border-rose-500/20 bg-background/65',
-    stepClassName: 'border-rose-500/20 bg-background/75',
+    panelClassName: 'border-rose-500/20 bg-background/70 relative z-10',
+    emptyClassName: 'border-rose-500/20 bg-background/65 relative z-10',
+    stepClassName: 'border-rose-500/20 bg-background/75 relative z-10',
     triggerButtonSelectedClassName:
       'border-rose-500/45 bg-rose-500/12 text-rose-700 dark:text-rose-300',
   },
@@ -3079,7 +3083,19 @@ export function PostDownloadPluginsCard() {
 
           return (
             <SettingsCard key={trigger} className={cn('space-y-4', tone.cardClassName)}>
-              <div className="space-y-1">
+              {trigger === 'download.queued' && (
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(148,163,184,0.10),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(148,163,184,0.05),_transparent_34%)]" />
+              )}
+              {trigger === 'download.beforeStart' && (
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.12),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(245,158,11,0.06),_transparent_34%)]" />
+              )}
+              {trigger === 'download.completed' && (
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.12),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(16,185,129,0.06),_transparent_34%)]" />
+              )}
+              {trigger === 'download.failed' && (
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(244,63,94,0.12),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(244,63,94,0.06),_transparent_34%)]" />
+              )}
+              <div className="space-y-1 relative z-10">
                 <div className="flex flex-wrap items-center gap-2">
                   <span
                     className={cn(
