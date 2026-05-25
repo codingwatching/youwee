@@ -8,7 +8,6 @@ import {
   Download,
   ExternalLink,
   FileText,
-  Github,
   Heart,
   Info,
   Loader2,
@@ -377,7 +376,10 @@ function AboutSettingsContent({
           <div className="rounded-xl bg-muted/30 p-4 transition-all hover:bg-muted/40">
             <div className="flex items-center gap-2.5 mb-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10">
-                <Github className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                <i
+                  className="fa fa-github text-[16px] text-violet-600 dark:text-violet-400"
+                  aria-hidden="true"
+                />
               </div>
               <p className="text-sm font-semibold">{t('about.communityTitle')}</p>
             </div>
@@ -391,7 +393,7 @@ function AboutSettingsContent({
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background/60 hover:bg-background text-xs font-medium transition-all hover:shadow-sm"
               >
-                <Github className="w-3.5 h-3.5" />
+                <i className="fa fa-github text-[14px]" aria-hidden="true" />
                 GitHub
               </a>
               <a
@@ -437,15 +439,15 @@ function AboutSettingsContent({
               href={buyMeACoffeeUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex items-center gap-3 rounded-xl border border-dashed border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-amber-500/10 px-4 py-3 transition-all hover:border-amber-500/50 hover:shadow-sm hover:shadow-amber-500/5"
+              className="flex items-center gap-3 rounded-xl border border-dashed border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-amber-500/10 px-4 py-3 transition-colors hover:border-amber-500/50"
             >
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 transition-transform group-hover:scale-110">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
                 <Coffee className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                   <span>{t('about.buyMeACoffee')}</span>
-                  <ExternalLink className="h-3 w-3 text-muted-foreground transition-all group-hover:text-foreground group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  <ExternalLink className="h-3 w-3 text-muted-foreground" />
                 </div>
                 <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
                   {t('about.buyMeACoffeeDesc')}

@@ -4,7 +4,6 @@ import {
   Download,
   ExternalLink,
   Film,
-  Github,
   Images,
   Loader2,
   Package,
@@ -474,7 +473,7 @@ export function DependenciesSection({ highlightId }: DependenciesSectionProps) {
               rel="noopener noreferrer"
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-3 pt-3 border-t border-border/50"
             >
-              <Github className="w-3 h-3" />
+              <i className="fa fa-github text-[12px]" aria-hidden="true" />
               yt-dlp/yt-dlp
               <ExternalLink className="w-3 h-3" />
             </a>
@@ -746,7 +745,7 @@ export function DependenciesSection({ highlightId }: DependenciesSectionProps) {
               rel="noopener noreferrer"
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-3 pt-3 border-t border-border/50"
             >
-              <Github className="w-3 h-3" />
+              <i className="fa fa-globe text-[12px]" aria-hidden="true" />
               deno.land
               <ExternalLink className="w-3 h-3" />
             </a>
@@ -819,7 +818,7 @@ export function DependenciesSection({ highlightId }: DependenciesSectionProps) {
               rel="noopener noreferrer"
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-3 pt-3 border-t border-border/50"
             >
-              <Github className="w-3 h-3" />
+              <i className="fa fa-github text-[12px]" aria-hidden="true" />
               mikf/gallery-dl
               <ExternalLink className="w-3 h-3" />
             </a>
