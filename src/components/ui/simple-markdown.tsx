@@ -7,7 +7,7 @@ interface SimpleMarkdownProps {
 
 /**
  * A lightweight markdown renderer for basic formatting.
- * Supports: **bold**, *italic*, ### headers, - lists, [links](url), `code`, ```code blocks```
+ * Supports: **bold**, *italic*, ### headers, - lists, [links](url), `code`, ```code blocks```, pipe tables
  */
 export function SimpleMarkdown({ content, className }: SimpleMarkdownProps) {
   const lines = content.split('\n');
@@ -16,6 +16,7 @@ export function SimpleMarkdown({ content, className }: SimpleMarkdownProps) {
   let listKey = 0;
   let codeBlockLines: string[] = [];
   let codeBlockKey = 0;
+  let tableKey = 0;
   let inCodeBlock = false;
 
   const flushList = () => {
@@ -49,6 +50,13 @@ export function SimpleMarkdown({ content, className }: SimpleMarkdownProps) {
     }
   };
 
+  const isTableRow = (line: string) => /^\|(?:[^|\n]*\|)+\s*$/.test(line.trim());
+
+  const isTableSeparator = (line: string) => {
+    const cells = splitTableRow(line);
+    return cells.length > 0 && cells.every((cell) => /^:?-{3,}:?$/.test(cell.trim()));
+  };
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const trimmed = line.trim();
@@ -73,6 +81,59 @@ export function SimpleMarkdown({ content, className }: SimpleMarkdownProps) {
     // Empty line
     if (!trimmed) {
       flushList();
+      continue;
+    }
+
+    if (isTableRow(trimmed) && i + 1 < lines.length && isTableSeparator(lines[i + 1] ?? '')) {
+      flushList();
+
+      const headerCells = splitTableRow(trimmed);
+      const bodyRows: string[][] = [];
+      i += 2;
+
+      while (i < lines.length) {
+        const tableLine = lines[i]?.trim() ?? '';
+        if (!tableLine || !isTableRow(tableLine)) {
+          i -= 1;
+          break;
+        }
+
+        bodyRows.push(splitTableRow(tableLine));
+        i += 1;
+      }
+
+      elements.push(
+        <div key={`table-${tableKey++}`} className="my-3 w-full max-w-full overflow-x-auto">
+          <table className="min-w-full border-separate border-spacing-0 overflow-hidden rounded-xl border border-border/70 bg-background/40 text-left text-sm">
+            <thead className="bg-muted/50">
+              <tr>
+                {headerCells.map((cell) => (
+                  <th
+                    key={`head-${cell}`}
+                    className="border-b border-border/70 px-3 py-2 align-top font-semibold text-foreground"
+                  >
+                    {parseInline(cell)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {bodyRows.map((row, rowIndex) => (
+                <tr key={`row-${row.join('|')}-${rowIndex}`} className="align-top">
+                  {headerCells.map((_, cellIndex) => (
+                    <td
+                      key={`cell-${row[cellIndex] ?? ''}-${cellIndex}`}
+                      className="border-t border-border/50 px-3 py-2 text-muted-foreground"
+                    >
+                      {parseInline(row[cellIndex] ?? '')}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>,
+      );
       continue;
     }
 
@@ -135,6 +196,15 @@ export function SimpleMarkdown({ content, className }: SimpleMarkdownProps) {
       {elements}
     </div>
   );
+}
+
+function splitTableRow(line: string): string[] {
+  return line
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((cell) => cell.trim());
 }
 
 /**
