@@ -103,7 +103,13 @@
     "generating": "Génération...",
     "showMore": "Afficher plus",
     "showLess": "Afficher moins",
-    "regenerateSummary": "Régénérer le résumé"
+    "regenerateSummary": "Régénérer le résumé",
+    "openFolder": "Afficher dans le dossier",
+    "rename": "Renommer",
+    "renamePlaceholder": "Entrez le nouveau nom du fichier",
+    "renameSave": "Enregistrer",
+    "renameCancel": "Annuler",
+    "renameFailed": "Échec du renommage du fichier"
   },
   "actions": {
     "startDownload": "Démarrer le téléchargement",

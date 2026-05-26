@@ -138,7 +138,13 @@
     "showMore": "Mostrar mais",
     "showLess": "Mostrar menos",
     "playlist": "Lista de Reprodução",
-    "live": "AO VIVO"
+    "live": "AO VIVO",
+    "openFolder": "Mostrar na pasta",
+    "rename": "Renomear",
+    "renamePlaceholder": "Digite o novo nome do arquivo",
+    "renameSave": "Salvar",
+    "renameCancel": "Cancelar",
+    "renameFailed": "Falha ao renomear o arquivo"
   },
   "actions": {
     "startDownload": "Iniciar Download",

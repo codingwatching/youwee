@@ -138,7 +138,13 @@
     "showMore": "Afficher plus",
     "showLess": "Afficher moins",
     "playlist": "Playlist",
-    "live": "LIVE"
+    "live": "LIVE",
+    "openFolder": "Afficher dans le dossier",
+    "rename": "Renommer",
+    "renamePlaceholder": "Entrez le nouveau nom du fichier",
+    "renameSave": "Enregistrer",
+    "renameCancel": "Annuler",
+    "renameFailed": "Échec du renommage du fichier"
   },
   "actions": {
     "startDownload": "Démarrer le téléchargement",

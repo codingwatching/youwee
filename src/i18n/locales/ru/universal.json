@@ -103,7 +103,13 @@
     "generating": "Генерация...",
     "showMore": "Показать больше",
     "showLess": "Показать меньше",
-    "regenerateSummary": "Пересоздать сводку"
+    "regenerateSummary": "Пересоздать сводку",
+    "openFolder": "Показать в папке",
+    "rename": "Переименовать",
+    "renamePlaceholder": "Введите новое имя файла",
+    "renameSave": "Сохранить",
+    "renameCancel": "Отмена",
+    "renameFailed": "Не удалось переименовать файл"
   },
   "actions": {
     "startDownload": "Начать загрузку",

@@ -41,7 +41,15 @@
       "fetchingInfo": "جارٍ جلب معلومات الفيديو...",
       "fetchingTranscript": "جارٍ جلب النص التفريغي...",
       "generating": "جارٍ إنشاء الملخص..."
-    }
+    },
+    "aiSettings": "إعدادات الذكاء الاصطناعي",
+    "configureAI": "تهيئة ميزات الذكاء الاصطناعي",
+    "goToSettings": "الذهاب إلى الإعدادات",
+    "enableAI": "إعداد الذكاء الاصطناعي",
+    "aiNotEnabledTitle": "ميزات الذكاء الاصطناعي معطلة",
+    "aiNotEnabledHint": "فعّل الذكاء الاصطناعي في الإعدادات لبدء إنشاء الملخصات.",
+    "apiKeyMissingTitle": "مفتاح API غير مضبوط",
+    "apiKeyMissingHint": "أضف مفتاح API في الإعدادات لاستخدام ميزات الذكاء الاصطناعي."
   },
   "processing": {
     "title": "المعالجة",
@@ -176,7 +184,8 @@
       "clearConfirm": "هل أنت متأكد من أنك تريد مسح جميع السجلات؟",
       "exportSuccess": "تم تصدير السجلات بنجاح",
       "exportFailed": "فشل التصدير: {{error}}",
-      "dismiss": "إغلاق"
+      "dismiss": "إغلاق",
+      "filterInfo": "معلومات"
     },
     "entry": {
       "command": "COMMAND",

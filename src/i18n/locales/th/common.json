@@ -72,7 +72,7 @@
     "YTDLP_APP_NOT_FOUND": "ไม่พบ yt-dlp ที่แอปจัดการไว้ ติดตั้งได้จาก Settings > Dependencies",
     "YTDLP_SYSTEM_MANAGED": "yt-dlp ของระบบถูกจัดการจากภายนอก อัปเดตผ่าน package manager หรือสลับเป็น App managed",
     "GALLERYDL_NOT_FOUND": "ไม่พบ gallery-dl ของระบบ ติดตั้งผ่าน package manager หรือ pip แล้วลองใหม่",
-    "ARIA2_NOT_FOUND": "ไม่พบ aria2c ติดตั้ง aria2 และตรวจสอบว่า aria2c อยู่ใน PATH",
+    "ARIA2_NOT_FOUND": "ไม่พบ aria2c โปรดติดตั้ง aria2 และตรวจสอบว่า aria2c ใช้งานได้ใน PATH",
     "FFMPEG_NOT_FOUND": "ไม่พบ FFmpeg ตรวจสอบได้ใน Dependencies settings",
     "FFMPEG_SYSTEM_MANAGED": "FFmpeg ของระบบถูกจัดการจากภายนอก อัปเดตผ่าน package manager หรือสลับเป็น App managed",
     "AI_API_ERROR": "ข้อผิดพลาดของ AI API",

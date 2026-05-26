@@ -41,7 +41,15 @@
       "fetchingInfo": "Buscando informações...",
       "fetchingTranscript": "Buscando transcrição...",
       "generating": "Gerando resumo..."
-    }
+    },
+    "aiSettings": "Configurações de IA",
+    "configureAI": "Configurar recursos de IA",
+    "goToSettings": "Ir para Configurações",
+    "enableAI": "Configurar IA",
+    "aiNotEnabledTitle": "Os recursos de IA estão desativados",
+    "aiNotEnabledHint": "Ative a IA nas configurações para começar a gerar resumos.",
+    "apiKeyMissingTitle": "Chave de API não configurada",
+    "apiKeyMissingHint": "Adicione sua chave de API nas configurações para usar os recursos de IA."
   },
   "processing": {
     "title": "Processamento",
@@ -176,7 +184,8 @@
       "clearConfirm": "Limpará os eventos da sessão atual?",
       "exportSuccess": "Tudo extraído em perfeição",
       "exportFailed": "Falha na conversão via: {{error}}",
-      "dismiss": "Remover aviso visual"
+      "dismiss": "Remover aviso visual",
+      "filterInfo": "Informações"
     },
     "entry": {
       "command": "MENSAGEM DE COMANDO",
@@ -319,5 +328,18 @@
         "save": "Falha ao salvar tags ou coleções"
       }
     }
+  },
+  "player": {
+    "trackCount": "{{count}} tracks",
+    "oneTrack": "1 track",
+    "prev": "Previous",
+    "next": "Next",
+    "play": "Play",
+    "pause": "Pause",
+    "playbackSpeed": "Playback speed: {{rate}}x",
+    "modeSequence": "Play in order",
+    "modeRepeatOne": "Repeat current track",
+    "modeShuffle": "Shuffle",
+    "close": "Close player"
   }
 }
