@@ -1,5 +1,4 @@
 import {
-  AlertTriangle,
   Check,
   FileVideo,
   FolderOpen,
@@ -9,9 +8,8 @@ import {
   Radio,
   Settings2,
   Subtitles,
-  X,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FFmpegRequiredDialog } from '@/components/FFmpegRequiredDialog';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/components/ui/toast';
 import type {
   AudioBitrate,
   DownloadSettings,
@@ -147,9 +146,10 @@ export function SettingsPanel({
   onGoToSettings,
 }: SettingsPanelProps) {
   const { t } = useTranslation('download');
+  const toast = useToast();
   const [showFfmpegDialog, setShowFfmpegDialog] = useState(false);
   const [pendingQuality, setPendingQuality] = useState<Quality | null>(null);
-  const [webmCodecNoticeId, setWebmCodecNoticeId] = useState(0);
+  const webmCodecToastId = 'download-webm-codec-adjusted';
 
   const isAudioOnly =
     settings.quality === 'audio' || ['mp3', 'm4a', 'opus'].includes(settings.format);
@@ -158,18 +158,13 @@ export function SettingsPanel({
 
   const fileSizeDisplay = totalFileSize && totalFileSize > 0 ? formatFileSize(totalFileSize) : '';
 
-  useEffect(() => {
-    if (webmCodecNoticeId === 0) return;
-
-    const timer = window.setTimeout(() => {
-      setWebmCodecNoticeId(0);
-    }, 4500);
-
-    return () => window.clearTimeout(timer);
-  }, [webmCodecNoticeId]);
-
   const showWebmCodecToast = () => {
-    setWebmCodecNoticeId((id) => id + 1);
+    toast.warning({
+      id: webmCodecToastId,
+      title: t('settings.codecAdjusted'),
+      message: t('settings.webmCodecNotice'),
+      durationMs: 4500,
+    });
   };
 
   const handleModeChange = (mode: 'video' | 'audio') => {
@@ -205,7 +200,7 @@ export function SettingsPanel({
       onVideoCodecChange('auto');
       showWebmCodecToast();
     } else if (format !== 'webm') {
-      setWebmCodecNoticeId(0);
+      toast.dismiss(webmCodecToastId);
     }
   };
 
@@ -217,7 +212,7 @@ export function SettingsPanel({
     }
 
     onVideoCodecChange(codec);
-    setWebmCodecNoticeId(0);
+    toast.dismiss(webmCodecToastId);
   };
 
   const applyQualityChange = (quality: Quality) => {
@@ -725,28 +720,6 @@ export function SettingsPanel({
           </Badge>
         )}
       </div>
-
-      {webmCodecNoticeId > 0 && (
-        <output className="fixed left-1/2 top-4 z-50 w-[min(calc(100vw-2rem),26rem)] -translate-x-1/2 rounded-lg border border-border/60 bg-background/95 text-foreground shadow-lg shadow-black/10 backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200 dark:border-border/80 dark:bg-popover/95 dark:shadow-black/35">
-          <div className="flex items-start gap-3 px-3 py-3">
-            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-500 dark:text-amber-400" />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium leading-5">{t('settings.codecAdjusted')}</p>
-              <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-                {t('settings.webmCodecNotice')}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setWebmCodecNoticeId(0)}
-              className="-mr-1 -mt-1 rounded-md p-1 text-muted-foreground opacity-70 transition hover:bg-muted hover:opacity-100"
-              aria-label={t('settings.dismissNotice')}
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </output>
-      )}
 
       {/* FFmpeg Required Dialog */}
       {showFfmpegDialog && pendingQuality && (

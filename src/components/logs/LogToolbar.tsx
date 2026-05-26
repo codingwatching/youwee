@@ -1,22 +1,18 @@
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
-import { CheckCircle, Download, FileText, RefreshCw, Search, Trash2, XCircle } from 'lucide-react';
+import { Download, FileText, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/components/ui/toast';
 import { useLogs } from '@/contexts/LogContext';
 import type { LogFilter } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-interface ExportNotification {
-  type: 'success' | 'error';
-  message: string;
-  path?: string;
-}
-
 export function LogToolbar() {
   const { t } = useTranslation('pages');
+  const toast = useToast();
   const {
     filter,
     search,
@@ -32,7 +28,6 @@ export function LogToolbar() {
 
   const [clearing, setClearing] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [notification, setNotification] = useState<ExportNotification | null>(null);
 
   const filterOptions: { value: LogFilter; label: string }[] = [
     { value: 'all', label: t('logs.toolbar.filterAll') },
@@ -55,7 +50,6 @@ export function LogToolbar() {
 
   const handleExport = useCallback(async () => {
     setExporting(true);
-    setNotification(null);
     try {
       // Show save dialog
       const defaultFileName = `youwee-logs-${new Date().toISOString().split('T')[0]}.json`;
@@ -74,61 +68,22 @@ export function LogToolbar() {
       const json = await exportLogs();
       await writeTextFile(filePath, json);
 
-      setNotification({
-        type: 'success',
-        message: t('logs.toolbar.exportSuccess'),
-        path: filePath,
+      toast.success({
+        title: t('logs.toolbar.exportSuccess'),
+        message: filePath,
       });
-
-      // Auto-hide notification after 5 seconds
-      setTimeout(() => setNotification(null), 5000);
     } catch (error) {
       console.error('Export failed:', error);
-      setNotification({
-        type: 'error',
-        message: t('logs.toolbar.exportFailed', { error: String(error) }),
+      toast.error({
+        title: t('logs.toolbar.exportFailed', { error: String(error) }),
       });
-      setTimeout(() => setNotification(null), 5000);
     } finally {
       setExporting(false);
     }
-  }, [exportLogs, t]);
+  }, [exportLogs, t, toast]);
 
   return (
     <div className="space-y-3">
-      {/* Export notification */}
-      {notification && (
-        <div
-          className={cn(
-            'flex items-center gap-2 px-4 py-3 rounded-xl text-sm',
-            notification.type === 'success'
-              ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-              : 'bg-red-500/10 text-red-400 border border-red-500/20',
-          )}
-        >
-          {notification.type === 'success' ? (
-            <CheckCircle className="w-4 h-4 flex-shrink-0" />
-          ) : (
-            <XCircle className="w-4 h-4 flex-shrink-0" />
-          )}
-          <div className="flex-1 min-w-0">
-            <p className="font-medium">{notification.message}</p>
-            {notification.path && (
-              <p className="text-xs opacity-80 truncate mt-0.5" title={notification.path}>
-                {notification.path}
-              </p>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={() => setNotification(null)}
-            className="text-xs opacity-60 hover:opacity-100"
-          >
-            {t('logs.toolbar.dismiss')}
-          </button>
-        </div>
-      )}
-
       {/* Search - styled like URL input */}
       <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

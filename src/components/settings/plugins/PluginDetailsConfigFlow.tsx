@@ -10,7 +10,6 @@ import type { PostDownloadPluginsCardController } from './usePostDownloadPlugins
 
 type PluginDetailsConfigFlowProps = Pick<
   PostDownloadPluginsCardController,
-  | 'clearPluginReminderToast'
   | 'closePluginGuide'
   | 'error'
   | 'expandedPluginId'
@@ -36,7 +35,6 @@ type PluginDetailsConfigFlowProps = Pick<
   | 'permissionDialogPlugin'
   | 'permissionDialogState'
   | 'pluginGuideDialog'
-  | 'pluginReminderToast'
   | 'plugins'
   | 'runtimeStatuses'
   | 'setConfigDraftValue'

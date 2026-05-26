@@ -6,7 +6,6 @@ import {
   requestPermission,
   sendNotification,
 } from '@tauri-apps/plugin-notification';
-import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DenoDialog } from '@/components/DenoDialog';
@@ -18,6 +17,7 @@ import { MainLayout } from '@/components/layout';
 import { MusicPlayer } from '@/components/player';
 import type { SettingsSectionId } from '@/components/settings';
 import { UpdateDialog } from '@/components/UpdateDialog';
+import { ToastProvider, useToast } from '@/components/ui/toast';
 import { AIProvider } from '@/contexts/AIContext';
 import { ChannelsProvider } from '@/contexts/ChannelsContext';
 import { DependenciesProvider, useDependencies } from '@/contexts/DependenciesContext';
@@ -37,13 +37,8 @@ import {
   parseExternalDeepLink,
   resolveExternalRouteTarget,
 } from '@/lib/external-link';
-import {
-  appendPluginToastOutput,
-  type PluginToastState,
-  upsertPluginToast,
-} from '@/lib/plugin-toast';
+import { createPluginToastId, formatPluginToastText } from '@/lib/plugin-toast';
 import type { PluginExecutionOutputEvent, PluginExecutionStatusEvent } from '@/lib/types';
-import { cn } from '@/lib/utils';
 import {
   ChannelsPage,
   DownloadPage,
@@ -74,7 +69,7 @@ async function notify(title: string, body: string) {
 }
 
 function AppContent() {
-  const { t, i18n } = useTranslation('settings');
+  const { i18n } = useTranslation('settings');
   const [currentPage, setCurrentPage] = useState<Page>('youtube');
   const [settingsInitialSection, setSettingsInitialSection] =
     useState<SettingsSectionId>('general');
@@ -93,9 +88,8 @@ function AppContent() {
   const externalApprovalCacheRef = useRef<Map<string, number>>(new Map());
   const pluginNotificationRef = useRef<Map<string, { status: string; at: number }>>(new Map());
   const activePluginRunRef = useRef<Map<string, string>>(new Map());
-  const toastTimeoutRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const pluginRuntimeNameRef = useRef(new Map<string, string>());
-  const [pluginToasts, setPluginToasts] = useState<PluginToastState[]>([]);
+  const toast = useToast();
 
   const openSettingsPage = useCallback((section: SettingsSectionId = 'general') => {
     setSettingsInitialSection(section);
@@ -129,29 +123,32 @@ function AppContent() {
       mediaUrl?: string,
     ) => {
       const activeRunId = runId ?? activePluginRunRef.current.get(pluginId) ?? 'unknown';
-      setPluginToasts((current) =>
-        appendPluginToastOutput(current, {
+      const normalizedChunk = formatPluginToastText(chunk).trimEnd();
+      if (!normalizedChunk) {
+        return;
+      }
+
+      const resolvedPluginName = pluginName ?? pluginRuntimeNameRef.current.get(pluginId);
+      toast.show({
+        id: createPluginToastId(pluginId, activeRunId),
+        layout: 'plugin-run',
+        variant: 'loading',
+        title: resolvedPluginName ?? '',
+        message: normalizedChunk,
+        durationMs: 0,
+        pluginRun: {
           pluginId,
-          pluginName: pluginName ?? pluginRuntimeNameRef.current.get(pluginId),
           runId: activeRunId,
-          chunk,
+          pluginName: resolvedPluginName,
           mediaTitle,
           filename,
           mediaUrl,
-        }),
-      );
+          status: 'running',
+        },
+      });
     },
-    [],
+    [toast],
   );
-
-  const removeToast = useCallback((id: string) => {
-    setPluginToasts((current) => current.filter((item) => item.id !== id));
-    const timeout = toastTimeoutRef.current.get(id);
-    if (timeout) {
-      clearTimeout(timeout);
-      toastTimeoutRef.current.delete(id);
-    }
-  }, []);
 
   const pushPluginToast = useCallback(
     (
@@ -166,10 +163,10 @@ function AppContent() {
       durationMs?: number,
     ) => {
       const normalizedRunId = runId ?? 'unknown';
+      const toastId = createPluginToastId(pluginId, normalizedRunId);
       if (status === 'running') {
         activePluginRunRef.current.set(pluginId, normalizedRunId);
       }
-      const toastId = `${pluginId}-${status}-${Date.now()}`;
       const resolvedMessage =
         message ||
         (status === 'running'
@@ -177,42 +174,31 @@ function AppContent() {
           : status === 'error'
             ? `Plugin ${pluginName ?? pluginId} failed`
             : `Plugin ${pluginName ?? pluginId} finished`);
+      const resolvedPluginName = pluginName ?? pluginRuntimeNameRef.current.get(pluginId);
+      const toastStatus =
+        status === 'error' ? 'error' : status === 'success' ? 'success' : 'running';
 
-      setPluginToasts((current) =>
-        upsertPluginToast(current, {
-          toastId,
+      toast.show({
+        id: toastId,
+        layout: 'plugin-run',
+        variant:
+          toastStatus === 'running' ? 'loading' : toastStatus === 'error' ? 'error' : 'success',
+        title: resolvedPluginName ?? '',
+        message: resolvedMessage,
+        durationMs: durationMs ?? (toastStatus === 'running' ? 0 : 7000),
+        pluginRun: {
           pluginId,
           runId: normalizedRunId,
-          pluginName,
+          pluginName: resolvedPluginName,
           mediaTitle,
           filename,
           mediaUrl,
-          status,
-          message: resolvedMessage,
-        }),
-      );
-
-      if (durationMs === 0) {
-        return;
-      }
-      const timeout = setTimeout(
-        () => {
-          removeToast(toastId);
+          status: toastStatus,
         },
-        durationMs ?? (status === 'running' ? 15000 : 7000),
-      );
-      toastTimeoutRef.current.set(toastId, timeout);
+      });
     },
-    [removeToast],
+    [toast],
   );
-
-  const clearPluginToasts = useCallback(() => {
-    for (const timeout of toastTimeoutRef.current.values()) {
-      clearTimeout(timeout);
-    }
-    toastTimeoutRef.current.clear();
-    setPluginToasts([]);
-  }, []);
 
   // Show FFmpeg dialog on startup if not installed
   useEffect(() => {
@@ -394,10 +380,9 @@ function AppContent() {
     });
 
     return () => {
-      clearPluginToasts();
       unlisten.then((fn) => fn());
     };
-  }, [clearPluginToasts, pushPluginToast]);
+  }, [pushPluginToast]);
 
   // Stream plugin logs while they run
   useEffect(() => {
@@ -633,81 +618,6 @@ function AppContent() {
       {showFfmpegDialog && <FFmpegDialog onDismiss={() => setShowFfmpegDialog(false)} />}
 
       {showDenoDialog && <DenoDialog onDismiss={() => setShowDenoDialog(false)} />}
-
-      <div className="fixed top-4 right-4 z-50 flex w-[min(420px,calc(100%-2rem))] flex-col gap-3">
-        {pluginToasts.map((toast) => {
-          const icon =
-            toast.status === 'running' ? (
-              <Loader2 className="h-4 w-4 animate-spin text-sky-500" />
-            ) : toast.status === 'success' ? (
-              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-            ) : (
-              <XCircle className="h-4 w-4 text-red-500" />
-            );
-          const mediaLabel = toast.mediaTitle || toast.filename || toast.mediaUrl;
-          const statusLabel =
-            toast.status === 'running'
-              ? t('download.pluginToastRunning')
-              : toast.status === 'success'
-                ? t('download.pluginToastSuccess')
-                : t('download.pluginToastError');
-
-          return (
-            <div
-              key={toast.id}
-              className="toast-slide-in rounded-2xl border border-border/70 bg-background/95 p-3 shadow-xl backdrop-blur-sm"
-            >
-              <div className="flex items-start gap-3">
-                <div
-                  className={cn(
-                    'mt-0.5 rounded-xl p-2',
-                    toast.status === 'running' && 'bg-sky-500/10',
-                    toast.status === 'success' && 'bg-emerald-500/10',
-                    toast.status === 'error' && 'bg-red-500/10',
-                  )}
-                >
-                  {icon}
-                </div>
-
-                <div className="min-w-0 flex-1 space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-foreground">
-                        {toast.pluginName ?? t('download.pluginToastFallbackTitle')}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">{statusLabel}</p>
-                    </div>
-                    <button
-                      type="button"
-                      className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
-                      onClick={() => removeToast(toast.id)}
-                      aria-label="Dismiss plugin notification"
-                    >
-                      ×
-                    </button>
-                  </div>
-
-                  {mediaLabel && (
-                    <div className="rounded-xl bg-muted/60 px-2.5 py-2">
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                        {t('download.pluginToastVideoLabel')}
-                      </p>
-                      <p className="line-clamp-2 break-words text-xs font-medium text-foreground">
-                        {mediaLabel}
-                      </p>
-                    </div>
-                  )}
-
-                  <p className="break-words text-xs leading-5 text-muted-foreground">
-                    {toast.message}
-                  </p>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
       <MeteorTransition
         isActive={isTransitioning}
         oldMode={oldMode}
@@ -740,9 +650,11 @@ export function App() {
                         <ProcessingProvider>
                           <SubtitleProvider>
                             <MetadataProvider>
-                              <UpdaterWrapper>
-                                <AppContent />
-                              </UpdaterWrapper>
+                              <ToastProvider>
+                                <UpdaterWrapper>
+                                  <AppContent />
+                                </UpdaterWrapper>
+                              </ToastProvider>
                             </MetadataProvider>
                           </SubtitleProvider>
                         </ProcessingProvider>

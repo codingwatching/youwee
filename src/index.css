@@ -454,19 +454,34 @@
 }
 
 /* Toast animations */
-@keyframes slide-in {
+@keyframes app-toast-enter {
   from {
-    transform: translateX(100%);
+    transform: translateX(18px) translateY(-4px);
     opacity: 0;
   }
   to {
-    transform: translateX(0);
+    transform: translateX(0) translateY(0);
     opacity: 1;
   }
 }
 
-.toast-slide-in {
-  animation: slide-in 0.3s ease-out;
+@keyframes app-toast-exit {
+  from {
+    transform: translateX(0) translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(14px) translateY(-2px);
+    opacity: 0;
+  }
+}
+
+.app-toast-enter {
+  animation: app-toast-enter 0.22s ease-out;
+}
+
+.app-toast-exit {
+  animation: app-toast-exit 0.18s ease-in forwards;
 }
 
 /* Queue item animations */

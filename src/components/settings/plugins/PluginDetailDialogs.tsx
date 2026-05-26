@@ -4,22 +4,17 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SimpleMarkdown } from '@/components/ui/simple-markdown';
 import { Switch } from '@/components/ui/switch';
-import {
-  getFilesystemPermissionLabel,
-  renderPluginManifestIcon,
-} from './post-download-plugins-shared';
+import { getFilesystemPermissionLabel } from './post-download-plugins-shared';
 import type { PostDownloadPluginsCardController } from './usePostDownloadPluginsCard';
 
 type PluginDetailDialogsProps = Pick<
   PostDownloadPluginsCardController,
-  | 'clearPluginReminderToast'
   | 'closePluginGuide'
   | 'handleConfirmUninstallPlugin'
   | 'handleEnablePluginWithPermissions'
   | 'permissionDialogPlugin'
   | 'permissionDialogState'
   | 'pluginGuideDialog'
-  | 'pluginReminderToast'
   | 'setPermissionDialogPlugin'
   | 'setPermissionDialogState'
   | 'setUninstallTarget'
@@ -202,30 +197,6 @@ export function PluginDetailDialogs({ controller }: { controller: PluginDetailDi
           </div>
         </DialogContent>
       </Dialog>
-
-      {controller.pluginReminderToast && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-sm rounded-2xl border border-border/70 bg-background/95 p-4 shadow-xl backdrop-blur-sm">
-          <div className="flex items-start gap-3">
-            <div className="rounded-xl bg-amber-500/10 p-2 text-amber-600 dark:text-amber-400">
-              {renderPluginManifestIcon(controller.pluginReminderToast.pluginIcon)}
-            </div>
-            <div className="min-w-0 flex-1 space-y-1">
-              <p className="text-sm font-medium">{controller.pluginReminderToast.pluginName}</p>
-              <p className="text-xs text-muted-foreground">
-                {t('download.pluginWorkflowReminderToast')}
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="shrink-0"
-              onClick={controller.clearPluginReminderToast}
-            >
-              {t('download.pluginDismiss')}
-            </Button>
-          </div>
-        </div>
-      )}
     </>
   );
 }

@@ -83,12 +83,6 @@ export type PluginGuideDialogState = {
   content: string;
 } | null;
 
-export type PluginReminderToastState = {
-  pluginId: string;
-  pluginName: string;
-  pluginIcon?: PluginManifestIconName | null;
-} | null;
-
 export const PROVIDER_LABELS: Record<PluginProvider, string> = {
   deno: 'Deno',
   python: 'Python',
