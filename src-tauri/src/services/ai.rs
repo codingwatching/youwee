@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-#[path = "ai/providers.rs"]
-mod providers;
 #[path = "ai/dispatch.rs"]
 mod dispatch;
+#[path = "ai/providers.rs"]
+mod providers;
 
 pub use dispatch::*;
 use providers::*;

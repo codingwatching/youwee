@@ -73,7 +73,11 @@ pub async fn get_video_metadata(app: AppHandle, path: String) -> Result<VideoMet
         let fps = if fps_parts.len() == 2 {
             let num = fps_parts[0].parse::<f64>().unwrap_or(0.0);
             let den = fps_parts[1].parse::<f64>().unwrap_or(1.0);
-            if den > 0.0 { num / den } else { 0.0 }
+            if den > 0.0 {
+                num / den
+            } else {
+                0.0
+            }
         } else {
             fps_str.parse::<f64>().unwrap_or(0.0)
         };
@@ -193,7 +197,9 @@ pub async fn detect_shot_changes(
 
     let mut filtered = Vec::with_capacity(detected_ms.len());
     for value in detected_ms {
-        let keep = filtered.last().map_or(true, |last| value - *last >= min_interval);
+        let keep = filtered
+            .last()
+            .map_or(true, |last| value - *last >= min_interval);
         if keep {
             filtered.push(value);
         }

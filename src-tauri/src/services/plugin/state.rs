@@ -83,6 +83,7 @@ pub fn approve_plugin_permissions_internal(
     entry.approved_permissions = PluginPermissionApproval {
         network: permissions.network,
         fs: permissions.fs,
+        tools: permissions.tools,
     };
     write_registry(app, &registry)
 }

@@ -4,7 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SimpleMarkdown } from '@/components/ui/simple-markdown';
 import { Switch } from '@/components/ui/switch';
-import { getFilesystemPermissionLabel } from './post-download-plugins-shared';
+import {
+  getFilesystemPermissionLabel,
+  getToolPermissionLabel,
+} from './post-download-plugins-shared';
 import type { PostDownloadPluginsCardController } from './usePostDownloadPluginsCard';
 
 type PluginDetailDialogsProps = Pick<
@@ -124,6 +127,34 @@ export function PluginDetailDialogs({ controller }: { controller: PluginDetailDi
                         />
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {controller.permissionDialogPlugin.manifest.permissions.tools.length > 0 && (
+                  <div className="mt-3 grid gap-2 md:grid-cols-2">
+                    {controller.permissionDialogPlugin.manifest.permissions.tools.map(
+                      (permission) => (
+                        <div
+                          key={permission}
+                          className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2"
+                        >
+                          <span className="text-sm">{getToolPermissionLabel(permission, t)}</span>
+                          <Switch
+                            checked={controller.permissionDialogState.tools.includes(permission)}
+                            onCheckedChange={(checked) =>
+                              controller.setPermissionDialogState((current) => ({
+                                ...current,
+                                tools: checked
+                                  ? [...current.tools, permission].filter(
+                                      (value, index, list) => list.indexOf(value) === index,
+                                    )
+                                  : current.tools.filter((value) => value !== permission),
+                              }))
+                            }
+                          />
+                        </div>
+                      ),
+                    )}
                   </div>
                 )}
               </div>

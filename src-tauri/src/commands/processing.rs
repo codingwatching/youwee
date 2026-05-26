@@ -154,8 +154,21 @@ fn is_merge_request(prompt: &str) -> bool {
     contains_any(
         &lower,
         &[
-            "merge", "join", "concat", "combine", "stitch", "intro", "outro", "ghép", "nối",
-            "gộp", "mở đầu", "kết thúc", "合并", "片头", "片尾",
+            "merge",
+            "join",
+            "concat",
+            "combine",
+            "stitch",
+            "intro",
+            "outro",
+            "ghép",
+            "nối",
+            "gộp",
+            "mở đầu",
+            "kết thúc",
+            "合并",
+            "片头",
+            "片尾",
         ],
     )
 }
@@ -225,7 +238,10 @@ fn try_build_subtitle_command(
         "-i".to_string(),
         input_path.to_string(),
         "-vf".to_string(),
-        format!("subtitles='{}'", escape_subtitles_filter_path(&subtitle.path)),
+        format!(
+            "subtitles='{}'",
+            escape_subtitles_filter_path(&subtitle.path)
+        ),
         "-c:v".to_string(),
         "libx264".to_string(),
         "-preset".to_string(),
@@ -314,7 +330,8 @@ async fn try_build_merge_command(
             ordered_paths.push(file.path.clone());
         }
         if outro_hint {
-            warnings.push("Appended attached videos after main video as outro sequence.".to_string());
+            warnings
+                .push("Appended attached videos after main video as outro sequence.".to_string());
         }
     }
 
@@ -332,7 +349,11 @@ async fn try_build_merge_command(
     let target_height = if metadata.height > 0 {
         metadata.height
     } else {
-        ordered_meta.first().map(|m| m.height).unwrap_or(1080).max(1)
+        ordered_meta
+            .first()
+            .map(|m| m.height)
+            .unwrap_or(1080)
+            .max(1)
     };
     let target_fps = if metadata.fps > 0.0 {
         metadata.fps
@@ -653,8 +674,8 @@ For valid video requests:
         }
     };
 
-    let parsed: serde_json::Value =
-        serde_json::from_str(&json_str).map_err(|e| format!("Failed to parse AI response: {}", e))?;
+    let parsed: serde_json::Value = serde_json::from_str(&json_str)
+        .map_err(|e| format!("Failed to parse AI response: {}", e))?;
 
     if parsed
         .get("off_topic")
@@ -1088,11 +1109,18 @@ pub async fn generate_quick_action_command(
             (
                 args,
                 output.to_string_lossy().to_string(),
-                format!("Create GIF from {} to {}", format_time(start), format_time(end)),
+                format!(
+                    "Create GIF from {} to {}",
+                    format_time(start),
+                    format_time(end)
+                ),
             )
         }
         "rotate" => {
-            let degrees = options.get("degrees").and_then(|d| d.as_i64()).unwrap_or(90);
+            let degrees = options
+                .get("degrees")
+                .and_then(|d| d.as_i64())
+                .unwrap_or(90);
 
             let transpose = match degrees {
                 90 => "transpose=1",
@@ -1173,7 +1201,10 @@ async fn get_ffprobe_path(app: &AppHandle) -> Option<std::path::PathBuf> {
         cmd.hide_window();
         let output = cmd.output().await.ok()?;
         if output.status.success() {
-            let path_str = String::from_utf8_lossy(&output.stdout).lines().next()?.to_string();
+            let path_str = String::from_utf8_lossy(&output.stdout)
+                .lines()
+                .next()?
+                .to_string();
             if !path_str.is_empty() {
                 return Some(std::path::PathBuf::from(path_str));
             }

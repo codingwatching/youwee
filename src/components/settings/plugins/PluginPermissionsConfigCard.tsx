@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { PluginConfigFieldEditor } from './PluginConfigFieldEditor';
 import {
   getFilesystemPermissionLabel,
+  getToolPermissionLabel,
   summarizeRequestedPermissions,
 } from './post-download-plugins-shared';
 import type { PostDownloadPluginsCardController } from './usePostDownloadPluginsCard';
@@ -112,6 +113,40 @@ export function PluginPermissionsConfigCard({
                               (value, index, list) => list.indexOf(value) === index,
                             )
                           : plugin.installation.approvedPermissions.fs.filter(
+                              (value) => value !== permission,
+                            ),
+                      })
+                    }
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {plugin.manifest.permissions.tools.length > 0 && (
+        <div className="mt-3 space-y-2">
+          <p className="text-xs font-medium">{t('download.pluginPermissionTools')}</p>
+          <div className="grid gap-2 md:grid-cols-2">
+            {plugin.manifest.permissions.tools.map((permission) => {
+              const approved = plugin.installation.approvedPermissions.tools.includes(permission);
+              return (
+                <div
+                  key={permission}
+                  className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2"
+                >
+                  <span className="text-xs">{getToolPermissionLabel(permission, t)}</span>
+                  <Switch
+                    checked={approved}
+                    onCheckedChange={(checked) =>
+                      controller.handleApprovePermissions(plugin, {
+                        ...plugin.installation.approvedPermissions,
+                        tools: checked
+                          ? [...plugin.installation.approvedPermissions.tools, permission].filter(
+                              (value, index, list) => list.indexOf(value) === index,
+                            )
+                          : plugin.installation.approvedPermissions.tools.filter(
                               (value) => value !== permission,
                             ),
                       })

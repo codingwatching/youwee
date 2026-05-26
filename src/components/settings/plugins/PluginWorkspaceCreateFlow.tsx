@@ -20,9 +20,11 @@ import {
   type CreatePluginConfigFieldDraft,
   FILESYSTEM_PERMISSIONS,
   getFilesystemPermissionLabel,
+  getToolPermissionLabel,
   LANGUAGE_LABELS,
   PROVIDER_LABELS,
   renderPluginManifestIcon,
+  TOOL_PERMISSIONS,
   ToggleChoiceCard,
   WORKFLOW_TRIGGER_TONES,
   WORKFLOW_TRIGGERS,
@@ -63,6 +65,7 @@ type PluginWorkspaceCreateFlowProps = Pick<
   | 'setCreateOpen'
   | 'setRuntimeGuideOpen'
   | 'toggleCreatePluginFilesystemPermission'
+  | 'toggleCreatePluginToolPermission'
   | 'toggleCreatePluginProvider'
   | 'toggleCreatePluginTrigger'
   | 'updateCreatePluginConfigField'
@@ -467,6 +470,43 @@ export const PluginWorkspaceCreateFlow = memo(function PluginWorkspaceCreateFlow
               <p className="text-xs text-muted-foreground">
                 {t('download.pluginPermissionFilesystemHelp')}
               </p>
+
+              <div className="space-y-3">
+                <p className="text-sm font-medium">{t('download.pluginPermissionTools')}</p>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {TOOL_PERMISSIONS.map((permission) => {
+                    const selected =
+                      controller.createPluginForm.permissionTools.includes(permission);
+                    return (
+                      <button
+                        key={permission}
+                        type="button"
+                        onClick={() => controller.toggleCreatePluginToolPermission(permission)}
+                        className={cn(
+                          'flex items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-colors',
+                          selected
+                            ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                            : 'border-border/60 bg-background/70 text-muted-foreground hover:bg-muted/60',
+                        )}
+                      >
+                        <span>{getToolPermissionLabel(permission, t)}</span>
+                        <span
+                          className={cn(
+                            'rounded px-2 py-0.5 text-[10px]',
+                            selected
+                              ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                              : 'bg-muted text-muted-foreground',
+                          )}
+                        >
+                          {selected
+                            ? t('download.pluginPermissionSelected')
+                            : t('download.pluginPermissionNotSelected')}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             <PluginWorkspaceConfigFields controller={controller} />

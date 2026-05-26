@@ -54,6 +54,7 @@ export function PostDownloadPluginsCard() {
       toggleCreatePluginProvider: controller.toggleCreatePluginProvider,
       toggleCreatePluginTrigger: controller.toggleCreatePluginTrigger,
       toggleCreatePluginFilesystemPermission: controller.toggleCreatePluginFilesystemPermission,
+      toggleCreatePluginToolPermission: controller.toggleCreatePluginToolPermission,
     }),
     [
       controller.addCreatePluginConfigField,
@@ -82,6 +83,7 @@ export function PostDownloadPluginsCard() {
       controller.setCreateOpen,
       controller.setRuntimeGuideOpen,
       controller.toggleCreatePluginFilesystemPermission,
+      controller.toggleCreatePluginToolPermission,
       controller.toggleCreatePluginProvider,
       controller.toggleCreatePluginTrigger,
       controller.updateCreatePluginConfigField,

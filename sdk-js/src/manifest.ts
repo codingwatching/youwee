@@ -7,11 +7,12 @@ import type {
   PluginPackageDefinitionInput,
   PluginProvider,
   PluginRuntimeLanguage,
+  PluginToolPermission,
 } from './types';
 
 const PROVIDERS_BY_LANGUAGE: Record<PluginRuntimeLanguage, PluginProvider[]> = {
   javascript: ['deno'],
-  python: ['python'],
+  python: [],
 };
 
 const ALLOWED_TRIGGERS = new Set([
@@ -43,6 +44,11 @@ const ALLOWED_FILESYSTEM_PERMISSIONS = new Set<PluginFilesystemPermission>([
   'fs.temp.write',
   'fs.user-selected.read',
   'fs.user-selected.write',
+]);
+
+const ALLOWED_TOOL_PERMISSIONS = new Set<PluginToolPermission>([
+  'tool.ffmpeg.run',
+  'tool.ytdlp.run',
 ]);
 
 function validateConfigFieldDefaultValue(field: PluginConfigField): string | null {
@@ -276,6 +282,19 @@ export function getManifestValidationErrors(manifest: PluginManifest): string[] 
     }
   }
 
+  if (manifest.permissions?.tools?.length) {
+    const seenTools = new Set<string>();
+    for (const permission of manifest.permissions.tools) {
+      if (!ALLOWED_TOOL_PERMISSIONS.has(permission)) {
+        errors.push(`permissions.tools contains unsupported capability "${permission}".`);
+      } else if (seenTools.has(permission)) {
+        errors.push(`permissions.tools contains duplicate capability "${permission}".`);
+      } else {
+        seenTools.add(permission);
+      }
+    }
+  }
+
   if (!manifest.triggers?.length) {
     errors.push('triggers must contain at least one runtime trigger string.');
   } else {
@@ -372,7 +391,7 @@ export function createPluginPackageDefinition(
       pack: 'bunx youwee-sdk pack --private-key ./plugin.youwee-plugin-key.json',
       keygen: 'bunx youwee-sdk keygen ./plugin.youwee-plugin-key.json',
       'test:deno':
-        'deno run --quiet --unstable-detect-cjs --allow-env --allow-read=. --allow-write=. --allow-run node_modules/youwee-sdk/dist/runtime-cli.js src/plugin.js',
+        'deno run --quiet --unstable-detect-cjs --allow-env --allow-read=. --allow-write=. node_modules/youwee-sdk/dist/runtime-cli.js src/plugin.js',
     },
     dependencies: {
       'youwee-sdk': sdkVersion,

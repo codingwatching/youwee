@@ -77,7 +77,7 @@ pub async fn get_runtime_provider_status_internal(
 
 pub async fn list_runtime_providers_internal(app: &AppHandle) -> Vec<RuntimeProviderStatus> {
     let mut statuses = Vec::new();
-    for provider in [PluginProvider::Deno, PluginProvider::Python] {
+    for provider in [PluginProvider::Deno] {
         statuses.push(get_runtime_provider_status_internal(app, provider).await);
     }
     statuses
@@ -98,19 +98,6 @@ pub(super) async fn resolve_provider_command(
             };
             Ok((path.to_string_lossy().to_string(), Some(source.to_string())))
         }
-        PluginProvider::Python => {
-            let path = if let Some(path) = resolve_command_path("python3").await {
-                Some(path)
-            } else {
-                resolve_command_path("python").await
-            };
-            path.map(|value| {
-                (
-                    value.to_string_lossy().to_string(),
-                    Some("system".to_string()),
-                )
-            })
-            .ok_or_else(|| "Python runtime is not available".to_string())
-        }
+        PluginProvider::Python => Err("Python plugin runtime is not supported yet.".to_string()),
     }
 }

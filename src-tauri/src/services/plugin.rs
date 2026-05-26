@@ -15,9 +15,9 @@ use crate::types::{
     PluginConfigField, PluginExecutionResult, PluginExecutionStatusEvent,
     PluginFilesystemPermission, PluginManifest, PluginPackageInspection, PluginPackageSource,
     PluginPackageSourceKind, PluginPermissionApproval, PluginPermissionRequest, PluginProvider,
-    PluginRuntimeLanguage, PluginSummary, PluginTriggerWorkflow, PluginWorkflowFailurePolicy,
-    PluginWorkflowRun, PluginWorkflowRunStatus, PluginWorkflowStepSnapshot,
-    PostDownloadPluginPayload,
+    PluginRuntimeLanguage, PluginSummary, PluginToolPermission, PluginTriggerWorkflow,
+    PluginWorkflowFailurePolicy, PluginWorkflowRun, PluginWorkflowRunStatus,
+    PluginWorkflowStepSnapshot, PostDownloadPluginPayload,
 };
 use crate::utils::CommandExt;
 
@@ -95,12 +95,45 @@ const REGISTRY_FILE_NAME: &str = "registry.json";
 
 static PLUGIN_WORKFLOW_QUEUE: OnceLock<tokio::sync::Mutex<()>> = OnceLock::new();
 
+const PLUGIN_BASE_ENV_KEYS: &[&str] = &[
+    "YOUWEE_PLUGIN_TIMEOUT_MS",
+    "YOUWEE_PLUGIN_ID",
+    "YOUWEE_PLUGIN_SLUG",
+    "YOUWEE_PLUGIN_NAME",
+    "YOUWEE_PLUGIN_VERSION",
+    "YOUWEE_PLUGIN_CONFIG_JSON",
+    "YOUWEE_APP_VERSION",
+    "YOUWEE_APP_LOCALE",
+    "YOUWEE_APP_FALLBACK_LOCALE",
+    "YOUWEE_APP_DIRECTION",
+    "YOUWEE_PLUGIN_LANGUAGE",
+    "YOUWEE_PLUGIN_PROVIDER",
+    "YOUWEE_PLUGIN_MAIN",
+    "YOUWEE_PLUGIN_I18N_DEFAULT_LOCALE",
+    "YOUWEE_PLUGIN_I18N_SUPPORTED_LOCALES",
+    "YOUWEE_PLUGIN_I18N_DIR",
+    "YOUWEE_PLUGIN_PROVIDER_SOURCE",
+    "YOUWEE_FFMPEG_PATH",
+    "YOUWEE_YTDLP_PATH",
+    "YOUWEE_AI_ENABLED",
+    "YOUWEE_AI_PROVIDER",
+    "YOUWEE_AI_MODEL",
+    "YOUWEE_AI_TIMEOUT_SECONDS",
+    "YOUWEE_AI_SUMMARY_STYLE",
+    "YOUWEE_AI_SUMMARY_LANGUAGE",
+    "YOUWEE_AI_WHISPER_ENABLED",
+    "YOUWEE_AI_WHISPER_ENDPOINT_URL",
+    "YOUWEE_AI_WHISPER_MODEL",
+];
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct PluginPermissionApprovalInput {
     pub network: bool,
     #[serde(default)]
     pub fs: Vec<PluginFilesystemPermission>,
+    #[serde(default)]
+    pub tools: Vec<PluginToolPermission>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -849,6 +882,13 @@ async fn execute_plugin(
         .app_direction
         .clone()
         .unwrap_or_else(|| "ltr".to_string());
+    let mut plugin_env_keys = PLUGIN_BASE_ENV_KEYS
+        .iter()
+        .map(|key| key.to_string())
+        .collect::<Vec<_>>();
+    plugin_env_keys.extend(resolved_config_values.keys().cloned());
+    plugin_env_keys.sort();
+    plugin_env_keys.dedup();
     let ffmpeg_path = crate::services::get_ffmpeg_path(app)
         .await
         .map(|path| path.to_string_lossy().to_string());
@@ -883,11 +923,35 @@ async fn execute_plugin(
         allow_read_scopes.dedup();
     }
     let mut allow_run_scopes = Vec::<PathBuf>::new();
-    if let Some(path) = ffmpeg_path.as_ref() {
-        allow_run_scopes.extend(path_scope_variants(Path::new(path)));
+    let ffmpeg_run_allowed = plugin
+        .manifest
+        .permissions
+        .tools
+        .contains(&PluginToolPermission::FfmpegRun)
+        && plugin
+            .installation
+            .approved_permissions
+            .tools
+            .contains(&PluginToolPermission::FfmpegRun);
+    let ytdlp_run_allowed = plugin
+        .manifest
+        .permissions
+        .tools
+        .contains(&PluginToolPermission::YtdlpRun)
+        && plugin
+            .installation
+            .approved_permissions
+            .tools
+            .contains(&PluginToolPermission::YtdlpRun);
+    if ffmpeg_run_allowed {
+        if let Some(path) = ffmpeg_path.as_ref() {
+            allow_run_scopes.extend(path_scope_variants(Path::new(path)));
+        }
     }
-    if let Some(path) = ytdlp_path.as_ref() {
-        allow_run_scopes.extend(path_scope_variants(Path::new(path)));
+    if ytdlp_run_allowed {
+        if let Some(path) = ytdlp_path.as_ref() {
+            allow_run_scopes.extend(path_scope_variants(Path::new(path)));
+        }
     }
     allow_run_scopes.sort();
     allow_run_scopes.dedup();
@@ -899,7 +963,7 @@ async fn execute_plugin(
             command_args.push("--quiet".to_string());
             command_args.push("--unstable-detect-cjs".to_string());
             command_args.push("--node-modules-dir=auto".to_string());
-            command_args.push("--allow-env".to_string());
+            command_args.push(format!("--allow-env={}", plugin_env_keys.join(",")));
             if plugin.manifest.permissions.network {
                 command_args.push("--allow-net".to_string());
             }
@@ -991,11 +1055,15 @@ async fn execute_plugin(
     if let Some(source) = resolved_source.as_ref() {
         cmd.env("YOUWEE_PLUGIN_PROVIDER_SOURCE", source);
     }
-    if let Some(path) = ffmpeg_path.as_ref() {
-        cmd.env("YOUWEE_FFMPEG_PATH", path);
+    if ffmpeg_run_allowed {
+        if let Some(path) = ffmpeg_path.as_ref() {
+            cmd.env("YOUWEE_FFMPEG_PATH", path);
+        }
     }
-    if let Some(path) = ytdlp_path.as_ref() {
-        cmd.env("YOUWEE_YTDLP_PATH", path);
+    if ytdlp_run_allowed {
+        if let Some(path) = ytdlp_path.as_ref() {
+            cmd.env("YOUWEE_YTDLP_PATH", path);
+        }
     }
     cmd.env(
         "YOUWEE_AI_ENABLED",
@@ -1009,9 +1077,6 @@ async fn execute_plugin(
             .unwrap_or_else(|| "gemini".to_string()),
     );
     cmd.env("YOUWEE_AI_MODEL", &ai_config.model);
-    if let Some(value) = ai_config.api_key.as_ref() {
-        cmd.env("YOUWEE_AI_API_KEY", value);
-    }
     if let Some(value) = ai_config.proxy_url.as_ref() {
         cmd.env("YOUWEE_AI_PROXY_URL", value);
     }
@@ -1040,9 +1105,6 @@ async fn execute_plugin(
             "false"
         },
     );
-    if let Some(value) = ai_config.whisper_api_key.as_ref() {
-        cmd.env("YOUWEE_AI_WHISPER_API_KEY", value);
-    }
     if let Some(value) = ai_config.whisper_endpoint_url.as_ref() {
         cmd.env("YOUWEE_AI_WHISPER_ENDPOINT_URL", value);
     }

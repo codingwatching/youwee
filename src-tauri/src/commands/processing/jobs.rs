@@ -49,7 +49,9 @@ pub async fn execute_ffmpeg_command(
 
     println!("[FFMPEG] Spawning FFmpeg process...");
     let mut cmd = Command::new(&ffmpeg_path);
-    cmd.args(&args).stdout(Stdio::piped()).stderr(Stdio::piped());
+    cmd.args(&args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
     cmd.hide_window();
     let mut child = cmd.spawn().map_err(|e| {
         println!("[FFMPEG] Failed to spawn: {}", e);

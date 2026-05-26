@@ -4,7 +4,12 @@ import type { TFunction } from 'i18next';
 import type { Dispatch, SetStateAction } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import { localizeUnknownError } from '@/lib/backend-error';
-import type { PluginProvider, PluginSummary, PluginWorkspaceSummary } from '@/lib/types';
+import type {
+  PluginProvider,
+  PluginSummary,
+  PluginToolPermission,
+  PluginWorkspaceSummary,
+} from '@/lib/types';
 import {
   type CreatePluginConfigFieldDraft,
   type CreatePluginConfigOptionDraft,
@@ -160,6 +165,7 @@ export function usePluginWorkspaceFlow(
           permissions: {
             network: createPluginForm.permissionNetwork,
             fs: createPluginForm.permissionFilesystem,
+            tools: createPluginForm.permissionTools,
           },
         },
       });
@@ -209,6 +215,15 @@ export function usePluginWorkspaceFlow(
     },
     [],
   );
+
+  const toggleCreatePluginToolPermission = useCallback((permission: PluginToolPermission) => {
+    setCreatePluginForm((current) => ({
+      ...current,
+      permissionTools: current.permissionTools.includes(permission)
+        ? current.permissionTools.filter((item) => item !== permission)
+        : [...current.permissionTools, permission],
+    }));
+  }, []);
 
   const markCreatePluginConfigFieldTouched = useCallback((clientId: string) => {
     setCreatePluginConfigTouched((current) => ({ ...current, [clientId]: true }));
@@ -412,6 +427,7 @@ export function usePluginWorkspaceFlow(
     setCreatePluginSubmitAttempted,
     setRuntimeGuideOpen,
     toggleCreatePluginFilesystemPermission,
+    toggleCreatePluginToolPermission,
     toggleCreatePluginProvider,
     toggleCreatePluginTrigger,
     updateCreatePluginConfigField,

@@ -220,15 +220,18 @@ export type PluginFilesystemPermission =
   | 'fs.temp.write'
   | 'fs.user-selected.read'
   | 'fs.user-selected.write';
+export type PluginToolPermission = 'tool.ffmpeg.run' | 'tool.ytdlp.run';
 
 export interface PluginPermissionSet {
   network: boolean;
   fs: PluginFilesystemPermission[];
+  tools: PluginToolPermission[];
 }
 
 export interface PluginPermissionApproval {
   network: boolean;
   fs: PluginFilesystemPermission[];
+  tools: PluginToolPermission[];
 }
 
 export type PluginConfigFieldInputType =

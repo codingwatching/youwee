@@ -205,10 +205,12 @@ pub async fn generate_with_ollama(
         .json(&body)
         .send()
         .await
-        .map_err(|e| AIError::NetworkError(format!(
-            "Failed to connect to Ollama at {}: {}",
-            ollama_url, e
-        )))?;
+        .map_err(|e| {
+            AIError::NetworkError(format!(
+                "Failed to connect to Ollama at {}: {}",
+                ollama_url, e
+            ))
+        })?;
 
     if !response.status().is_success() {
         let status = response.status();
@@ -381,10 +383,12 @@ pub async fn generate_with_proxy(
         .json(&body)
         .send()
         .await
-        .map_err(|e| AIError::NetworkError(format!(
-            "Failed to connect to proxy at {}: {}",
-            proxy_url, e
-        )))?;
+        .map_err(|e| {
+            AIError::NetworkError(format!(
+                "Failed to connect to proxy at {}: {}",
+                proxy_url, e
+            ))
+        })?;
 
     let status = response.status();
     let response_text = response.text().await.unwrap_or_default();
@@ -413,10 +417,12 @@ pub async fn generate_with_proxy(
         .and_then(|c| c.get("message"))
         .and_then(|m| m.get("content"))
         .and_then(|t| t.as_str())
-        .ok_or_else(|| AIError::ParseError(format!(
-            "No content in response. Response: {}",
-            &response_text[..response_text.len().min(500)]
-        )))?;
+        .ok_or_else(|| {
+            AIError::ParseError(format!(
+                "No content in response. Response: {}",
+                &response_text[..response_text.len().min(500)]
+            ))
+        })?;
 
     Ok(SummaryResult {
         summary: summary.trim().to_string(),
@@ -459,10 +465,12 @@ pub async fn generate_with_lmstudio(
         .json(&body)
         .send()
         .await
-        .map_err(|e| AIError::NetworkError(format!(
-            "Failed to connect to LM Studio at {}: {}",
-            lmstudio_url, e
-        )))?;
+        .map_err(|e| {
+            AIError::NetworkError(format!(
+                "Failed to connect to LM Studio at {}: {}",
+                lmstudio_url, e
+            ))
+        })?;
 
     let status = response.status();
     let response_text = response.text().await.unwrap_or_default();
@@ -494,10 +502,12 @@ pub async fn generate_with_lmstudio(
         .and_then(|c| c.get("message"))
         .and_then(|m| m.get("content"))
         .and_then(|t| t.as_str())
-        .ok_or_else(|| AIError::ParseError(format!(
-            "No content in response. Response: {}",
-            &response_text[..response_text.len().min(500)]
-        )))?;
+        .ok_or_else(|| {
+            AIError::ParseError(format!(
+                "No content in response. Response: {}",
+                &response_text[..response_text.len().min(500)]
+            ))
+        })?;
 
     Ok(SummaryResult {
         summary: summary.trim().to_string(),
@@ -662,7 +672,10 @@ async fn generate_raw_with_ollama(
     let status = response.status();
     let response_text = response.text().await.unwrap_or_default();
     if !status.is_success() {
-        return Err(AIError::ApiError(format!("Ollama error: {}", response_text)));
+        return Err(AIError::ApiError(format!(
+            "Ollama error: {}",
+            response_text
+        )));
     }
 
     let json: serde_json::Value =
@@ -709,10 +722,12 @@ async fn generate_raw_with_lmstudio(
         .json(&body)
         .send()
         .await
-        .map_err(|e| AIError::NetworkError(format!(
-            "Failed to connect to LM Studio at {}: {}",
-            lmstudio_url, e
-        )))?;
+        .map_err(|e| {
+            AIError::NetworkError(format!(
+                "Failed to connect to LM Studio at {}: {}",
+                lmstudio_url, e
+            ))
+        })?;
 
     let status = response.status();
     let response_text = response.text().await.unwrap_or_default();

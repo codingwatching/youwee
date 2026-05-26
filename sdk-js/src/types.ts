@@ -413,7 +413,10 @@ export interface PluginDefinition<THooks extends PluginHooks = PluginHooks> {
 export interface PluginPermissionRequest {
   network?: boolean;
   fs?: PluginFilesystemPermission[];
+  tools?: PluginToolPermission[];
 }
+
+export type PluginToolPermission = 'tool.ffmpeg.run' | 'tool.ytdlp.run';
 
 export interface PluginRuntimeSpec {
   language: PluginRuntimeLanguage;

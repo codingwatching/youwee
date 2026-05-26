@@ -1,5 +1,5 @@
-use super::*;
 use super::providers::generate_raw_for_provider;
+use super::*;
 
 pub async fn generate_summary(
     config: &AIConfig,
@@ -142,16 +142,30 @@ pub async fn generate_summary_custom(
                 .ollama_url
                 .as_deref()
                 .unwrap_or("http://localhost:11434");
-            generate_with_ollama(ollama_url, &config.model, transcript, style, language, title)
-                .await
+            generate_with_ollama(
+                ollama_url,
+                &config.model,
+                transcript,
+                style,
+                language,
+                title,
+            )
+            .await
         }
         AIProvider::LmStudio => {
             let lmstudio_url = config
                 .lmstudio_url
                 .as_deref()
                 .unwrap_or("http://localhost:1234");
-            generate_with_lmstudio(lmstudio_url, &config.model, transcript, style, language, title)
-                .await
+            generate_with_lmstudio(
+                lmstudio_url,
+                &config.model,
+                transcript,
+                style,
+                language,
+                title,
+            )
+            .await
         }
         AIProvider::Proxy => {
             let api_key = config.api_key.as_ref().ok_or(AIError::NoApiKey)?;
@@ -159,8 +173,16 @@ pub async fn generate_summary_custom(
                 .proxy_url
                 .as_deref()
                 .unwrap_or("https://api.openai.com");
-            generate_with_proxy(proxy_url, api_key, &config.model, transcript, style, language, title)
-                .await
+            generate_with_proxy(
+                proxy_url,
+                api_key,
+                &config.model,
+                transcript,
+                style,
+                language,
+                title,
+            )
+            .await
         }
     }
 }

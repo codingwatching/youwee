@@ -12,6 +12,7 @@ import type {
   PluginProvider,
   PluginRuntimeLanguage,
   PluginSummary,
+  PluginToolPermission,
 } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -67,6 +68,7 @@ export type CreatePluginFormState = {
   triggers: WorkflowTrigger[];
   permissionNetwork: boolean;
   permissionFilesystem: PluginFilesystemPermission[];
+  permissionTools: PluginToolPermission[];
   configFields: CreatePluginConfigFieldDraft[];
 };
 
@@ -116,6 +118,8 @@ export const FILESYSTEM_PERMISSIONS: PluginFilesystemPermission[] = [
   'fs.user-selected.read',
   'fs.user-selected.write',
 ];
+
+export const TOOL_PERMISSIONS: PluginToolPermission[] = ['tool.ffmpeg.run', 'tool.ytdlp.run'];
 
 export const WORKFLOW_TRIGGERS: WorkflowTrigger[] = [
   'download.queued',
@@ -200,6 +204,7 @@ export const DEFAULT_CREATE_PLUGIN_FORM: CreatePluginFormState = {
   triggers: ['download.completed'],
   permissionNetwork: false,
   permissionFilesystem: [],
+  permissionTools: [],
   configFields: [],
 };
 
@@ -217,6 +222,9 @@ export function summarizeRequestedPermissions(
       ...permissions.fs.map((permission) => getFilesystemPermissionLabel(permission, t)),
     );
   }
+  if (permissions.tools.length > 0) {
+    entries.push(...permissions.tools.map((permission) => getToolPermissionLabel(permission, t)));
+  }
   return entries;
 }
 
@@ -224,6 +232,7 @@ export function buildRequestedPermissionApproval(plugin: PluginSummary): PluginP
   return {
     network: plugin.manifest.permissions.network,
     fs: [...plugin.manifest.permissions.fs],
+    tools: [...plugin.manifest.permissions.tools],
   };
 }
 
@@ -233,6 +242,9 @@ export function hasUnapprovedRequestedPermissions(plugin: PluginSummary) {
     (requested.network && !plugin.installation.approvedPermissions.network) ||
     requested.fs.some(
       (permission) => !plugin.installation.approvedPermissions.fs.includes(permission),
+    ) ||
+    requested.tools.some(
+      (permission) => !plugin.installation.approvedPermissions.tools.includes(permission),
     )
   );
 }
@@ -434,6 +446,18 @@ export function getFilesystemPermissionLabel(
       return t('download.pluginPermissionFsUserSelectedRead');
     case 'fs.user-selected.write':
       return t('download.pluginPermissionFsUserSelectedWrite');
+  }
+}
+
+export function getToolPermissionLabel(
+  permission: PluginToolPermission,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+) {
+  switch (permission) {
+    case 'tool.ffmpeg.run':
+      return t('download.pluginPermissionToolFfmpeg');
+    case 'tool.ytdlp.run':
+      return t('download.pluginPermissionToolYtdlp');
   }
 }
 

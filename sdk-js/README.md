@@ -386,6 +386,9 @@ Example:
     "fs": [
       "fs.payload-file.read",
       "fs.user-selected.write"
+    ],
+    "tools": [
+      "tool.ffmpeg.run"
     ]
   },
   "timeoutSec": 300,
@@ -452,6 +455,7 @@ Fields:
 
 - `network: boolean`
 - `fs: PluginFilesystemPermission[]`
+- `tools: PluginToolPermission[]`
 
 These values are:
 
@@ -473,6 +477,15 @@ Supported filesystem capabilities in v1:
 Use capabilities instead of hardcoding absolute paths from the user's machine.
 For example, `fs.user-selected.*` should be paired with `configFields` that use
 `file` or `directory` inputs so Youwee can resolve the actual path on each machine.
+
+Supported tool execution capabilities in v1:
+
+- `tool.ffmpeg.run`
+- `tool.ytdlp.run`
+
+Tool permissions are required before `ctx.youwee.tools.ffmpeg.run(...)` or
+`ctx.youwee.tools.ytdlp.run(...)` can execute. Youwee grants Deno `--allow-run`
+only for the approved tool binary, not for arbitrary OS commands.
 
 ### Plugin configuration fields
 
@@ -868,7 +881,7 @@ Use this when you want:
 
 - real trigger execution inside Youwee
 - source-level iteration without rebuilding on every edit
-- the same app runtime bridge (`ctx`, tools, AI, i18n, env, workflow payloads)
+- the same app runtime bridge (`ctx`, approved tools, i18n, env, workflow payloads)
 
 Recommended flow:
 
@@ -1006,17 +1019,11 @@ Check:
 - the selected provider is supported by the manifest
 - the workflow for the trigger includes the plugin
 
-### The plugin needs environment variables
+### The plugin needs user configuration
 
-Declare them in:
-
-```json
-"permissions": {
-  "env": ["MY_ENV_KEY"]
-}
-```
-
-Then configure the values inside Youwee after installation.
+Declare user-provided values with `configFields`, not `permissions.env`.
+Youwee renders those fields in the plugin settings UI and injects the saved
+values into the runtime.
 
 ---
 

@@ -61,6 +61,7 @@ export function usePluginDetailsFlow(
   const [permissionDialogState, setPermissionDialogState] = useState<PluginPermissionApproval>({
     network: false,
     fs: [],
+    tools: [],
   });
   const [configDrafts, setConfigDrafts] = useState<Record<string, PluginConfigDraftValue>>({});
   const [timeoutDrafts, setTimeoutDrafts] = useState<Record<string, string>>({});
@@ -81,6 +82,9 @@ export function usePluginDetailsFlow(
       network: requested.network ? plugin.installation.approvedPermissions.network : false,
       fs: requested.fs.filter((permission) =>
         plugin.installation.approvedPermissions.fs.includes(permission),
+      ),
+      tools: requested.tools.filter((permission) =>
+        plugin.installation.approvedPermissions.tools.includes(permission),
       ),
     });
   }, []);

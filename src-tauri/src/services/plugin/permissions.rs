@@ -60,6 +60,15 @@ pub(super) fn collect_missing_permissions(
             missing.push(permission.as_str().to_string());
         }
     }
+    for permission in &requested.tools {
+        if !approved
+            .tools
+            .iter()
+            .any(|approved_permission| approved_permission == permission)
+        {
+            missing.push(permission.as_str().to_string());
+        }
+    }
     missing
 }
 

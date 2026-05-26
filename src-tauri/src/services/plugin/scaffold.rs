@@ -40,7 +40,7 @@ module.exports = definePlugin({{
       // 1. Read the downloaded file info from ctx.file
       // 2. Read extra metadata from ctx.media or ctx.download
       // 3. Read plugin config from ctx.config.require("yourConfigKey")
-      // 4. Use app capabilities from ctx.youwee.tools / ctx.youwee.ai
+      // 4. Use approved app capabilities from ctx.youwee.tools
       // 5. Return ctx.ok(...) or ctx.fail(...)
 
       return ctx.ok(ctx.i18n.t("result.success"), {{
@@ -86,7 +86,7 @@ pub(super) fn build_scaffold_package_json(manifest: &PluginManifest) -> String {
     "build": "bunx youwee-sdk build",
     "pack": "bunx youwee-sdk pack --private-key ./plugin.youwee-plugin-key.json",
     "keygen": "bunx youwee-sdk keygen ./plugin.youwee-plugin-key.json",
-    "test:deno": "deno run --quiet --unstable-detect-cjs --allow-env --allow-read=. --allow-write=. --allow-run node_modules/youwee-sdk/dist/runtime-cli.js src/plugin.js"
+    "test:deno": "deno run --quiet --unstable-detect-cjs --allow-env --allow-read=. --allow-write=. node_modules/youwee-sdk/dist/runtime-cli.js src/plugin.js"
   }},
   "dependencies": {{
     "youwee-sdk": "^{sdk_version}"
@@ -321,9 +321,6 @@ Available high-level APIs:
 - `ctx.youwee.tools.ytdlp`
 - `ctx.youwee.fs.readText(...)`
 - `ctx.youwee.http.getJson(...)`
-- `ctx.youwee.ai.generateText(...)`
-- `ctx.youwee.ai.summarize(...)`
-- `ctx.youwee.ai.extractJson(...)`
 - `ctx.ok(...)`
 - `ctx.fail(...)`
 

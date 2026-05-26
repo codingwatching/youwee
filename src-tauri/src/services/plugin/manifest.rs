@@ -11,7 +11,7 @@ use crate::types::{
 pub(super) fn default_supported_providers(language: &PluginRuntimeLanguage) -> Vec<PluginProvider> {
     match language {
         PluginRuntimeLanguage::Javascript => vec![PluginProvider::Deno],
-        PluginRuntimeLanguage::Python => vec![PluginProvider::Python],
+        PluginRuntimeLanguage::Python => Vec::new(),
     }
 }
 
@@ -299,6 +299,19 @@ pub(super) fn validate_manifest(
         {
             return Err(format!(
                 "Plugin manifest {} contains duplicate filesystem capability {}",
+                manifest_path.display(),
+                permission.as_str()
+            ));
+        }
+    }
+    let mut seen_tool_permissions = BTreeMap::<String, bool>::new();
+    for permission in &manifest.permissions.tools {
+        if seen_tool_permissions
+            .insert(permission.as_str().to_string(), true)
+            .is_some()
+        {
+            return Err(format!(
+                "Plugin manifest {} contains duplicate tool capability {}",
                 manifest_path.display(),
                 permission.as_str()
             ));

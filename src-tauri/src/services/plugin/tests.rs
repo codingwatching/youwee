@@ -154,7 +154,7 @@ fn scaffold_readme_mentions_runtime_contract() {
     };
     let readme = build_scaffold_readme(&manifest);
     assert!(readme.contains("supportedProviders"));
-    assert!(readme.contains("ctx.youwee.ai"));
+    assert!(readme.contains("ctx.youwee.tools"));
     assert!(readme.contains("YOUWEE_PLUGIN_SIGNING_KEY"));
 }
 
@@ -209,7 +209,7 @@ fn scaffold_package_json_uses_npm_sdk_dependency() {
         .contains("\"keygen\": \"bunx youwee-sdk keygen ./plugin.youwee-plugin-key.json\""));
     assert!(
             package_json.contains(
-                "\"test:deno\": \"deno run --quiet --unstable-detect-cjs --allow-env --allow-read=. --allow-write=. --allow-run node_modules/youwee-sdk/dist/runtime-cli.js src/plugin.js\""
+                "\"test:deno\": \"deno run --quiet --unstable-detect-cjs --allow-env --allow-read=. --allow-write=. node_modules/youwee-sdk/dist/runtime-cli.js src/plugin.js\""
             )
         );
 }
