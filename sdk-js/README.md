@@ -178,7 +178,7 @@ At minimum, your workspace should depend on:
 ```json
 {
   "dependencies": {
-    "youwee-sdk": "^1.0.5"
+    "youwee-sdk": "^2.0.0"
   }
 }
 ```
@@ -241,7 +241,9 @@ bun run test:deno
 
 These commands execute the shared SDK bootstrap against your source plugin module.
 They run the plugin through Deno, while the surrounding install/build/pack workflow still uses Bun as the local toolchain.
-The shared `runtime-cli` bootstrap sanitizes macOS linker environment variables before your plugin module loads, so `Deno.Command(...)` and tool helpers like FFmpeg behave the same way they do inside Youwee without relying on shell-specific `env -u ...` syntax.
+The shared `runtime-cli` bootstrap sanitizes macOS linker environment variables before your plugin module loads.
+The local Deno check intentionally does not grant direct write/run permissions, so it can catch accidental direct `Deno.write*`, `Deno.Command(...)`, or shell usage early.
+Full testing for app-mediated APIs such as `ctx.youwee.fs` and `ctx.youwee.tools` should be done by attaching the workspace in Youwee, because those APIs require the Youwee runtime bridge.
 
 ## 7. Build
 
@@ -375,8 +377,8 @@ Example:
     "entrypoint": "src/plugin.js"
   },
   "compatibility": {
-    "appVersion": ">=0.13.0 <0.14.0",
-    "sdkVersion": ">=1.0.0 <2.0.0"
+    "appVersion": ">=0.14.1 <0.15.0",
+    "sdkVersion": ">=2.0.0 <3.0.0"
   },
   "triggers": [
     "download.completed"
@@ -462,7 +464,7 @@ These values are:
 - shown to the user during install/enable
 - enforced by the Youwee runtime before execution
 
-Supported filesystem capabilities in v1:
+Supported filesystem capabilities:
 
 - `fs.plugin.read`
 - `fs.plugin.write`
@@ -478,20 +480,71 @@ Use capabilities instead of hardcoding absolute paths from the user's machine.
 For example, `fs.user-selected.*` should be paired with `configFields` that use
 `file` or `directory` inputs so Youwee can resolve the actual path on each machine.
 
-Supported tool execution capabilities in v1:
+Supported tool execution capabilities:
 
 - `tool.ffmpeg.run`
 - `tool.ytdlp.run`
 
 Tool permissions are required before `ctx.youwee.tools.ffmpeg.run(...)` or
-`ctx.youwee.tools.ytdlp.run(...)` can execute. Youwee grants Deno `--allow-run`
-only for the approved tool binary, not for arbitrary OS commands.
+`ctx.youwee.tools.ytdlp.run(...)` can execute.
+
+Youwee does **not** grant direct Deno `--allow-run`.
+Tool execution is app-mediated:
+
+- plugin code calls `ctx.youwee.tools.ffmpeg.run(...)` or `ctx.youwee.tools.ytdlp.run(...)`
+- the SDK sends the request to Youwee's local runtime bridge
+- Youwee runs only the approved bundled/system tool binary
+- arguments are passed without a shell
+- dangerous command-like arguments are rejected
+- file inputs must stay inside approved read scopes
+- output paths must stay inside approved write scopes
+
+Do not use `Deno.Command(...)`, `child_process`, shell wrappers, or `spawnCommand(...)` for plugin tool execution. `spawnCommand(...)` is kept only as a compatibility export and rejects direct command execution in SDK 2.x.
+
+### Filesystem permission model
+
+SDK 2.x also removes direct write access from installed plugins.
+Youwee does **not** grant direct Deno `--allow-write` for installed plugins.
+
+Use `ctx.youwee.fs` for filesystem work:
+
+```js
+const content = await ctx.youwee.fs.readText(ctx.file.path);
+await ctx.youwee.fs.ensureDir(outputDirectory);
+await ctx.youwee.fs.writeText(`${outputDirectory}/result.txt`, content);
+const tempDirectory = await ctx.youwee.fs.tempDir("my-plugin-");
+```
+
+Filesystem calls are mediated by Youwee:
+
+- `fs.plugin.read` allows reading files from the installed plugin package/workspace
+- `fs.plugin.write` allows writing inside the plugin package/workspace only when explicitly approved
+- `fs.payload-file.read` allows reading the current downloaded file
+- `fs.payload-directory.read` allows reading files beside the current downloaded file
+- `fs.payload-directory.write` allows writing files beside the current downloaded file
+- `fs.temp.read` and `fs.temp.write` allow app-managed temporary files
+- `fs.user-selected.read` and `fs.user-selected.write` resolve from user-selected `file` or `directory` config fields
+
+Write permissions are still constrained even after approval.
+Youwee blocks dangerous write scopes such as the filesystem root, home directory root, startup/autostart locations, shell profile files, SSH/keychain/browser profile areas, application/system folders, and other sensitive OS locations.
+
+Youwee also blocks dangerous output filenames/extensions such as shell scripts, executables, dynamic libraries, launch agents/services, desktop launchers, shortcuts, and similar executable formats.
+
+Plugin result mutations are validated too.
+If a plugin returns `mutations.activeFilepath` or `mutations.extraFiles`, those paths must be safe and inside approved write scopes before Youwee passes them to the next workflow step.
+
+### Network permission model
+
+`network: true` allows the plugin runtime to make outbound network requests, for example through `ctx.youwee.http` or `fetch`.
+
+If `network` is omitted or `false`, Youwee only grants the minimal local bridge access needed by SDK context APIs.
+Only request `network: true` when the plugin actually needs external HTTP access, such as calling Telegram, Discord, a webhook, or a public API.
 
 ### Plugin configuration fields
 
 Use `configFields` in `plugin.json` for plugin-defined settings that Youwee should render automatically.
 
-Supported input types in v1:
+Supported input types:
 
 - `text`
 - `textarea`
@@ -898,11 +951,20 @@ Recommended flow:
 
 No `.ywp` rebuild is required for this loop.
 
+Attach Workspace is also the recommended way to test APIs that require the app-mediated bridge:
+
+- `ctx.youwee.fs.*`
+- `ctx.youwee.tools.ffmpeg.run(...)`
+- `ctx.youwee.tools.ytdlp.run(...)`
+- permission approval and rejection behavior
+- workflow chain mutations between plugins
+
 Important:
 
 - `Attach Workspace` is a development-only workflow
 - it runs source files directly from the selected workspace
 - it does not use packaged plugin integrity checks
+- it still uses Youwee's permission bridge for filesystem and tool execution
 - only attach workspaces you control and trust
 
 Use `.ywp` packaging when you want to:
@@ -948,8 +1010,8 @@ Runtime access:
 
 ```js
 ctx.youwee.sdk.version
-ctx.youwee.sdk.checkAppVersion(">=0.13.0 <0.14.0")
-ctx.youwee.sdk.assertAppVersion(">=0.13.0 <0.14.0")
+ctx.youwee.sdk.checkAppVersion(">=0.14.1 <0.15.0")
+ctx.youwee.sdk.assertAppVersion(">=0.14.1 <0.15.0")
 ```
 
 Use these when your plugin depends on specific app features.
@@ -1018,6 +1080,37 @@ Check:
 - required permissions are approved
 - the selected provider is supported by the manifest
 - the workflow for the trigger includes the plugin
+
+### The plugin says the bridge is unavailable
+
+`ctx.youwee.fs` and `ctx.youwee.tools` require Youwee's app-mediated runtime bridge.
+
+Use one of these flows:
+
+- attach the workspace in Youwee and trigger the real workflow
+- import and run a signed `.ywp` package in Youwee
+
+`bun run test:deno` is a fast contract check for the plugin module, payload parsing, translations, and hook shape. It is not a full replacement for bridge-backed permission testing.
+
+### Deno reports missing `--allow-write` or `--allow-run`
+
+That usually means the plugin is using direct Deno APIs or a shell instead of the SDK context APIs.
+
+Use:
+
+- `ctx.youwee.fs.readText(...)`
+- `ctx.youwee.fs.writeText(...)`
+- `ctx.youwee.fs.ensureDir(...)`
+- `ctx.youwee.tools.ffmpeg.run(...)`
+- `ctx.youwee.tools.ytdlp.run(...)`
+
+Do not use:
+
+- `Deno.Command(...)`
+- `Deno.writeTextFile(...)`
+- `Deno.mkdir(...)`
+- `child_process.spawn(...)`
+- `bash`, `sh`, `cmd`, `powershell`, `python`, `node`, `bun`, or `deno` as plugin-run commands
 
 ### The plugin needs user configuration
 

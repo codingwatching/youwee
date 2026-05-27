@@ -86,7 +86,7 @@ pub(super) fn build_scaffold_package_json(manifest: &PluginManifest) -> String {
     "build": "bunx youwee-sdk build",
     "pack": "bunx youwee-sdk pack --private-key ./plugin.youwee-plugin-key.json",
     "keygen": "bunx youwee-sdk keygen ./plugin.youwee-plugin-key.json",
-    "test:deno": "deno run --quiet --unstable-detect-cjs --allow-env --allow-read=. --allow-write=. node_modules/youwee-sdk/dist/runtime-cli.js src/plugin.js"
+    "test:deno": "deno run --quiet --unstable-detect-cjs --allow-env --allow-read=. node_modules/youwee-sdk/dist/runtime-cli.js src/plugin.js"
   }},
   "dependencies": {{
     "youwee-sdk": "^{sdk_version}"
@@ -259,6 +259,13 @@ The plugin entrypoint is `src/plugin.js`.
 You do not need a per-plugin runner file. Youwee launches the shared bootstrap from
 `youwee-sdk` and passes your plugin entry module through the runtime bridge.
 
+The installed plugin runtime is intentionally constrained:
+- Deno does not receive direct `--allow-write` or `--allow-run`
+- filesystem access must use `ctx.youwee.fs`
+- FFmpeg and yt-dlp must use `ctx.youwee.tools`
+- tool execution is mediated by Youwee and does not use a shell
+- output files must stay inside approved write scopes and cannot use dangerous executable extensions
+
 ## Trigger naming
 
 Use raw runtime trigger strings in `plugin.json`:
@@ -393,6 +400,21 @@ Use filesystem capabilities instead of hardcoding user-specific absolute paths.
 For example, `fs.user-selected.*` should be paired with `file` or `directory`
 config fields so Youwee can resolve the actual path on each machine.
 
+Runtime permission mapping:
+- `fs.plugin.read` allows reading files from this workspace/package through `ctx.youwee.fs`
+- `fs.plugin.write` allows writing inside this workspace/package only when Youwee approves it
+- `fs.payload-file.read` allows reading the current downloaded file
+- `fs.payload-directory.read` allows reading the current download directory
+- `fs.payload-directory.write` allows writing beside the current downloaded file
+- `fs.temp.read` and `fs.temp.write` allow app-managed temporary work files
+- `fs.user-selected.read` and `fs.user-selected.write` use user-selected `file` or `directory` config fields
+- `tool.ffmpeg.run` allows `ctx.youwee.tools.ffmpeg.run(...)`
+- `tool.ytdlp.run` allows `ctx.youwee.tools.ytdlp.run(...)`
+
+Do not call `Deno.Command(...)`, `child_process`, shell wrappers, or direct filesystem write APIs
+for plugin capabilities. They are blocked in the installed runtime. Use the SDK context APIs so
+Youwee can enforce the user's approved permissions.
+
 This scaffold is optimized for:
 - Deno
 
@@ -448,6 +470,10 @@ Deno runtime check:
 ```bash
 bun run test:deno < examples/payload.download.completed.json
 ```
+
+The local Deno check validates the plugin module and hook contract without granting direct write/run
+permissions. Full testing for `ctx.youwee.fs` and `ctx.youwee.tools` should be done by attaching the
+workspace in Youwee, because those APIs need the app-mediated runtime bridge.
 
 ## Packaging
 

@@ -8,6 +8,8 @@ use crate::types::{
     PluginPermissionApproval, PluginPermissionRequest,
 };
 
+use super::security_policy::validate_plugin_write_scope;
+
 pub(super) fn resolve_plugin_entrypoint(
     plugin_dir: &Path,
     entrypoint: &str,
@@ -116,13 +118,19 @@ pub(super) fn build_permission_path_scopes(
         collect_user_selected_permission_paths(&manifest.config_fields, resolved_config_values);
     let temp_dir = std::env::temp_dir();
 
+    let mut add_write_scope = |path: &Path| -> Result<(), String> {
+        validate_plugin_write_scope(path)?;
+        allow_write.extend(path_scope_variants(path));
+        Ok(())
+    };
+
     for permission in &manifest.permissions.fs {
         match permission {
             PluginFilesystemPermission::PluginRead => {
                 allow_read.extend(path_scope_variants(plugin_dir));
             }
             PluginFilesystemPermission::PluginWrite => {
-                allow_write.extend(path_scope_variants(plugin_dir));
+                add_write_scope(plugin_dir)?;
             }
             PluginFilesystemPermission::PayloadFileRead => {
                 allow_read.extend(path_scope_variants(payload_file));
@@ -134,14 +142,14 @@ pub(super) fn build_permission_path_scopes(
             }
             PluginFilesystemPermission::PayloadDirectoryWrite => {
                 if let Some(directory) = payload_directory.as_ref() {
-                    allow_write.extend(path_scope_variants(directory));
+                    add_write_scope(directory)?;
                 }
             }
             PluginFilesystemPermission::TempRead => {
                 allow_read.extend(path_scope_variants(&temp_dir));
             }
             PluginFilesystemPermission::TempWrite => {
-                allow_write.extend(path_scope_variants(&temp_dir));
+                add_write_scope(&temp_dir)?;
             }
             PluginFilesystemPermission::UserSelectedRead => {
                 for path in &user_selected_paths {
@@ -156,7 +164,7 @@ pub(super) fn build_permission_path_scopes(
             }
             PluginFilesystemPermission::UserSelectedWrite => {
                 for path in &user_selected_paths {
-                    allow_write.extend(path_scope_variants(path));
+                    add_write_scope(path)?;
                 }
             }
         }

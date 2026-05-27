@@ -21,6 +21,7 @@ use crate::types::{
 };
 use crate::utils::CommandExt;
 
+mod bridge;
 mod compatibility;
 mod logging;
 mod manifest;
@@ -30,11 +31,13 @@ mod providers;
 mod registry;
 mod scaffold;
 mod sdk_bundle;
+mod security_policy;
 mod state;
 mod summary;
 mod workflow;
 mod workspace;
 
+use bridge::{start_plugin_bridge, PluginBridgePolicy};
 #[cfg(test)]
 use compatibility::satisfies_version_range;
 use compatibility::{
@@ -71,6 +74,7 @@ use sdk_bundle::current_sdk_version;
 use sdk_bundle::ensure_app_sdk_runtime_bundle;
 #[cfg(test)]
 use sdk_bundle::write_sdk_package_files;
+use security_policy::validate_plugin_output_path;
 pub use state::{
     approve_plugin_permissions_internal, get_plugin_trigger_workflow_internal,
     set_default_provider_for_language_internal, set_plugin_provider_internal,
@@ -136,10 +140,40 @@ impl From<&str> for PluginExecutionError {
 }
 
 fn format_plugin_execution_error_details(error: &PluginExecutionError) -> String {
-    match error.details.as_ref().filter(|details| !details.trim().is_empty()) {
+    match error
+        .details
+        .as_ref()
+        .filter(|details| !details.trim().is_empty())
+    {
         Some(details) => format!("{}\n\n{}", error.message, details),
         None => error.message.clone(),
     }
+}
+
+fn validate_plugin_result_outputs(result: &PluginExecutionResult) -> Option<PluginExecutionError> {
+    let mutation = result.mutations.as_ref()?;
+    let paths = mutation
+        .active_filepath
+        .iter()
+        .chain(mutation.extra_files.iter());
+
+    for path in paths {
+        let trimmed = path.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        let output_path = Path::new(trimmed);
+        if let Err(reason) = validate_plugin_output_path(output_path) {
+            return Some(PluginExecutionError {
+                message: format!("Plugin output was blocked by Youwee safety policy: {trimmed}"),
+                details: Some(reason),
+                error_kind: Some("output".to_string()),
+                error_resource: Some(trimmed.to_string()),
+            });
+        }
+    }
+
+    None
 }
 
 const PLUGINS_DIR_NAME: &str = "plugins";
@@ -165,8 +199,9 @@ const PLUGIN_BASE_ENV_KEYS: &[&str] = &[
     "YOUWEE_PLUGIN_I18N_SUPPORTED_LOCALES",
     "YOUWEE_PLUGIN_I18N_DIR",
     "YOUWEE_PLUGIN_PROVIDER_SOURCE",
-    "YOUWEE_FFMPEG_PATH",
-    "YOUWEE_YTDLP_PATH",
+    "YOUWEE_PLUGIN_BRIDGE_URL",
+    "YOUWEE_PLUGIN_BRIDGE_TOKEN",
+    "YOUWEE_PLUGIN_BRIDGE_TOOLS",
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -943,12 +978,13 @@ async fn execute_plugin(
         .map_err(|e| format!("Failed to serialize plugin payload: {}", e))?;
     let payload_file = std::fs::canonicalize(PathBuf::from(&payload.filepath))
         .unwrap_or_else(|_| PathBuf::from(&payload.filepath));
-    let (mut allow_read_scopes, allow_write_scopes) = build_permission_path_scopes(
+    let (bridge_allow_read_scopes, bridge_allow_write_scopes) = build_permission_path_scopes(
         &plugin_dir,
         &payload_file,
         &plugin.manifest,
         &resolved_config_values,
     )?;
+    let mut direct_read_scopes = path_scope_variants(&plugin_dir);
     let app_sdk_runtime_bundle = if matches!(
         (&plugin.manifest.runtime.language, &selected_provider),
         (PluginRuntimeLanguage::Javascript, PluginProvider::Deno)
@@ -958,11 +994,10 @@ async fn execute_plugin(
         None
     };
     if let Some(bundle_root) = app_sdk_runtime_bundle.as_ref() {
-        allow_read_scopes.extend(path_scope_variants(bundle_root));
-        allow_read_scopes.sort();
-        allow_read_scopes.dedup();
+        direct_read_scopes.extend(path_scope_variants(bundle_root));
+        direct_read_scopes.sort();
+        direct_read_scopes.dedup();
     }
-    let mut allow_run_scopes = Vec::<PathBuf>::new();
     let ffmpeg_run_allowed = plugin
         .manifest
         .permissions
@@ -983,18 +1018,22 @@ async fn execute_plugin(
             .approved_permissions
             .tools
             .contains(&PluginToolPermission::YtdlpRun);
-    if ffmpeg_run_allowed {
-        if let Some(path) = ffmpeg_path.as_ref() {
-            allow_run_scopes.extend(path_scope_variants(Path::new(path)));
-        }
-    }
-    if ytdlp_run_allowed {
-        if let Some(path) = ytdlp_path.as_ref() {
-            allow_run_scopes.extend(path_scope_variants(Path::new(path)));
-        }
-    }
-    allow_run_scopes.sort();
-    allow_run_scopes.dedup();
+
+    let bridge = start_plugin_bridge(
+        Uuid::new_v4().to_string(),
+        PluginBridgePolicy {
+            allow_read_scopes: bridge_allow_read_scopes,
+            allow_write_scopes: bridge_allow_write_scopes,
+            plugin_dir: plugin_dir.clone(),
+            ffmpeg_path: ffmpeg_run_allowed
+                .then(|| ffmpeg_path.as_ref().map(PathBuf::from))
+                .flatten(),
+            ytdlp_path: ytdlp_run_allowed
+                .then(|| ytdlp_path.as_ref().map(PathBuf::from))
+                .flatten(),
+        },
+    )
+    .await?;
 
     let mut command_args = Vec::<String>::new();
     match selected_provider {
@@ -1006,14 +1045,14 @@ async fn execute_plugin(
             command_args.push(format!("--allow-env={}", plugin_env_keys.join(",")));
             if plugin.manifest.permissions.network {
                 command_args.push("--allow-net".to_string());
+            } else {
+                let bridge_host = bridge
+                    .url()
+                    .strip_prefix("http://")
+                    .unwrap_or_else(|| bridge.url());
+                command_args.push(format!("--allow-net={bridge_host}"));
             }
-            push_allow_flag(&mut command_args, "allow-read", &allow_read_scopes);
-            if !allow_write_scopes.is_empty() {
-                push_allow_flag(&mut command_args, "allow-write", &allow_write_scopes);
-            }
-            if !allow_run_scopes.is_empty() {
-                push_allow_flag(&mut command_args, "allow-run", &allow_run_scopes);
-            }
+            push_allow_flag(&mut command_args, "allow-read", &direct_read_scopes);
             let runtime_cli = app_sdk_runtime_bundle
                 .as_ref()
                 .ok_or_else(|| "Missing app SDK runtime bundle".to_string())?
@@ -1095,16 +1134,9 @@ async fn execute_plugin(
     if let Some(source) = resolved_source.as_ref() {
         cmd.env("YOUWEE_PLUGIN_PROVIDER_SOURCE", source);
     }
-    if ffmpeg_run_allowed {
-        if let Some(path) = ffmpeg_path.as_ref() {
-            cmd.env("YOUWEE_FFMPEG_PATH", path);
-        }
-    }
-    if ytdlp_run_allowed {
-        if let Some(path) = ytdlp_path.as_ref() {
-            cmd.env("YOUWEE_YTDLP_PATH", path);
-        }
-    }
+    cmd.env("YOUWEE_PLUGIN_BRIDGE_URL", bridge.url());
+    cmd.env("YOUWEE_PLUGIN_BRIDGE_TOKEN", bridge.token());
+    cmd.env("YOUWEE_PLUGIN_BRIDGE_TOOLS", bridge.tools_csv());
     for (key, value) in &resolved_config_values {
         let serialized = match value {
             Value::String(text) => text.clone(),
@@ -1424,7 +1456,19 @@ async fn execute_plugin_workflow_run(
         write_registry(&app, &registry).ok();
 
         match execute_plugin(&app, &plugin, &workflow_run.run_id, &step_payload).await {
-            Ok((result, resolved_provider, resolved_source)) => {
+            Ok((mut result, resolved_provider, resolved_source)) => {
+                let output_policy_error = if result.success {
+                    validate_plugin_result_outputs(&result)
+                } else {
+                    None
+                };
+                if let Some(error) = output_policy_error.as_ref() {
+                    result.success = false;
+                    result.message = Some(error.message.clone());
+                    result.stderr = error.details.clone();
+                    result.mutations = None;
+                }
+
                 if let Some(entry) = registry.installations.get_mut(&plugin.manifest.plugin_id) {
                     entry.last_resolved_provider = Some(resolved_provider.clone());
                     entry.last_resolved_source = resolved_source.clone();
@@ -1440,8 +1484,10 @@ async fn execute_plugin_workflow_run(
                     };
                 }
 
-                if let Some(mutation) = result.mutations.as_ref() {
-                    merge_chain_mutation(&mut chain_state, mutation);
+                if result.success {
+                    if let Some(mutation) = result.mutations.as_ref() {
+                        merge_chain_mutation(&mut chain_state, mutation);
+                    }
                 }
 
                 app.emit(
@@ -1465,8 +1511,12 @@ async fn execute_plugin_workflow_run(
                             result.stdout.as_ref(),
                             result.stderr.as_ref(),
                         )),
-                        error_kind: None,
-                        error_resource: None,
+                        error_kind: output_policy_error
+                            .as_ref()
+                            .and_then(|error| error.error_kind.clone()),
+                        error_resource: output_policy_error
+                            .as_ref()
+                            .and_then(|error| error.error_resource.clone()),
                         media_title: step_payload.title.clone(),
                         filename: Some(step_payload.filename.clone()),
                         media_url: Some(step_payload.url.clone()),

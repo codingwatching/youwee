@@ -391,7 +391,7 @@ export function createPluginPackageDefinition(
       pack: 'bunx youwee-sdk pack --private-key ./plugin.youwee-plugin-key.json',
       keygen: 'bunx youwee-sdk keygen ./plugin.youwee-plugin-key.json',
       'test:deno':
-        'deno run --quiet --unstable-detect-cjs --allow-env --allow-read=. --allow-write=. node_modules/youwee-sdk/dist/runtime-cli.js src/plugin.js',
+        'deno run --quiet --unstable-detect-cjs --allow-env --allow-read=. node_modules/youwee-sdk/dist/runtime-cli.js src/plugin.js',
     },
     dependencies: {
       'youwee-sdk': sdkVersion,

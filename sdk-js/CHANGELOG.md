@@ -6,6 +6,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-05-27
+
+### Changed
+- **App-mediated runtime permissions** - Reworked filesystem and tool access so installed plugins must use Youwee's runtime bridge through `ctx.youwee.fs` and `ctx.youwee.tools` instead of receiving direct Deno write/run permissions.
+- **Tool execution contract** - `ctx.youwee.tools.ffmpeg.run(...)` and `ctx.youwee.tools.ytdlp.run(...)` now delegate to Youwee, which runs approved tool binaries without a shell and validates tool arguments against approved read/write scopes.
+- **Workspace test script** - Updated generated `test:deno` scripts to avoid direct `--allow-write`, making local checks better match the installed runtime security model.
+- **Compatibility baseline** - Updated SDK examples to target Youwee `>=0.14.1 <0.15.0`, because SDK 2.x expects the app-mediated plugin bridge.
+
+### Added
+- **Plugin output safety policy** - Documented the SDK 2.x policy that Youwee blocks dangerous write scopes, executable output extensions, unsafe command-like tool arguments, and unsafe result mutation paths.
+
+### Removed
+- **Direct command execution** - `spawnCommand(...)` no longer executes subprocesses and now rejects with guidance to use `ctx.youwee.tools` instead.
+- **Direct installed-plugin writes** - Installed plugins no longer receive direct Deno `--allow-write`; filesystem operations must go through `ctx.youwee.fs`.
+
 ## [1.0.5] - 2026-05-24
 
 ### Changed

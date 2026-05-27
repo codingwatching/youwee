@@ -79,7 +79,7 @@ pub(super) fn current_sdk_version() -> String {
                 .and_then(|value| value.as_str())
                 .map(str::to_string)
         })
-        .unwrap_or_else(|| "1.0.5".to_string())
+        .unwrap_or_else(|| "2.0.0".to_string())
 }
 
 pub(super) fn write_sdk_package_files(package_root: &Path) -> Result<(), String> {

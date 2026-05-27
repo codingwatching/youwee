@@ -2,6 +2,7 @@ use std::fs;
 use std::path::Path;
 
 use super::logging::{classify_plugin_runtime_error, should_persist_plugin_runtime_output};
+use super::security_policy::{validate_plugin_output_path, validate_plugin_write_scope};
 use super::{
     build_plugin_completion_details, build_scaffold_ci_workflow, build_scaffold_package_json,
     build_scaffold_readme, build_scaffold_release_workflow, collect_compatibility_issues,
@@ -35,7 +36,9 @@ fn classify_plugin_runtime_error_formats_env_error_for_users() {
     assert!(err.user_message.contains("AI proxy setting"));
     assert!(!err.user_message.contains("YOUWEE_AI_PROXY_URL"));
     assert!(!err.user_message.contains("--allow-env"));
-    assert!(err.technical_details.contains("Deno runtime permission error"));
+    assert!(err
+        .technical_details
+        .contains("Deno runtime permission error"));
     assert!(err.technical_details.contains("YOUWEE_AI_PROXY_URL"));
 }
 
@@ -51,6 +54,25 @@ fn classify_plugin_runtime_error_formats_run_error_for_users() {
     assert_eq!(err.resource_label.as_deref(), Some("/bin/sh"));
     assert!(err.user_message.contains("not approved"));
     assert!(!err.user_message.contains("--allow-run"));
+}
+
+#[test]
+fn plugin_security_policy_blocks_dangerous_output_extensions() {
+    assert!(validate_plugin_output_path(Path::new("/tmp/youwee-output/video.mov")).is_ok());
+    assert!(validate_plugin_output_path(Path::new("/tmp/youwee-output/payload.sh")).is_err());
+    assert!(validate_plugin_output_path(Path::new("/tmp/youwee-output/agent.plist")).is_err());
+}
+
+#[test]
+fn plugin_security_policy_blocks_sensitive_write_scopes() {
+    assert!(validate_plugin_write_scope(Path::new("/tmp/youwee-output")).is_ok());
+    assert!(validate_plugin_write_scope(Path::new("/")).is_err());
+
+    if let Some(home) = std::env::var_os("HOME") {
+        let home = Path::new(&home);
+        assert!(validate_plugin_write_scope(home).is_err());
+        assert!(validate_plugin_write_scope(&home.join(".ssh")).is_err());
+    }
 }
 
 #[test]
@@ -241,7 +263,7 @@ fn scaffold_package_json_uses_npm_sdk_dependency() {
         .contains("\"keygen\": \"bunx youwee-sdk keygen ./plugin.youwee-plugin-key.json\""));
     assert!(
             package_json.contains(
-                "\"test:deno\": \"deno run --quiet --unstable-detect-cjs --allow-env --allow-read=. --allow-write=. node_modules/youwee-sdk/dist/runtime-cli.js src/plugin.js\""
+                "\"test:deno\": \"deno run --quiet --unstable-detect-cjs --allow-env --allow-read=. node_modules/youwee-sdk/dist/runtime-cli.js src/plugin.js\""
             )
         );
 }

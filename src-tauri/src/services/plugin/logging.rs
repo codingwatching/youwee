@@ -277,23 +277,31 @@ pub(super) fn classify_plugin_runtime_error(stderr: &str) -> Option<PluginRuntim
         .map(str::trim)
         .find(|line| line.starts_with("Requires "))?;
 
-    let (kind, resource, resource_label, user_message) =
-        if let Some(resource) = extract_quoted_resource(line, "Requires env access to ") {
-            let resource_label = friendly_env_resource_label(&resource);
-            let user_message = if resource.starts_with("YOUWEE_AI_") {
-                format!(
+    let (kind, resource, resource_label, user_message) = if let Some(resource) =
+        extract_quoted_resource(line, "Requires env access to ")
+    {
+        let resource_label = friendly_env_resource_label(&resource);
+        let user_message = if resource.starts_with("YOUWEE_AI_") {
+            format!(
                     "Plugin AI helpers are disabled for security. The plugin tried to read Youwee's {} directly.",
                     resource_label.as_deref().unwrap_or("AI setting")
                 )
-            } else {
-                format!(
-                    "This plugin tried to read {}, but Youwee did not allow that access.",
-                    resource_label.as_deref().unwrap_or("an environment setting")
-                )
-            };
-            ("env".to_string(), Some(resource), resource_label, user_message)
-        } else if let Some(resource) = extract_prefixed_resource(line, "Requires read access to ") {
-            (
+        } else {
+            format!(
+                "This plugin tried to read {}, but Youwee did not allow that access.",
+                resource_label
+                    .as_deref()
+                    .unwrap_or("an environment setting")
+            )
+        };
+        (
+            "env".to_string(),
+            Some(resource),
+            resource_label,
+            user_message,
+        )
+    } else if let Some(resource) = extract_prefixed_resource(line, "Requires read access to ") {
+        (
                 "read".to_string(),
                 Some(resource.clone()),
                 Some(resource.clone()),
@@ -301,8 +309,8 @@ pub(super) fn classify_plugin_runtime_error(stderr: &str) -> Option<PluginRuntim
                     "This plugin tried to read {resource}, but that path is outside its approved read permissions."
                 ),
             )
-        } else if let Some(resource) = extract_prefixed_resource(line, "Requires write access to ") {
-            (
+    } else if let Some(resource) = extract_prefixed_resource(line, "Requires write access to ") {
+        (
                 "write".to_string(),
                 Some(resource.clone()),
                 Some(resource.clone()),
@@ -310,26 +318,26 @@ pub(super) fn classify_plugin_runtime_error(stderr: &str) -> Option<PluginRuntim
                     "This plugin tried to write to {resource}, but that path is outside its approved write permissions."
                 ),
             )
-        } else if let Some(resource) = extract_prefixed_resource(line, "Requires run access to ") {
-            (
-                "run".to_string(),
-                Some(resource.clone()),
-                Some(resource.clone()),
-                format!(
-                    "This plugin tried to run {resource}, but that command or tool is not approved."
-                ),
-            )
-        } else if line.starts_with("Requires net access") {
-            (
-                "net".to_string(),
-                None,
-                None,
-                "This plugin tried to access the network, but network permission is not approved."
-                    .to_string(),
-            )
-        } else {
-            return None;
-        };
+    } else if let Some(resource) = extract_prefixed_resource(line, "Requires run access to ") {
+        (
+            "run".to_string(),
+            Some(resource.clone()),
+            Some(resource.clone()),
+            format!(
+                "This plugin tried to run {resource}, but that command or tool is not approved."
+            ),
+        )
+    } else if line.starts_with("Requires net access") {
+        (
+            "net".to_string(),
+            None,
+            None,
+            "This plugin tried to access the network, but network permission is not approved."
+                .to_string(),
+        )
+    } else {
+        return None;
+    };
 
     Some(PluginRuntimeError {
         kind,
