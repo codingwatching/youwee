@@ -1,6 +1,4 @@
 import {
-  AlertTriangle,
-  Check,
   FileVideo,
   FolderOpen,
   HardDrive,
@@ -9,11 +7,11 @@ import {
   Radio,
   Settings2,
   Subtitles,
-  X,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FFmpegRequiredDialog } from '@/components/FFmpegRequiredDialog';
+import { SubtitlePopoverContent } from '@/components/shared/SubtitlePopoverContent';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -26,6 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/components/ui/toast';
 import type {
   AudioBitrate,
   DownloadSettings,
@@ -147,9 +146,10 @@ export function SettingsPanel({
   onGoToSettings,
 }: SettingsPanelProps) {
   const { t } = useTranslation('download');
+  const toast = useToast();
   const [showFfmpegDialog, setShowFfmpegDialog] = useState(false);
   const [pendingQuality, setPendingQuality] = useState<Quality | null>(null);
-  const [webmCodecNoticeId, setWebmCodecNoticeId] = useState(0);
+  const webmCodecToastId = 'download-webm-codec-adjusted';
 
   const isAudioOnly =
     settings.quality === 'audio' || ['mp3', 'm4a', 'opus'].includes(settings.format);
@@ -158,18 +158,13 @@ export function SettingsPanel({
 
   const fileSizeDisplay = totalFileSize && totalFileSize > 0 ? formatFileSize(totalFileSize) : '';
 
-  useEffect(() => {
-    if (webmCodecNoticeId === 0) return;
-
-    const timer = window.setTimeout(() => {
-      setWebmCodecNoticeId(0);
-    }, 4500);
-
-    return () => window.clearTimeout(timer);
-  }, [webmCodecNoticeId]);
-
   const showWebmCodecToast = () => {
-    setWebmCodecNoticeId((id) => id + 1);
+    toast.warning({
+      id: webmCodecToastId,
+      title: t('settings.codecAdjusted'),
+      message: t('settings.webmCodecNotice'),
+      durationMs: 4500,
+    });
   };
 
   const handleModeChange = (mode: 'video' | 'audio') => {
@@ -205,7 +200,7 @@ export function SettingsPanel({
       onVideoCodecChange('auto');
       showWebmCodecToast();
     } else if (format !== 'webm') {
-      setWebmCodecNoticeId(0);
+      toast.dismiss(webmCodecToastId);
     }
   };
 
@@ -217,7 +212,7 @@ export function SettingsPanel({
     }
 
     onVideoCodecChange(codec);
-    setWebmCodecNoticeId(0);
+    toast.dismiss(webmCodecToastId);
   };
 
   const applyQualityChange = (quality: Quality) => {
@@ -368,127 +363,49 @@ export function SettingsPanel({
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-72 p-0" align="start" side="bottom" sideOffset={8}>
-            {/* Header */}
-            <div className="flex items-center gap-2 px-4 py-3 border-b bg-muted/30">
-              <Subtitles className="w-4 h-4 text-primary" />
-              <h4 className="text-sm font-medium">{t('settings.subtitles')}</h4>
-            </div>
-
-            <div className="p-4 space-y-4">
-              {/* Mode Selection */}
-              <div className="space-y-2">
-                <Label className="text-[11px] text-muted-foreground">
-                  {t('settings.subtitleMode')}
-                </Label>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {subtitleModeKeys.map((opt) => (
-                    <button
-                      type="button"
-                      key={opt.value}
-                      onClick={() => onSubtitleModeChange(opt.value)}
-                      className={cn(
-                        'h-8 px-2 rounded-md text-xs font-medium transition-colors',
-                        settings.subtitleMode === opt.value
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground',
-                      )}
-                      title={t(opt.descKey)}
-                    >
-                      {t(opt.labelKey)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Language Selection - Only show when mode is not 'off' */}
-              {settings.subtitleMode !== 'off' && (
-                <>
-                  <div className="space-y-2">
-                    <Label className="text-[11px] text-muted-foreground">
-                      {settings.subtitleMode === 'auto'
-                        ? t('settings.languagesAuto')
-                        : t('settings.languages')}
-                    </Label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {commonLanguageCodes.map((code) => {
-                        const isSelected = settings.subtitleLangs.includes(code);
-                        return (
-                          <button
-                            type="button"
-                            key={code}
-                            onClick={() => {
-                              if (isSelected) {
-                                onSubtitleLangsChange(
-                                  settings.subtitleLangs.filter((l) => l !== code),
-                                );
-                              } else {
-                                onSubtitleLangsChange([...settings.subtitleLangs, code]);
-                              }
-                            }}
-                            className={cn(
-                              'h-7 px-2 rounded text-[11px] font-medium transition-colors flex items-center gap-1',
-                              isSelected
-                                ? 'bg-primary/15 text-primary border border-primary/30'
-                                : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent',
-                            )}
-                            title={t(`languages.${code}`)}
-                          >
-                            {isSelected && <Check className="w-3 h-3" />}
-                            {code.toUpperCase()}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      {settings.subtitleLangs.length === 0
-                        ? t('settings.selectLanguage')
-                        : t('settings.selectedLanguages', {
-                            langs: settings.subtitleLangs.join(', ').toUpperCase(),
-                          })}
-                    </p>
-                  </div>
-
-                  {/* Format & Embed */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-[11px] text-muted-foreground">
-                        {t('settings.format')}
-                      </Label>
-                      <Select
-                        value={settings.subtitleFormat}
-                        onValueChange={onSubtitleFormatChange}
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {subtitleFormatOptions.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label className="text-[11px] text-muted-foreground">
-                        {t('settings.embed')}
-                      </Label>
-                      <div className="h-8 flex items-center justify-between px-3 rounded-md border bg-background">
-                        <span className="text-xs text-muted-foreground">
-                          {t('settings.inVideo')}
-                        </span>
-                        <Switch
-                          checked={settings.subtitleEmbed}
-                          onCheckedChange={onSubtitleEmbedChange}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
+            <SubtitlePopoverContent
+              title={t('settings.subtitles')}
+              mode={{
+                label: t('settings.subtitleMode'),
+                value: settings.subtitleMode,
+                options: subtitleModeKeys.map((opt) => ({
+                  value: opt.value,
+                  label: t(opt.labelKey),
+                  title: t(opt.descKey),
+                })),
+                onChange: onSubtitleModeChange,
+              }}
+              showDetails={settings.subtitleMode !== 'off'}
+              languageLabel={
+                settings.subtitleMode === 'auto'
+                  ? t('settings.languagesAuto')
+                  : t('settings.languages')
+              }
+              languageCodes={commonLanguageCodes}
+              selectedLanguages={settings.subtitleLangs}
+              onToggleLanguage={(code) => {
+                if (settings.subtitleLangs.includes(code)) {
+                  onSubtitleLangsChange(settings.subtitleLangs.filter((lang) => lang !== code));
+                } else {
+                  onSubtitleLangsChange([...settings.subtitleLangs, code]);
+                }
+              }}
+              getLanguageLabel={(code) => t(`languages.${code}`)}
+              emptyLanguageText={t('settings.selectLanguage')}
+              selectedLanguagesText={t('settings.selectedLanguages', {
+                langs: settings.subtitleLangs.join(', ').toUpperCase(),
+              })}
+              formatLabel={t('settings.format')}
+              formatValue={settings.subtitleFormat}
+              formatOptions={subtitleFormatOptions}
+              onFormatChange={onSubtitleFormatChange}
+              embed={{
+                label: t('settings.embed'),
+                valueLabel: t('settings.inVideo'),
+                checked: settings.subtitleEmbed,
+                onChange: onSubtitleEmbedChange,
+              }}
+            />
           </PopoverContent>
         </Popover>
 
@@ -725,28 +642,6 @@ export function SettingsPanel({
           </Badge>
         )}
       </div>
-
-      {webmCodecNoticeId > 0 && (
-        <output className="fixed left-1/2 top-4 z-50 w-[min(calc(100vw-2rem),26rem)] -translate-x-1/2 rounded-lg border border-border/60 bg-background/95 text-foreground shadow-lg shadow-black/10 backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200 dark:border-border/80 dark:bg-popover/95 dark:shadow-black/35">
-          <div className="flex items-start gap-3 px-3 py-3">
-            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-500 dark:text-amber-400" />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium leading-5">{t('settings.codecAdjusted')}</p>
-              <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-                {t('settings.webmCodecNotice')}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setWebmCodecNoticeId(0)}
-              className="-mr-1 -mt-1 rounded-md p-1 text-muted-foreground opacity-70 transition hover:bg-muted hover:opacity-100"
-              aria-label={t('settings.dismissNotice')}
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </output>
-      )}
 
       {/* FFmpeg Required Dialog */}
       {showFfmpegDialog && pendingQuality && (

@@ -104,7 +104,7 @@
     "renamePlaceholder": "أدخل اسم الملف الجديد",
     "renameSave": "حفظ",
     "renameCancel": "إلغاء",
-    "renameFailed": "فشل إعادة تسمية الملف",
+    "renameFailed": "تعذر إعادة تسمية الملف",
     "fetchingTranscript": "جارٍ جلب النص التفريغي...",
     "generating": "جارٍ الإنشاء...",
     "showMore": "عرض المزيد",

@@ -41,7 +41,15 @@
       "fetchingInfo": "Получение информации о видео...",
       "fetchingTranscript": "Получение транскрипции...",
       "generating": "Генерация сводки..."
-    }
+    },
+    "aiSettings": "Настройки ИИ",
+    "configureAI": "Настроить функции ИИ",
+    "goToSettings": "Перейти в настройки",
+    "enableAI": "Настроить ИИ",
+    "aiNotEnabledTitle": "Функции ИИ отключены",
+    "aiNotEnabledHint": "Включите ИИ в настройках, чтобы начать создавать сводки.",
+    "apiKeyMissingTitle": "Ключ API не настроен",
+    "apiKeyMissingHint": "Добавьте ключ API в настройках, чтобы использовать функции ИИ."
   },
   "processing": {
     "title": "Обработка",
@@ -176,7 +184,8 @@
       "clearConfirm": "Вы уверены, что хотите очистить все журналы?",
       "exportSuccess": "Журналы успешно экспортированы",
       "exportFailed": "Ошибка экспорта: {{error}}",
-      "dismiss": "Закрыть"
+      "dismiss": "Закрыть",
+      "filterInfo": "Инфо"
     },
     "entry": {
       "command": "КОМАНДА",
@@ -319,5 +328,18 @@
         "save": "Не удалось сохранить теги или коллекции"
       }
     }
+  },
+  "player": {
+    "trackCount": "{{count}} треков",
+    "oneTrack": "1 трек",
+    "prev": "Назад",
+    "next": "Вперёд",
+    "play": "Воспроизвести",
+    "pause": "Пауза",
+    "playbackSpeed": "Скорость воспроизведения",
+    "modeSequence": "По порядку",
+    "modeRepeatOne": "Повтор одного",
+    "modeShuffle": "Перемешать",
+    "close": "Закрыть"
   }
 }

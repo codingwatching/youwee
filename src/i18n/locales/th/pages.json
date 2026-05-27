@@ -41,7 +41,15 @@
       "fetchingInfo": "กำลังดึงข้อมูลวิดีโอ...",
       "fetchingTranscript": "กำลังดึงทรานสคริปต์...",
       "generating": "กำลังสร้างสรุป..."
-    }
+    },
+    "aiSettings": "การตั้งค่า AI",
+    "configureAI": "ตั้งค่าฟีเจอร์ AI",
+    "goToSettings": "ไปที่การตั้งค่า",
+    "enableAI": "ตั้งค่า AI",
+    "aiNotEnabledTitle": "ปิดฟีเจอร์ AI อยู่",
+    "aiNotEnabledHint": "เปิด AI ในการตั้งค่าเพื่อเริ่มสร้างสรุป",
+    "apiKeyMissingTitle": "ยังไม่ได้ตั้งค่า API key",
+    "apiKeyMissingHint": "เพิ่ม API key ในการตั้งค่าเพื่อใช้ฟีเจอร์ AI"
   },
   "processing": {
     "title": "ประมวลผล",
@@ -176,7 +184,8 @@
       "clearConfirm": "แน่ใจหรือไม่ว่าต้องการล้างบันทึกทั้งหมด?",
       "exportSuccess": "ส่งออกบันทึกสำเร็จ",
       "exportFailed": "ส่งออกไม่สำเร็จ: {{error}}",
-      "dismiss": "ปิด"
+      "dismiss": "ปิด",
+      "filterInfo": "ข้อมูล"
     },
     "entry": {
       "command": "COMMAND",

@@ -79,6 +79,7 @@
     "AI_NO_TRANSCRIPT": "Aucune transcription disponible.",
     "WHISPER_API_ERROR": "Erreur API Whisper.",
     "WHISPER_NO_API_KEY": "Clé API Whisper non configurée.",
-    "WHISPER_UNSUPPORTED_FORMAT": "Format audio non pris en charge par Whisper."
+    "WHISPER_UNSUPPORTED_FORMAT": "Format audio non pris en charge par Whisper.",
+    "ARIA2_NOT_FOUND": "aria2c est introuvable. Installez aria2 et assurez-vous que aria2c est disponible dans PATH."
   }
 }

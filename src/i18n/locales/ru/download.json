@@ -138,7 +138,13 @@
     "showMore": "Показать больше",
     "showLess": "Показать меньше",
     "playlist": "Плейлист",
-    "live": "ПРЯМОЙ ЭФИР"
+    "live": "ПРЯМОЙ ЭФИР",
+    "openFolder": "Показать в папке",
+    "rename": "Переименовать",
+    "renamePlaceholder": "Введите новое имя файла",
+    "renameSave": "Сохранить",
+    "renameCancel": "Отмена",
+    "renameFailed": "Не удалось переименовать файл"
   },
   "actions": {
     "startDownload": "Начать загрузку",

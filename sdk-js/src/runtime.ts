@@ -1,8 +1,5 @@
-import { spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { access, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, extname, join, normalize } from 'node:path';
 import { createAIBridge } from './ai';
 import {
   assertCompatibleAppVersion,
@@ -30,32 +27,74 @@ import type {
   YouweeBridge,
 } from './types';
 
-type DenoCommandOutput = {
-  code: number;
-  signal?: string | null;
-  stdout: Uint8Array;
-  stderr: Uint8Array;
-};
-
-type DenoCommandInstance = {
-  output(): Promise<DenoCommandOutput>;
-};
-
-type DenoCommandConstructor = new (
-  command: string,
-  options: {
-    args?: string[];
-    cwd?: string;
-    env?: Record<string, string>;
-    stdout?: 'piped';
-    stderr?: 'piped';
-  },
-) => DenoCommandInstance;
-
 const STRIP_SUBPROCESS_ENV_KEYS = new Set([
   'DYLD_FALLBACK_LIBRARY_PATH',
   'DYLD_LIBRARY_PATH',
   'LD_LIBRARY_PATH',
+]);
+
+interface BridgeResponse<T> {
+  ok: boolean;
+  result?: T;
+  error?: string;
+}
+
+const DANGEROUS_OUTPUT_EXTENSIONS = new Set([
+  '.app',
+  '.bat',
+  '.cmd',
+  '.command',
+  '.desktop',
+  '.dll',
+  '.dylib',
+  '.exe',
+  '.lnk',
+  '.plist',
+  '.ps1',
+  '.service',
+  '.sh',
+  '.so',
+]);
+
+const DANGEROUS_OUTPUT_FILENAMES = new Set([
+  '.bash_profile',
+  '.bashrc',
+  '.profile',
+  '.zprofile',
+  '.zshenv',
+  '.zshrc',
+]);
+
+const DANGEROUS_PATH_SEGMENTS = [
+  '.aws',
+  '.config/autostart',
+  '.gnupg',
+  '.local/share/applications',
+  '.ssh',
+  'library/application support/google/chrome',
+  'library/application support/mozilla',
+  'library/keychains',
+  'library/launchagents',
+  'library/launchdaemons',
+  'microsoft/windows/start menu/programs/startup',
+];
+
+const DENIED_COMMAND_NAMES = new Set([
+  'bash',
+  'bun',
+  'cmd',
+  'cmd.exe',
+  'deno',
+  'fish',
+  'node',
+  'osascript',
+  'powershell',
+  'powershell.exe',
+  'pwsh',
+  'python',
+  'python3',
+  'sh',
+  'zsh',
 ]);
 
 function writeStderr(level: string, message: string, metadata?: unknown): void {
@@ -85,37 +124,139 @@ function parseNumber(value: string | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function resolveAvailableTool(pathEnvName: string): Pick<ToolRunner, 'available' | 'path'> {
-  const path = process.env[pathEnvName] || null;
-  return {
-    available: Boolean(path),
-    path,
-  };
+function normalizePolicyPath(path: string): string {
+  return normalize(path).replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
 }
 
-function createCommandRunner(toolName: string, pathEnvName: string): ToolRunner {
-  const tool = resolveAvailableTool(pathEnvName);
+function isUrlLike(value: string): boolean {
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(value);
+}
+
+function isDangerousPath(path: string): boolean {
+  const normalized = normalizePolicyPath(path);
+  return DANGEROUS_PATH_SEGMENTS.some((segment) => {
+    return (
+      normalized === segment ||
+      normalized.startsWith(`${segment}/`) ||
+      normalized.endsWith(`/${segment}`) ||
+      normalized.includes(`/${segment}/`)
+    );
+  });
+}
+
+function policyBasename(path: string): string {
+  return basename(path.replace(/\\/g, '/')).toLowerCase();
+}
+
+function isDangerousOutputFilename(path: string): boolean {
+  const name = policyBasename(path);
+  if (DANGEROUS_OUTPUT_FILENAMES.has(name)) {
+    return true;
+  }
+  return DANGEROUS_OUTPUT_EXTENSIONS.has(extname(name));
+}
+
+function assertSafePluginWritePath(path: string): void {
+  if (!path || !path.trim()) {
+    throw new Error('Plugin write path is empty.');
+  }
+  if (isUrlLike(path)) {
+    throw new Error(`Plugin write path must be a local file path: ${path}`);
+  }
+  if (isDangerousPath(path) || isDangerousOutputFilename(path)) {
+    throw new Error(`Blocked unsafe plugin output path: ${path}`);
+  }
+}
+
+function assertSafeCommandPath(command: string): void {
+  const commandName = policyBasename(command);
+  if (DENIED_COMMAND_NAMES.has(commandName)) {
+    throw new Error(`Blocked unsafe command for plugin runtime: ${commandName}`);
+  }
+}
+
+function assertSafeToolArgs(toolName: string, args: string[]): void {
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = String(args[index] ?? '').trim();
+    if (!arg || isUrlLike(arg)) {
+      continue;
+    }
+    const normalizedArg = arg.replace(/^file:/i, '');
+    const commandName = policyBasename(normalizedArg);
+    if (DENIED_COMMAND_NAMES.has(commandName)) {
+      throw new Error(`Blocked unsafe ${toolName} argument: ${arg}`);
+    }
+    if (isDangerousOutputFilename(normalizedArg) || isDangerousPath(normalizedArg)) {
+      throw new Error(`Blocked unsafe ${toolName} output argument: ${arg}`);
+    }
+  }
+}
+
+function getBridgeUrl(): string {
+  const value = process.env.YOUWEE_PLUGIN_BRIDGE_URL;
+  if (!value) {
+    throw new Error('Youwee plugin bridge is not available in this runtime.');
+  }
+  return value.replace(/\/+$/, '');
+}
+
+function getBridgeToken(): string {
+  const value = process.env.YOUWEE_PLUGIN_BRIDGE_TOKEN;
+  if (!value) {
+    throw new Error('Youwee plugin bridge token is missing.');
+  }
+  return value;
+}
+
+async function bridgeRequest<T>(operation: string, payload: unknown): Promise<T> {
+  const response = await fetch(`${getBridgeUrl()}${operation}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${getBridgeToken()}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload ?? {}),
+  });
+  const body = (await response.json()) as BridgeResponse<T>;
+  if (!response.ok || !body.ok) {
+    throw new Error(body.error || `Youwee plugin bridge request failed: ${operation}`);
+  }
+  return body.result as T;
+}
+
+function getAvailableBridgeTools(): Set<string> {
+  return new Set(
+    (process.env.YOUWEE_PLUGIN_BRIDGE_TOOLS || '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean),
+  );
+}
+
+function createCommandRunner(toolName: string, toolKey: string): ToolRunner {
+  const available = getAvailableBridgeTools().has(toolKey);
 
   return {
-    ...tool,
+    available,
+    path: null,
     async run(args = [], options = {}) {
-      if (!tool.path) {
+      if (!available) {
         throw new Error(`${toolName} is not available in this Youwee runtime.`);
       }
 
-      return await spawnCommand(tool.path, args, options);
+      assertSafeToolArgs(toolName, args);
+      return await bridgeRequest<CommandResult>('/tool/run', {
+        tool: toolKey,
+        args,
+        cwd: options.cwd,
+        env: createProcessEnv(options.env || {}),
+      });
     },
   };
 }
 
 function createProcessEnv(overrides: Record<string, string> = {}): Record<string, string> {
   const env: Record<string, string> = {};
-
-  for (const [key, value] of Object.entries(process.env)) {
-    if (typeof value === 'string' && !STRIP_SUBPROCESS_ENV_KEYS.has(key)) {
-      env[key] = value;
-    }
-  }
 
   for (const [key, value] of Object.entries(overrides)) {
     if (!STRIP_SUBPROCESS_ENV_KEYS.has(key)) {
@@ -131,86 +272,34 @@ export function spawnCommand(
   args: string[],
   options: { cwd?: string; env?: Record<string, string> } = {},
 ): Promise<CommandResult> {
-  const DenoCommand = (
-    globalThis as typeof globalThis & {
-      Deno?: {
-        Command?: DenoCommandConstructor;
-      };
-    }
-  ).Deno?.Command;
-
-  if (DenoCommand) {
-    const decoder = new TextDecoder();
-    const denoCommand = new DenoCommand(command, {
-      args,
-      cwd: options.cwd || process.cwd(),
-      env: createProcessEnv(options.env || {}),
-      stdout: 'piped',
-      stderr: 'piped',
-    });
-
-    return denoCommand.output().then((result) => ({
-      code: typeof result.code === 'number' ? result.code : null,
-      signal: result.signal ?? null,
-      stdout: decoder.decode(result.stdout),
-      stderr: decoder.decode(result.stderr),
-    }));
-  }
-
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
-      cwd: options.cwd || process.cwd(),
-      env: createProcessEnv(options.env || {}),
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-
-    const stdoutChunks: Buffer[] = [];
-    const stderrChunks: Buffer[] = [];
-
-    child.stdout.on('data', (chunk: Buffer | string) => {
-      stdoutChunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-    });
-
-    child.stderr.on('data', (chunk: Buffer | string) => {
-      stderrChunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-    });
-
-    child.on('error', (error) => {
-      reject(error);
-    });
-
-    child.on('close', (code, signal) => {
-      resolve({
-        code: typeof code === 'number' ? code : null,
-        signal,
-        stdout: Buffer.concat(stdoutChunks).toString('utf8'),
-        stderr: Buffer.concat(stderrChunks).toString('utf8'),
-      });
-    });
-  });
+  assertSafeCommandPath(command);
+  assertSafeToolArgs('command', args);
+  void options;
+  return Promise.reject(
+    new Error('Direct command execution is not available. Use ctx.youwee.tools instead.'),
+  );
 }
 
 function createFileSystemBridge(): PluginFileSystemBridge {
   return {
     async exists(path) {
-      try {
-        await access(path);
-        return true;
-      } catch {
-        return false;
-      }
+      return await bridgeRequest<boolean>('/fs/exists', { path });
     },
     async readText(path) {
-      return await readFile(path, 'utf8');
+      return await bridgeRequest<string>('/fs/readText', { path });
     },
     async writeText(path, content) {
-      await writeFile(path, content, 'utf8');
+      assertSafePluginWritePath(path);
+      await bridgeRequest<null>('/fs/writeText', { path, content });
     },
     async ensureDir(path) {
-      await mkdir(path, { recursive: true });
+      if (isDangerousPath(path)) {
+        throw new Error(`Blocked unsafe plugin directory path: ${path}`);
+      }
+      await bridgeRequest<null>('/fs/ensureDir', { path });
     },
     async tempDir(prefix = 'youwee-plugin-') {
-      return await mkdtemp(join(tmpdir(), prefix));
+      return await bridgeRequest<string>('/fs/tempDir', { prefix });
     },
   };
 }
@@ -350,8 +439,8 @@ function createYouweeBridge(logger: PluginLogger): YouweeBridge {
       timeoutMs: parseNumber(process.env.YOUWEE_PLUGIN_TIMEOUT_MS),
     },
     tools: {
-      ffmpeg: createCommandRunner('FFmpeg', 'YOUWEE_FFMPEG_PATH'),
-      ytdlp: createCommandRunner('yt-dlp', 'YOUWEE_YTDLP_PATH'),
+      ffmpeg: createCommandRunner('FFmpeg', 'ffmpeg'),
+      ytdlp: createCommandRunner('yt-dlp', 'ytdlp'),
     },
     fs: createFileSystemBridge(),
     http: createHttpBridge(),

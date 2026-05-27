@@ -42,6 +42,8 @@ pub struct PluginPermissionRequest {
     pub network: bool,
     #[serde(default)]
     pub fs: Vec<PluginFilesystemPermission>,
+    #[serde(default)]
+    pub tools: Vec<PluginToolPermission>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -89,6 +91,25 @@ pub struct PluginPermissionApproval {
     pub network: bool,
     #[serde(default)]
     pub fs: Vec<PluginFilesystemPermission>,
+    #[serde(default)]
+    pub tools: Vec<PluginToolPermission>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum PluginToolPermission {
+    #[serde(rename = "tool.ffmpeg.run")]
+    FfmpegRun,
+    #[serde(rename = "tool.ytdlp.run")]
+    YtdlpRun,
+}
+
+impl PluginToolPermission {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::FfmpegRun => "tool.ffmpeg.run",
+            Self::YtdlpRun => "tool.ytdlp.run",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -563,6 +584,10 @@ pub struct PluginExecutionStatusEvent {
     pub message: Option<String>,
     #[serde(default)]
     pub details: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error_kind: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error_resource: Option<String>,
     #[serde(default)]
     pub media_title: Option<String>,
     #[serde(default)]
