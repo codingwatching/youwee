@@ -469,6 +469,12 @@
     "telegramCommand_add_desc": "将 URL 添加到 Youwee 队列，但不开始下载。",
     "telegramCommand_download": "/download <url>",
     "telegramCommand_download_desc": "添加 URL，并在 Youwee 空闲时开始下载。",
+    "telegramCommand_status": "/status",
+    "telegramCommand_status_desc": "显示 Youwee 是空闲还是正在下载，以及队列数量。",
+    "telegramCommand_queue": "/queue",
+    "telegramCommand_queue_desc": "显示最近的队列项目及其当前状态。",
+    "telegramCommand_stop": "/stop",
+    "telegramCommand_stop_desc": "停止当前下载。",
     "telegramCommand_help": "/help",
     "telegramCommand_help_desc": "在 Telegram 中显示可用的 bot 命令。"
   },

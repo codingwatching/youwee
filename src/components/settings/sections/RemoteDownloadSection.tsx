@@ -171,19 +171,21 @@ export function RemoteDownloadSection({ highlightId }: RemoteDownloadSectionProp
                 </DialogHeader>
 
                 <div className="space-y-3">
-                  {(['add', 'download', 'help'] as const).map((command) => (
-                    <div
-                      key={command}
-                      className="rounded-md border border-border/60 bg-muted/30 px-3 py-2"
-                    >
-                      <code className="text-sm font-semibold text-foreground">
-                        {t(`remoteDownload.telegramCommand_${command}`)}
-                      </code>
-                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                        {t(`remoteDownload.telegramCommand_${command}_desc`)}
-                      </p>
-                    </div>
-                  ))}
+                  {(['add', 'download', 'status', 'queue', 'stop', 'help'] as const).map(
+                    (command) => (
+                      <div
+                        key={command}
+                        className="rounded-md border border-border/60 bg-muted/30 px-3 py-2"
+                      >
+                        <code className="text-sm font-semibold text-foreground">
+                          {t(`remoteDownload.telegramCommand_${command}`)}
+                        </code>
+                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                          {t(`remoteDownload.telegramCommand_${command}_desc`)}
+                        </p>
+                      </div>
+                    ),
+                  )}
                 </div>
               </DialogContent>
             </Dialog>

@@ -469,6 +469,12 @@
     "telegramCommand_add_desc": "Add a URL to the Youwee queue without starting a download.",
     "telegramCommand_download": "/download <url>",
     "telegramCommand_download_desc": "Add a URL and start downloading if Youwee is idle.",
+    "telegramCommand_status": "/status",
+    "telegramCommand_status_desc": "Show whether Youwee is idle or downloading, plus queue counts.",
+    "telegramCommand_queue": "/queue",
+    "telegramCommand_queue_desc": "Show recent queue items and their current state.",
+    "telegramCommand_stop": "/stop",
+    "telegramCommand_stop_desc": "Stop the current download.",
     "telegramCommand_help": "/help",
     "telegramCommand_help_desc": "Show the available bot commands in Telegram."
   },

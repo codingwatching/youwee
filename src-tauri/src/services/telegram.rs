@@ -49,7 +49,7 @@ pub enum TelegramStatusState {
 #[serde(rename_all = "camelCase")]
 struct TelegramDownloadCommandEvent {
     command: String,
-    url: String,
+    url: Option<String>,
     chat_id: String,
 }
 
@@ -57,6 +57,9 @@ struct TelegramDownloadCommandEvent {
 pub enum TelegramCommand {
     Add { url: String },
     Download { url: String },
+    Status,
+    Queue,
+    Stop,
     Help,
     Unsupported,
 }
@@ -285,10 +288,19 @@ async fn handle_update(
 
     match parse_command(text) {
         TelegramCommand::Add { url } => {
-            emit_download_command(app, "add", &url, &chat_id);
+            emit_url_command(app, "add", &url, &chat_id);
         }
         TelegramCommand::Download { url } => {
-            emit_download_command(app, "download", &url, &chat_id);
+            emit_url_command(app, "download", &url, &chat_id);
+        }
+        TelegramCommand::Status => {
+            emit_simple_command(app, "status", &chat_id);
+        }
+        TelegramCommand::Queue => {
+            emit_simple_command(app, "queue", &chat_id);
+        }
+        TelegramCommand::Stop => {
+            emit_simple_command(app, "stop", &chat_id);
         }
         TelegramCommand::Help => {
             let _ = send_message(client, bot_token, &chat_id, help_text()).await;
@@ -305,12 +317,23 @@ async fn handle_update(
     }
 }
 
-fn emit_download_command(app: &AppHandle, command: &str, url: &str, chat_id: &str) {
+fn emit_url_command(app: &AppHandle, command: &str, url: &str, chat_id: &str) {
     let _ = app.emit(
         "telegram-download-command",
         TelegramDownloadCommandEvent {
             command: command.to_string(),
-            url: url.to_string(),
+            url: Some(url.to_string()),
+            chat_id: chat_id.to_string(),
+        },
+    );
+}
+
+fn emit_simple_command(app: &AppHandle, command: &str, chat_id: &str) {
+    let _ = app.emit(
+        "telegram-download-command",
+        TelegramDownloadCommandEvent {
+            command: command.to_string(),
+            url: None,
             chat_id: chat_id.to_string(),
         },
     );
@@ -363,6 +386,18 @@ async fn set_my_commands(client: &Client, bot_token: &str) -> Result<(), String>
                     description: "Add a URL and start downloading",
                 },
                 BotCommand {
+                    command: "status",
+                    description: "Show download status",
+                },
+                BotCommand {
+                    command: "queue",
+                    description: "Show recent queue items",
+                },
+                BotCommand {
+                    command: "stop",
+                    description: "Stop the current download",
+                },
+                BotCommand {
                     command: "help",
                     description: "Show available commands",
                 },
@@ -393,7 +428,7 @@ fn set_status(state: TelegramStatusState, message: Option<String>) {
 }
 
 fn help_text() -> &'static str {
-    "Youwee Telegram commands:\n/add <url> - Add a URL to the queue.\n/download <url> - Add a URL and start downloading when idle.\n/help - Show this help."
+    "Youwee Telegram commands:\n/add <url> - Add a URL to the queue.\n/download <url> - Add a URL and start downloading when idle.\n/status - Show download status.\n/queue - Show recent queue items.\n/stop - Stop the current download.\n/help - Show this help."
 }
 
 pub fn parse_command(text: &str) -> TelegramCommand {
@@ -408,6 +443,9 @@ pub fn parse_command(text: &str) -> TelegramCommand {
 
     match command.as_str() {
         "/help" | "help" => TelegramCommand::Help,
+        "/status" | "status" => TelegramCommand::Status,
+        "/queue" | "queue" => TelegramCommand::Queue,
+        "/stop" | "stop" => TelegramCommand::Stop,
         "/add" | "add" => parts
             .next()
             .map(|url| TelegramCommand::Add {
@@ -432,6 +470,13 @@ mod tests {
     fn parses_help_commands() {
         assert_eq!(parse_command("/help"), TelegramCommand::Help);
         assert_eq!(parse_command("/help@youwee_bot"), TelegramCommand::Help);
+    }
+
+    #[test]
+    fn parses_control_commands() {
+        assert_eq!(parse_command("/status"), TelegramCommand::Status);
+        assert_eq!(parse_command("/queue@youwee_bot"), TelegramCommand::Queue);
+        assert_eq!(parse_command("stop"), TelegramCommand::Stop);
     }
 
     #[test]
