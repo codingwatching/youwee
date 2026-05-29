@@ -16,6 +16,7 @@ Youwee 的所有重要更改都将记录在此文件中。
 
 ### 修复
 - **Linux deb 安装冲突** - 将内置 yt-dlp sidecar 重命名为 Youwee 专用二进制名称，使 `.deb` 安装不再与发行版管理的 `yt-dlp` 包冲突
+- **Firefox Cookie 配置文件选择** - 优先使用 `profiles.ini` 中的活动 Firefox 配置文件，让浏览器 Cookie 下载更可能选中实际保存 Cookie 的配置文件
 
 ## [0.15.1] - 2026-05-27
 
