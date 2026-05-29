@@ -1,6 +1,6 @@
 {
   "title": "Export données",
-  "subtitle": "Extraire des listes et métadonnées avec yt-dlp",
+  "subtitle": "Exportez les données de playlists et de chaînes dans des fichiers prêts à utiliser",
   "tabs": {
     "data": "Données",
     "assets": "Assets"

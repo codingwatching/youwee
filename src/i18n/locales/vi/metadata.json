@@ -1,6 +1,6 @@
 {
   "title": "Xuất dữ liệu",
-  "subtitle": "Trích xuất danh sách và metadata bằng yt-dlp",
+  "subtitle": "Xuất dữ liệu playlist và kênh thành file dễ dùng",
   "tabs": {
     "data": "Dữ liệu",
     "assets": "Assets"

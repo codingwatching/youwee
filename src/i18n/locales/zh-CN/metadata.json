@@ -1,6 +1,6 @@
 {
   "title": "数据导出",
-  "subtitle": "使用 yt-dlp 提取列表和元数据",
+  "subtitle": "将播放列表和频道数据导出为易用文件",
   "tabs": {
     "data": "数据",
     "assets": "资源"
