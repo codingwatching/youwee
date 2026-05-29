@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { save } from '@tauri-apps/plugin-dialog';
-import { writeTextFile } from '@tauri-apps/plugin-fs';
+import { stat, writeTextFile } from '@tauri-apps/plugin-fs';
 import {
   Check,
   DatabaseZap,
@@ -20,6 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/toast';
 import { useDataExport } from '@/contexts/DataExportContext';
+import { useHistory } from '@/contexts/HistoryContext';
 import type { ExportFormat, ExportSource } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { DataFieldSelector } from './DataFieldSelector';
@@ -60,6 +61,7 @@ const SOURCE_OPTIONS: { value: ExportSource; icon: ReactNode; labelKey: string }
 export function DataExportTab() {
   const { t } = useTranslation('metadata');
   const toast = useToast();
+  const { refreshHistory } = useHistory();
   const {
     source,
     inputText,
@@ -146,7 +148,7 @@ export function DataExportTab() {
     try {
       const extByFormat: Record<ExportFormat, string> = {
         csv: 'csv',
-        excel: 'xls',
+        excel: 'xlsx',
         text: 'txt',
         bookmark_html: 'html',
         json: 'json',
@@ -155,7 +157,7 @@ export function DataExportTab() {
         html: 'html',
         yaml: 'yaml',
         sqlite: 'sqlite',
-        word: 'doc',
+        word: 'docx',
       };
       const ext = extByFormat[format];
       const filePath = await save({
@@ -178,7 +180,32 @@ export function DataExportTab() {
           buildExportContent(selectedRows, selectedFields, format, getFieldLabel),
         );
       }
-      toast.success({ title: t('data.exportSuccess'), message: filePath });
+
+      try {
+        const fileInfo = await stat(filePath);
+        await invoke<string>('add_history', {
+          url: selectedRows.find((row) => row.url)?.url || 'youwee://data-export',
+          title: t('data.exportHistoryTitle', {
+            count: selectedRows.length,
+            format: t(`data.exportFormats.${format}`),
+          }),
+          thumbnail: selectedRows.find((row) => row.thumbnail)?.thumbnail ?? null,
+          filepath: filePath,
+          filesize: fileInfo.size,
+          duration: null,
+          quality: null,
+          format: ext,
+          source: 'data_export',
+        });
+        await refreshHistory();
+        toast.success({ title: t('data.exportSuccess'), message: t('data.exportSavedToLibrary') });
+      } catch (libraryError) {
+        console.error('Failed to save export to library:', libraryError);
+        toast.warning({
+          title: t('data.exportSuccess'),
+          message: t('data.exportLibrarySaveFailed'),
+        });
+      }
     } catch (error) {
       toast.error({ title: t('data.exportFailed'), message: String(error) });
     } finally {

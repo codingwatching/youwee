@@ -50,6 +50,7 @@ export type SourcePlatform =
   | 'bilibili'
   | 'soundcloud'
   | 'dailymotion'
+  | 'data_export'
   | 'other';
 
 // Settings snapshot saved with each queue item (YouTube page)
@@ -739,6 +740,7 @@ export type HistoryFilter =
   | 'instagram'
   | 'twitter'
   | 'bilibili'
+  | 'data_export'
   | 'other';
 export type HistoryMediaType = 'all' | 'video' | 'audio';
 export type HistoryDatePreset = 'all' | 'today' | 'last7days' | 'last30days' | 'custom';
