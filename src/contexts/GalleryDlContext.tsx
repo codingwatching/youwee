@@ -27,6 +27,7 @@ import type { DownloadItem } from '@/lib/types';
 import { useDownload } from './DownloadContext';
 
 const STORAGE_KEY = 'youwee-gallerydl-settings';
+const DOWNLOAD_QUEUE_IDLE_GRACE_MS = 1000;
 
 interface GalleryDlSettings {
   outputPath: string;
@@ -473,7 +474,13 @@ export function GalleryDlProvider({ children }: { children: ReactNode }) {
           const item = claimNextItem();
           if (!item) {
             if (activeCount === 0 && !hasUnclaimedPendingItems()) {
-              return;
+              await new Promise<void>((resolve) => {
+                window.setTimeout(resolve, DOWNLOAD_QUEUE_IDLE_GRACE_MS);
+              });
+              if (!isDownloadingRef.current || !hasUnclaimedPendingItems()) {
+                return;
+              }
+              continue;
             }
             await new Promise<void>((resolve) => {
               window.setTimeout(resolve, 200);
