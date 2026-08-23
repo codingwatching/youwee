@@ -123,6 +123,12 @@ jobs:
           tauriScript: bun run tauri
           args: --target ${{ matrix.target }}
 
+      - name: Fix Linux deep-link desktop entry
+        if: matrix.os_name == 'linux'
+        run: |
+          bash scripts/fix-deb-deep-link-desktop-entry.sh \
+            "src-tauri/target/${{ matrix.target }}/release/bundle/deb"
+
       - name: Rename artifacts with friendly names (macOS)
         if: matrix.os_name == 'macos'
         run: |
