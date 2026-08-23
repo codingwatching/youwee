@@ -7,14 +7,19 @@ Youwee 的所有重要更改都将记录在此文件中。
 
 ## [Unreleased]
 
+## [0.20.3] - 2026-08-23
+
+### 修复
+- **Linux 深度链接包元数据** - 规范化 `.deb` 包中的桌面 MIME 条目，确保发布打包验证能够稳定完成
+
+### 变更
+- **Linux 打包 CI 验证** - 在 CI 中构建并检查 `.deb` 包，确保 Youwee 深度链接桌面条目保留 URL 请求
+
 ## [0.20.2] - 2026-08-23
 
 ### 修复
 - **macOS Monterey 队列添加** - 修复旧版 macOS WebView 不支持现代浏览器 UUID API 时 Add 按钮无响应的问题
 - **Linux Firefox 深度链接** - 通过 `.deb` 包中的桌面条目传递 `youwee://` URL，确保 Download now 请求能够到达 Youwee
-
-### 变更
-- **Linux 打包 CI 验证** - 在 CI 中构建并检查 `.deb` 包，确保 Youwee 深度链接桌面条目保留 URL 请求
 
 ## [0.20.1] - 2026-08-01
 
