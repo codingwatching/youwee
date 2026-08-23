@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **macOS Monterey queue add** - Fixed the Add button doing nothing on older macOS WebViews that do not support modern browser UUID APIs
+- **Linux Firefox extension deep links** - Pass `youwee://` URLs through the packaged `.deb` desktop entry so Download now requests reach Youwee
 
 ## [0.20.1] - 2026-08-01
 

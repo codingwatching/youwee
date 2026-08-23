@@ -72,6 +72,11 @@ jobs:
           tauriScript: bun run tauri
           args: --target ${{ env.LINUX_TARGET }} --bundles deb --no-sign --ci
 
+      - name: Fix Linux deep-link desktop entry
+        run: |
+          bash scripts/fix-deb-deep-link-desktop-entry.sh \
+            "src-tauri/target/${LINUX_TARGET}/release/bundle/deb"
+
       - name: Prepare Flatpak payload
         run: |
           set -eu
@@ -91,6 +96,8 @@ jobs:
           test -x flatpak/payload/usr/bin/youwee-yt-dlp
           test -f flatpak/payload/usr/share/applications/Youwee.desktop
           test -f flatpak/payload/usr/share/icons/hicolor/32x32/apps/youwee.png
+          grep -Fx 'Exec=youwee %U' flatpak/payload/usr/share/applications/Youwee.desktop
+          grep -Fqx 'MimeType=x-scheme-handler/youwee;' flatpak/payload/usr/share/applications/Youwee.desktop
 
       - name: Build Flatpak bundle
         run: |
