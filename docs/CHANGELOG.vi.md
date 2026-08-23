@@ -7,6 +7,8 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [0.20.2] - 2026-08-23
+
 ### Sửa lỗi
 - **Thêm vào hàng đợi trên macOS Monterey** - Sửa lỗi nút Add không phản hồi trên WebView macOS cũ chưa hỗ trợ API UUID hiện đại của trình duyệt
 - **Deep link Firefox trên Linux** - Truyền URL `youwee://` qua desktop entry trong gói `.deb` để yêu cầu Download now đến được Youwee

@@ -7,6 +7,8 @@ Youwee 的所有重要更改都将记录在此文件中。
 
 ## [Unreleased]
 
+## [0.20.2] - 2026-08-23
+
 ### 修复
 - **macOS Monterey 队列添加** - 修复旧版 macOS WebView 不支持现代浏览器 UUID API 时 Add 按钮无响应的问题
 - **Linux Firefox 深度链接** - 通过 `.deb` 包中的桌面条目传递 `youwee://` URL，确保 Download now 请求能够到达 Youwee
