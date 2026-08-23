@@ -130,6 +130,7 @@ jobs:
           chmod +x "src-tauri/bin/${{ matrix.yt_dlp_name }}"
 
       - name: Build Tauri app (compile-only, unsigned)
+        if: matrix.platform != 'ubuntu-22.04'
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -137,5 +138,31 @@ jobs:
           tauriScript: bun run tauri
           args: --target ${{ matrix.target }} --no-bundle
 
-      - name: Skip artifact upload for no-bundle build
-        run: echo "build-test runs compile-only validation with --no-bundle; no bundle artifacts are uploaded."
+      - name: Build Linux deb bundle (unsigned)
+        if: matrix.platform == 'ubuntu-22.04'
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tauriScript: bun run tauri
+          args: --target ${{ matrix.target }} --bundles deb --no-sign --ci
+
+      - name: Validate Linux deep-link desktop entry
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          set -eu
+          DEB_DIR="src-tauri/target/${{ matrix.target }}/release/bundle/deb"
+          bash scripts/fix-deb-deep-link-desktop-entry.sh "$DEB_DIR"
+
+          DEB_FILE="$(find "$DEB_DIR" -maxdepth 1 -type f -name '*.deb' | sort | head -n 1)"
+          test -n "$DEB_FILE"
+          PACKAGE_DIR="$(mktemp -d)"
+          trap 'rm -rf "$PACKAGE_DIR"' EXIT
+          dpkg-deb -x "$DEB_FILE" "$PACKAGE_DIR"
+
+          DESKTOP_FILE="$PACKAGE_DIR/usr/share/applications/Youwee.desktop"
+          grep -Fx 'Exec=youwee %U' "$DESKTOP_FILE"
+          grep -Fqx 'MimeType=x-scheme-handler/youwee;' "$DESKTOP_FILE"
+
+      - name: Skip artifact upload
+        run: echo "build-test validates build artifacts but does not upload them."

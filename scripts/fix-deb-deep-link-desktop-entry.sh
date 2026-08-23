@@ -25,6 +25,11 @@ for deb_file in "$DEB_DIR"/*.deb; do
   desktop_file="$package_dir/usr/share/applications/Youwee.desktop"
   test -f "$desktop_file"
   sed -i 's|^Exec=.*|Exec=youwee %U|' "$desktop_file"
+  if grep -q '^MimeType=' "$desktop_file"; then
+    sed -i 's|^MimeType=.*|MimeType=x-scheme-handler/youwee;|' "$desktop_file"
+  else
+    printf '\nMimeType=x-scheme-handler/youwee;\n' >> "$desktop_file"
+  fi
 
   grep -Fx 'Exec=youwee %U' "$desktop_file"
   grep -Fqx 'MimeType=x-scheme-handler/youwee;' "$desktop_file"
