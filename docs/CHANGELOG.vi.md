@@ -7,6 +7,9 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Thay đổi
+- **Kiểm tra CI gói Linux** - Build và kiểm tra gói `.deb` trong CI để xác nhận desktop entry deep link của Youwee giữ nguyên yêu cầu URL
+
 ## [0.20.2] - 2026-08-23
 
 ### Sửa lỗi
