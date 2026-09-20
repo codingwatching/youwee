@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Browser extension download settings** - Preserve global Youwee download settings such as container, output folder, playlists, and subtitles when a browser extension starts a download
+
 ## [0.20.3] - 2026-08-23
 
 ### Fixed

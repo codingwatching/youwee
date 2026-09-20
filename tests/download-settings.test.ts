@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  buildExternalDownloadSettingsOverrides,
   buildItemDownloadSettingsSnapshot,
   createDefaultDownloadSettings,
   refreshItemPluginWorkflowSnapshots,
@@ -85,6 +86,38 @@ describe('download settings playlist numbering and chapter split options', () =>
       currentSnapshots['download.failed'],
     );
     expect(refreshed.postDownloadWorkflowSteps).toEqual(currentSnapshots['download.completed']);
+  });
+});
+
+describe('external download settings', () => {
+  test('inherits global video settings while keeping extension quality', () => {
+    const settings = createDefaultDownloadSettings({
+      format: 'mkv',
+      outputPath: '/downloads',
+      downloadPlaylist: true,
+      playlistLimit: 12,
+      subtitleMode: 'auto',
+      subtitleLangs: ['en', 'ru'],
+      subtitleEmbed: true,
+      subtitleFormat: 'vtt',
+    });
+
+    const overrides = buildExternalDownloadSettingsOverrides(
+      settings,
+      { mediaType: 'video', quality: '1080' },
+      settings.outputPath,
+    );
+    const snapshot = buildItemDownloadSettingsSnapshot(settings, { overrides });
+
+    expect(snapshot.quality).toBe('1080');
+    expect(snapshot.format).toBe('mkv');
+    expect(snapshot.outputPath).toBe('/downloads');
+    expect(snapshot.downloadPlaylist).toBe(true);
+    expect(snapshot.playlistLimit).toBe(12);
+    expect(snapshot.subtitleMode).toBe('auto');
+    expect(snapshot.subtitleLangs).toEqual(['en', 'ru']);
+    expect(snapshot.subtitleEmbed).toBe(true);
+    expect(snapshot.subtitleFormat).toBe('vtt');
   });
 });
 

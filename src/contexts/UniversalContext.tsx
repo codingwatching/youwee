@@ -667,7 +667,10 @@ export function UniversalProvider({ children }: { children: ReactNode }) {
         postDownloadWorkflowSteps: loadPostDownloadWorkflowSteps(),
         overrides: {
           quality: mediaType === 'audio' ? 'audio' : videoQuality,
-          format: mediaType === 'audio' ? 'mp3' : 'mp4',
+          // External callers choose media and quality only. Keep the current
+          // Universal container preference unless a future deep-link contract
+          // explicitly adds a format override.
+          format: currentSettings.format,
           outputPath,
           audioBitrate: mediaType === 'audio' ? audioBitrate : currentSettings.audioBitrate,
           timeRangeStart: options?.timeRangeStart,

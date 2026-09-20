@@ -5,6 +5,7 @@ import {
 } from '@/lib/download-retry';
 import type {
   DownloadSettings,
+  ExternalEnqueueOptions,
   FilenameMetadataField,
   ItemDownloadSettings,
   ItemUniversalSettings,
@@ -115,6 +116,36 @@ export function createDefaultDownloadSettings(saved: Partial<DownloadSettings>):
     telegramBotToken: saved.telegramBotToken || '',
     telegramAllowedChatIds: saved.telegramAllowedChatIds || '',
     telegramPlainUrlAction: saved.telegramPlainUrlAction === 'add' ? 'add' : 'download',
+  };
+}
+
+export function buildExternalDownloadSettingsOverrides(
+  settings: DownloadSettings,
+  options: ExternalEnqueueOptions | undefined,
+  outputPath: string,
+): Partial<ItemDownloadSettings> {
+  const mediaType = options?.mediaType === 'audio' ? 'audio' : 'video';
+  const videoQuality = options?.quality && options.quality !== 'audio' ? options.quality : 'best';
+  const audioBitrate = options?.audioBitrate === '128' ? '128' : 'auto';
+
+  return {
+    quality: mediaType === 'audio' ? 'audio' : videoQuality,
+    // Browser deep links select media and quality, not a container. Preserve
+    // the global format that will be snapshotted onto this queue item.
+    format: settings.format,
+    outputPath,
+    downloadPlaylist: options?.downloadPlaylist ?? settings.downloadPlaylist,
+    playlistLimit:
+      options?.playlistLimit ?? (settings.playlistLimit > 0 ? settings.playlistLimit : null),
+    audioBitrate: mediaType === 'audio' ? audioBitrate : settings.audioBitrate,
+    subtitleMode: options?.subtitleMode ?? settings.subtitleMode,
+    subtitleLangs: options?.subtitleLangs ?? [...settings.subtitleLangs],
+    subtitleEmbed: options?.subtitleEmbed ?? settings.subtitleEmbed,
+    subtitleFormat: options?.subtitleFormat ?? settings.subtitleFormat,
+    timeRangeStart: options?.timeRangeStart,
+    timeRangeEnd: options?.timeRangeEnd,
+    liveFromStart: options?.liveFromStart ?? settings.liveFromStart,
+    skipLive: options?.skipLive ?? settings.skipLive,
   };
 }
 
