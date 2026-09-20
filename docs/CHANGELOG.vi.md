@@ -10,6 +10,7 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Sửa lỗi
 - **Cài đặt tải từ browser extension** - Giữ lại các cài đặt Youwee global như container, thư mục đầu ra, playlist và subtitle khi browser extension bắt đầu tải xuống
 - **Tương thích runtime AppImage** - Đóng gói lại AppImage Linux không kèm các thư viện runtime Wayland, GLib và GStreamer có thể xung đột với Mesa và WebKitGTK mới hơn, tránh cửa sổ trắng khi khởi động trên các bản Linux hiện đại
+- **Chọn ngôn ngữ subtitle tự động** - Tôn trọng các ngôn ngữ đã chọn cho subtitle tự động thay vì yêu cầu mọi ngôn ngữ subtitle có sẵn hoặc được dịch
 
 ### Thay đổi
 - **Kiểm tra release AppImage** - Kiểm tra layout runtime AppImage sau khi đóng gói lại trong CI Linux và ký lại artifact hoàn chỉnh để đảm bảo tính toàn vẹn khi cập nhật
