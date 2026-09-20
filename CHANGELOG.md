@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Browser extension download settings** - Preserve global Youwee download settings such as container, output folder, playlists, and subtitles when a browser extension starts a download
 - **AppImage runtime compatibility** - Rebuild Linux AppImages without bundled Wayland, GLib, and GStreamer runtime libraries that can conflict with newer Mesa and WebKitGTK, preventing blank startup windows on modern Linux distributions
 - **Auto subtitle language selection** - Respect selected languages for automatic subtitles instead of requesting every available or translated subtitle language
+- **Flatpak startup compatibility** - Use the stable GNOME Platform 49 runtime while WebKitGTK 2.52 startup crashes are investigated, avoid initializing the unavailable system tray runtime inside Flatpak, and smoke-test the packaged app under Xvfb in CI
 
 ### Changed
 - **AppImage release validation** - Validate the rebuilt AppImage runtime layout in Linux CI and re-sign the finalized artifact for updater integrity

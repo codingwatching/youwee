@@ -11,6 +11,7 @@ Youwee 的所有重要更改都将记录在此文件中。
 - **浏览器扩展下载设置** - 浏览器扩展启动下载时保留 Youwee 的全局设置，例如容器、输出目录、播放列表和字幕
 - **AppImage 运行时兼容性** - 重新打包 Linux AppImage，不再捆绑可能与新版 Mesa 和 WebKitGTK 冲突的 Wayland、GLib 与 GStreamer 运行时库，避免现代 Linux 发行版启动时出现白色窗口
 - **自动字幕语言选择** - 自动字幕现在会遵循已选择的语言，而非请求所有可用或翻译后的字幕语言
+- **Flatpak 启动兼容性** - 在调查 WebKitGTK 2.52 启动崩溃期间使用稳定的 GNOME Platform 49 运行时，不再在 Flatpak 内初始化运行时缺失的系统托盘，并在 CI 中通过 Xvfb 对打包应用进行启动冒烟测试
 
 ### 变更
 - **AppImage 发布验证** - 在 Linux CI 中验证重新打包后的 AppImage 运行时布局，并重新签名最终产物以确保更新完整性

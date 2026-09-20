@@ -238,7 +238,7 @@ jobs:
       - name: Install Flatpak tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y dbus-x11 flatpak flatpak-builder
+          sudo apt-get install -y dbus-x11 flatpak flatpak-builder xvfb
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
       - name: Download Linux deb artifact
@@ -293,6 +293,21 @@ jobs:
             /app/bin/youwee-yt-dlp --version >/tmp/youwee-ytdlp-version.txt
             cat /tmp/youwee-ytdlp-version.txt
           '
+
+      - name: Smoke test Flatpak launch
+        run: |
+          set -eu
+          set +e
+          xvfb-run -a dbus-run-session -- \
+            timeout --foreground 10s flatpak run com.vanloctech.youwee \
+            >/tmp/youwee-flatpak-launch.log 2>&1
+          STATUS=$?
+          set -e
+          cat /tmp/youwee-flatpak-launch.log
+          if [ "$STATUS" -ne 124 ]; then
+            echo "Youwee Flatpak exited before the launch smoke-test timeout (status $STATUS)."
+            exit "$STATUS"
+          fi
 
       - name: Upload Flatpak artifact
         uses: actions/upload-artifact@v6
