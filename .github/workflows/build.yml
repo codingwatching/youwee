@@ -132,6 +132,9 @@ jobs:
 
       - name: Repair AppImage desktop runtime compatibility
         if: matrix.os_name == 'linux'
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           APPIMAGE_DIR="src-tauri/target/${{ matrix.target }}/release/bundle/appimage"
           APPIMAGE=$(find "$APPIMAGE_DIR" -maxdepth 1 -type f -name "*.AppImage" | head -n 1)
