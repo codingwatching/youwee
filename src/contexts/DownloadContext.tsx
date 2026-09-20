@@ -34,6 +34,7 @@ import {
   waitWithCancellation,
 } from '@/lib/download-retry';
 import {
+  buildExternalDownloadSettingsOverrides,
   buildItemDownloadSettingsSnapshot,
   createDefaultDownloadSettings,
   refreshItemPluginWorkflowSnapshots,
@@ -820,30 +821,10 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
         }
       }
       const workflowSnapshots = loadPluginWorkflowSnapshots();
-      const mediaType = options?.mediaType === 'audio' ? 'audio' : 'video';
-      const videoQuality =
-        options?.quality && options.quality !== 'audio' ? options.quality : 'best';
-      const audioBitrate = options?.audioBitrate === '128' ? '128' : 'auto';
-
       const settingsSnapshot = buildItemDownloadSettingsSnapshot(currentSettings, {
         pluginWorkflowSnapshots: workflowSnapshots,
         postDownloadWorkflowSteps: loadPostDownloadWorkflowSteps(),
-        overrides: {
-          quality: mediaType === 'audio' ? 'audio' : videoQuality,
-          format: mediaType === 'audio' ? 'mp3' : 'mp4',
-          outputPath,
-          downloadPlaylist: options?.downloadPlaylist ?? false,
-          playlistLimit: options?.playlistLimit ?? null,
-          audioBitrate: mediaType === 'audio' ? audioBitrate : currentSettings.audioBitrate,
-          subtitleMode: options?.subtitleMode ?? currentSettings.subtitleMode,
-          subtitleLangs: options?.subtitleLangs ?? [...currentSettings.subtitleLangs],
-          subtitleEmbed: options?.subtitleEmbed ?? currentSettings.subtitleEmbed,
-          subtitleFormat: options?.subtitleFormat ?? currentSettings.subtitleFormat,
-          timeRangeStart: options?.timeRangeStart,
-          timeRangeEnd: options?.timeRangeEnd,
-          liveFromStart: options?.liveFromStart ?? currentSettings.liveFromStart,
-          skipLive: options?.skipLive ?? currentSettings.skipLive,
-        },
+        overrides: buildExternalDownloadSettingsOverrides(currentSettings, options, outputPath),
       });
 
       const newItem: DownloadItem = {

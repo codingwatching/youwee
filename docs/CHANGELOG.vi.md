@@ -7,6 +7,9 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Sửa lỗi
+- **Cài đặt tải từ browser extension** - Giữ lại các cài đặt Youwee global như container, thư mục đầu ra, playlist và subtitle khi browser extension bắt đầu tải xuống
+
 ## [0.20.3] - 2026-08-23
 
 ### Sửa lỗi
