@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.4] - 2026-09-20
+
 ### Fixed
 - **Browser extension download settings** - Preserve global Youwee download settings such as container, output folder, playlists, and subtitles when a browser extension starts a download
 - **AppImage runtime compatibility** - Rebuild Linux AppImages without bundled Wayland, GLib, and GStreamer runtime libraries that can conflict with newer Mesa and WebKitGTK, preventing blank startup windows on modern Linux distributions
@@ -15,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **AppImage release validation** - Validate the rebuilt AppImage runtime layout in Linux CI and re-sign the finalized artifact for updater integrity
+- **Firefox extension signing order** - Sign the Firefox extension only after all desktop and Flatpak packages build successfully, preventing failed releases from consuming an AMO version
 
 ## [0.20.3] - 2026-08-23
 

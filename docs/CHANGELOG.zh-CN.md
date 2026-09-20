@@ -7,6 +7,8 @@ Youwee 的所有重要更改都将记录在此文件中。
 
 ## [Unreleased]
 
+## [0.20.4] - 2026-09-20
+
 ### 修复
 - **浏览器扩展下载设置** - 浏览器扩展启动下载时保留 Youwee 的全局设置，例如容器、输出目录、播放列表和字幕
 - **AppImage 运行时兼容性** - 重新打包 Linux AppImage，不再捆绑可能与新版 Mesa 和 WebKitGTK 冲突的 Wayland、GLib 与 GStreamer 运行时库，避免现代 Linux 发行版启动时出现白色窗口
@@ -15,6 +17,7 @@ Youwee 的所有重要更改都将记录在此文件中。
 
 ### 变更
 - **AppImage 发布验证** - 在 Linux CI 中验证重新打包后的 AppImage 运行时布局，并重新签名最终产物以确保更新完整性
+- **Firefox 扩展签名顺序** - 仅在所有桌面与 Flatpak 包构建成功后签名 Firefox 扩展，避免失败的发布消耗 AMO 版本号
 
 ## [0.20.3] - 2026-08-23
 

@@ -317,6 +317,9 @@ jobs:
           if-no-files-found: error
 
   extension:
+    # Firefox signing consumes an AMO version. Wait until every desktop package,
+    # including the dependent Flatpak bundle, has built successfully first.
+    needs: [build, flatpak]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
 
