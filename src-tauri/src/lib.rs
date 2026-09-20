@@ -60,6 +60,13 @@ fn configure_linux_webkit_env() {
     }
 }
 
+/// Flatpak's GNOME runtime does not ship an AppIndicator implementation. Avoid
+/// initializing Tauri's system tray there, as it would abort the application
+/// before the WebView can start.
+fn should_setup_system_tray() -> bool {
+    !cfg!(target_os = "linux") || std::env::var_os("FLATPAK_ID").is_none()
+}
+
 /// Show the main window and restore dock icon if needed
 fn show_main_window(app_handle: &tauri::AppHandle) {
     if let Some(window) = app_handle.get_webview_window("main") {
@@ -288,8 +295,11 @@ pub fn run() {
             // Start background channel polling
             services::polling::start_polling(app.handle().clone());
 
-            // Setup system tray
-            setup_tray(app)?;
+            if should_setup_system_tray() {
+                setup_tray(app)?;
+            } else {
+                log::info!("System tray is disabled inside Flatpak");
+            }
 
             if has_initial_links || !has_cli_request {
                 show_main_window(&app.handle());
@@ -306,16 +316,18 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             // Close-to-tray: hide window instead of quitting
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                api.prevent_close();
-                let _ = window.hide();
+            if should_setup_system_tray() {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
+                    let _ = window.hide();
 
-                // macOS: optionally hide the dock icon too
-                #[cfg(target_os = "macos")]
-                if HIDE_DOCK_ON_CLOSE.load(Ordering::SeqCst) {
-                    let _ = window
-                        .app_handle()
-                        .set_activation_policy(tauri::ActivationPolicy::Accessory);
+                    // macOS: optionally hide the dock icon too
+                    #[cfg(target_os = "macos")]
+                    if HIDE_DOCK_ON_CLOSE.load(Ordering::SeqCst) {
+                        let _ = window
+                            .app_handle()
+                            .set_activation_policy(tauri::ActivationPolicy::Accessory);
+                    }
                 }
             }
         })
@@ -605,6 +617,10 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 /// Rebuild the system tray menu with current followed channels and new video counts.
 /// Called after follow/unfollow, polling finds new videos, or downloads complete.
 pub fn rebuild_tray_menu(app_handle: &tauri::AppHandle) {
+    if !should_setup_system_tray() {
+        return;
+    }
+
     if let Err(e) = rebuild_tray_menu_inner(app_handle) {
         log::error!("Failed to rebuild tray menu: {}", e);
     }
