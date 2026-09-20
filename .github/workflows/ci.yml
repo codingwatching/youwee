@@ -173,7 +173,7 @@ jobs:
           APPIMAGE="$(find "$APPIMAGE_DIR" -maxdepth 1 -type f -name '*.AppImage' | sort | head -n 1)"
           test -n "$APPIMAGE"
           APPIMAGE="$(cd "$(dirname "$APPIMAGE")" && pwd)/$(basename "$APPIMAGE")"
-          bash scripts/repair-appimage-runtime.sh "$APPIMAGE" "Youwee"
+          bash scripts/repair-appimage-runtime.sh "$APPIMAGE" "youwee"
 
           INSPECT_DIR="$(mktemp -d)"
           trap 'rm -rf "$INSPECT_DIR"' EXIT

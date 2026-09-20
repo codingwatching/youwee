@@ -136,7 +136,7 @@ jobs:
           APPIMAGE_DIR="src-tauri/target/${{ matrix.target }}/release/bundle/appimage"
           APPIMAGE=$(find "$APPIMAGE_DIR" -maxdepth 1 -type f -name "*.AppImage" | head -n 1)
           test -n "$APPIMAGE"
-          bash scripts/repair-appimage-runtime.sh "$APPIMAGE" "Youwee"
+          bash scripts/repair-appimage-runtime.sh "$APPIMAGE" "youwee"
 
           # The AppImage payload changed after Tauri produced updater artifacts.
           # Regenerate its signature so latest.json always matches the release file.
